@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Login from "../pages/auth/Login";
+import Signup from "../pages/auth/Register";
 import AdminDashboard from "../pages/admin/AdminDashboard";
 import AccountantDashboard from "../pages/accountant/AccountantDashboard";
 import FacultyDashboard from "../pages/faculty/FacultyDashboard";
@@ -10,7 +11,7 @@ export default function AppRoutes() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Login />} />
-
+        <Route path="/signup" element={<Signup />} />
         <Route
           path="/admin"
           element={

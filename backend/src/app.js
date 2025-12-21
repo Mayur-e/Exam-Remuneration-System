@@ -6,23 +6,23 @@ const authRoutes = require("./routes/auth/authRoutes");
 
 const app = express();
 
-// ✅ CORS (allow frontend)
+// CORS – frontend access
 app.use(
   cors({
     origin: "http://localhost:5173",
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"]
+    allowedHeaders: ["Content-Type", "Authorization"],
+    methods: ["GET", "POST", "PUT", "DELETE"]
   })
 );
 
 app.use(express.json());
 
-// ✅ AUTH ROUTES
+// Routes
 app.use("/api/auth", authRoutes);
 
 // Health check
 app.get("/", (req, res) => {
-  res.send("Backend alive");
+  res.send("Exam Remuneration API running");
 });
 
 module.exports = app;
