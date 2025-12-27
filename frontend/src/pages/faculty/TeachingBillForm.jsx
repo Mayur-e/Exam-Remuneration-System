@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import api from "../../services/api";
+import { useLocation } from "react-router-dom";
 
 import ExamDetails from "./ExamDetails";
 import ClaimsSection from "./ClaimsSection";
@@ -10,17 +11,32 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 
 export default function TeachingBillForm() {
-  const [examId, setExamId] = useState(null);
-  const [status, setStatus] = useState("draft");
+  const location = useLocation();
+  const examIdFromUrl = new URLSearchParams(location.search).get("examId");
+
+  const [examId, setExamId] = useState(examIdFromUrl);
+  const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
   const [exam, setExam] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // ✅ DEFINE fetchExam
+  const fetchExam = async (id = examId) => {
+    if (!id) return;
+
+    try {
+      const res = await api.get(`/faculty/exams/${id}`);
+      setExam({ ...res.data });
+      setStatus(res.data.status);
+      setRefreshKey(k => k + 1); // triggers BillSummary refresh
+    } catch (err) {
+      console.error("Failed to fetch exam", err);
+    }
+  };
 
   useEffect(() => {
-    if (!examId) return;
-
-    api.get(`/faculty/exams/${examId}`).then(res => {
-      setExam(res.data);
-    });
+    
+    fetchExam();
   }, [examId]);
 
   const handleSubmit = async () => {
@@ -44,8 +60,13 @@ export default function TeachingBillForm() {
       <Card className="p-6">
         <ExamDetails
           examId={examId}
-          disabled={status !== "draft"}
-          onCreated={setExamId}
+          disabled={examId && status !== "draft"}
+          onCreated={(id) => {
+            setExamId(id);
+            fetchExam(id); // load immediately after create
+          }}
+          claimFormType="TEACHING_INTERNAL"
+          onUpdated={fetchExam}
         />
       </Card>
 
@@ -67,9 +88,9 @@ export default function TeachingBillForm() {
       )} */}
 
       {/* STEP 4 */}
-      {examId && status !== "draft" && (
+      {examId && status === "submitted" && (
         <Card className="p-6">
-          <BillSummary examId={examId} />
+          <BillSummary examId={examId} refreshKey={refreshKey} />
         </Card>
       )}
 

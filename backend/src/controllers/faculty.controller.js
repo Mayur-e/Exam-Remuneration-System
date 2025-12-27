@@ -5,6 +5,7 @@ const pool = require("../config/db");
  */
 exports.createExam = async (req, res) => {
   const {
+  claim_form_type,
   exam_type,
   program,
   level,
@@ -17,7 +18,14 @@ exports.createExam = async (req, res) => {
   is_backlog
 } = req.body;
 
-
+  if (
+    !claim_form_type ||
+    !['TEACHING_INTERNAL', 'TEACHING_EXTERNAL', 'NON_TEACHING'].includes(claim_form_type)
+  ) {
+    return res.status(400).json({
+      message: "Invalid claim form type",
+    });
+  }
   // 🔒 HARD VALIDATION
   if (
     !exam_type ||
@@ -43,13 +51,14 @@ exports.createExam = async (req, res) => {
   const result = await pool.query(
     `
     INSERT INTO exams
-    (faculty_id, exam_type, program, level, students_count,
+    (faculty_id, claim_form_type, exam_type, program, level, students_count,
      subject_name, subject_code, semester, academic_year, exam_date, is_backlog)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
     RETURNING id
     `,
     [
       req.user.id,
+      claim_form_type,
       exam_type,
       program,
       level || null,
@@ -59,7 +68,7 @@ exports.createExam = async (req, res) => {
       semester || null,
       academic_year || null,
       exam_date || null,
-      Boolean(is_backlog)
+      Boolean(is_backlog) || false
     ]
   );
 
@@ -150,6 +159,7 @@ exports.listMyExams = async (req, res) => {
     FROM exams e
     LEFT JOIN remuneration_calculations r ON r.exam_id = e.id
     WHERE e.faculty_id = $1
+    AND status = 'submitted'
     ORDER BY e.created_at DESC
     `,
     [req.user.id]
@@ -291,15 +301,27 @@ exports.getBillSummary = async (req, res) => {
   const result = await pool.query(
     `
     SELECT
+      CASE
+        WHEN e.program IN ('BTECH','BVOC') AND e.level IN ('FY','SY')
+          THEN e.students_count * rr.fy_sy_rate
+        WHEN e.program IN ('BTECH','BVOC')
+          THEN e.students_count * rr.ty_final_rate
+        ELSE
+          e.students_count * rr.mtech_mca_rate
+      END AS examiner_amount_calculated,
+
       r.examiner_amount,
       r.staff_amount,
       r.chairman_allowance,
       r.conveyance_amount,
       r.total_amount,
       r.min_applied
+
     FROM remuneration_calculations r
     JOIN exams e ON e.id = r.exam_id
-    WHERE e.id=$1 AND e.faculty_id=$2
+    JOIN remuneration_rates rr ON rr.exam_type = e.exam_type
+    WHERE e.id = $1
+      AND e.faculty_id = $2
     `,
     [examId, req.user.id]
   );
@@ -310,6 +332,7 @@ exports.getBillSummary = async (req, res) => {
 
   return res.json(result.rows[0]);
 };
+
 
 
 exports.getExamById = async (req, res) => {
@@ -325,4 +348,101 @@ exports.getExamById = async (req, res) => {
   }
 
   return res.json(result.rows[0]);
+};
+
+exports.updateExam = async (req, res) => {
+  const examId = req.params.id;
+
+  const {
+    exam_type,
+    program,
+    level,
+    students_count,
+    subject_name,
+    subject_code,
+    semester,
+    academic_year,
+    exam_date,
+    is_backlog
+  } = req.body;
+
+  // only draft allowed
+  const check = await pool.query(
+    `SELECT status FROM exams WHERE id=$1 AND faculty_id=$2`,
+    [examId, req.user.id]
+  );
+
+  if (check.rows.length === 0)
+    return res.status(404).json({ message: "Exam not found" });
+
+  if (check.rows[0].status !== "draft")
+    return res.status(400).json({ message: "Cannot edit submitted claim" });
+
+  await pool.query(
+    `
+    UPDATE exams SET
+      exam_type=$1,
+      program=$2,
+      level=$3,
+      students_count=$4,
+      subject_name=$5,
+      subject_code=$6,
+      semester=$7,
+      academic_year=$8,
+      exam_date=$9,
+      is_backlog=$10,
+      updated_at=NOW()
+    WHERE id=$11
+    `,
+    [
+      exam_type,
+      program,
+      level,
+      students_count,
+      subject_name,
+      subject_code,
+      semester,
+      academic_year,
+      exam_date,
+      is_backlog,
+      examId
+    ]
+  );
+
+  res.json({ message: "Draft updated" });
+};
+
+exports.deleteDraft = async (req, res) => {
+  const { id } = req.params;
+
+  const result = await pool.query(
+    `
+    DELETE FROM exams
+    WHERE id=$1 AND faculty_id=$2 AND status='draft'
+    `,
+    [id, req.user.id]
+  );
+
+  if (result.rowCount === 0) {
+    return res.status(403).json({ message: "Cannot delete this claim" });
+  }
+
+  res.json({ message: "Draft deleted" });
+};
+
+
+exports.listDraftClaims = async (req, res) => {
+  const result = await pool.query(
+    `
+    SELECT id, exam_type, subject_name, created_at
+    FROM exams
+    WHERE faculty_id=$1
+      AND status='draft'
+      AND claim_form_type='TEACHING_INTERNAL'
+    ORDER BY created_at DESC
+    `,
+    [req.user.id]
+  );
+
+  res.json(result.rows);
 };

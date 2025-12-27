@@ -23,8 +23,11 @@ router.put("/profile", ctrl.updateProfile);
 router.post("/exams", ctrl.createExam);
 router.get("/exams", ctrl.listMyExams);
 router.get("/exams/:id", ctrl.getExamById);
+router.put("/exams/:id", ctrl.updateExam);
 router.post("/exams/:id/submit", ctrl.submitExam);
 router.get("/exams/:id/bill", ctrl.getBillSummary);
+router.get("/drafts", ctrl.listDraftClaims);
+router.delete("/drafts/:id", ctrl.deleteDraft);
 router.get("/exams/:id/summary", ctrl.getExamSummary);
 
 

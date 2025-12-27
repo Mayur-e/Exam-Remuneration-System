@@ -21,10 +21,12 @@ const EXAM_TYPES = [
   "Audit_Course"
 ];
 
+
+const SEMESTERS = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII"];
 const PROGRAMS = ["BTECH", "MTECH", "MCA", "BVOC"];
 const LEVELS = ["FY", "SY", "TY", "FINAL"];
 
-export default function ExamDetails({ examId, disabled, onCreated }) {
+export default function ExamDetails({ examId, disabled, onCreated, claimFormType, onUpdated}) {
   const [form, setForm] = useState({
     exam_type: "",
     program: "",
@@ -60,30 +62,56 @@ export default function ExamDetails({ examId, disabled, onCreated }) {
   const update = (k, v) => setForm({ ...form, [k]: v });
 
   const save = async () => {
+    const studentsCount = Number(form.students_count);
+
+    if (
+      !form.exam_type ||
+      !form.program ||
+      !form.semester ||
+      !form.academic_year ||
+      !form.exam_date ||
+      !form.subject_name ||
+      !form.subject_code ||
+      !form.level ||
+      !studentsCount ||
+      studentsCount <= 0
+    ) {
+      alert("Please fill all required fields correctly");
+      return;
+    }
+
     setLoading(true);
+
     try {
-            if (
-            !form.exam_type ||
-            !form.program ||
-            form.students_count === "" ||
-            Number(form.students_count) <= 0
-        ) {
-            alert("Please fill all required fields correctly");
-            return;
-        }
+      const payload = {
+        ...form,
+        claim_form_type: claimFormType ?? "TEACHING_INTERNAL",
+        students_count: studentsCount
+      };
 
-        const payload = {
-            ...form,
-            students_count: Number(form.students_count),
-        };
-
+      if (!examId) {
+        // CREATE
         const res = await api.post("/faculty/exams", payload);
-        onCreated(res.data.id);
+        onCreated?.(res.data.id); // parent must store examId
+      } else {
+        // UPDATE
+        await api.put(`/faculty/exams/${examId}`, payload);
+        alert("Details updated");
+        onUpdated?.();
+      }
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to save exam");
+      alert(err?.response?.data?.message || "Failed to save exam");
     } finally {
       setLoading(false);
     }
+  };
+
+  const getAcademicYears = (range = 5) => {
+    const currentYear = new Date().getFullYear();
+    return Array.from({ length: range }, (_, i) => {
+      const start = currentYear - i;
+      return `${start}-${String(start + 1).slice(-2)}`;
+    });
   };
 
   return (
@@ -136,14 +164,9 @@ export default function ExamDetails({ examId, disabled, onCreated }) {
             disabled={disabled}
             value={form.students_count}
             onChange={(e) =>
-                setForm({
-                ...form,
-                students_count: e.target.value === ""
-                    ? ""
-                    : Number(e.target.value),
-                })
+              update("students_count", e.target.value)
             }
-            />
+          />
 
 
         <Input
@@ -160,19 +183,35 @@ export default function ExamDetails({ examId, disabled, onCreated }) {
           onChange={(e) => update("subject_code", e.target.value)}
         />
 
-        <Input
+        <select
           disabled={disabled}
-          placeholder="Semester"
           value={form.semester}
           onChange={(e) => update("semester", e.target.value)}
-        />
+          className="border rounded px-3 py-2"
+        >
+          <option value="">Semester</option>
+          {SEMESTERS.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
 
-        <Input
+
+        <select
           disabled={disabled}
-          placeholder="Academic Year (e.g. 2024-25)"
           value={form.academic_year}
           onChange={(e) => update("academic_year", e.target.value)}
-        />
+          className="border rounded px-3 py-2"
+        >
+          <option value="">Academic Year</option>
+          {getAcademicYears().map((y) => (
+            <option key={y} value={y}>
+              {y}
+            </option>
+          ))}
+        </select>
+
 
         <Input
           disabled={disabled}
@@ -192,13 +231,14 @@ export default function ExamDetails({ examId, disabled, onCreated }) {
         Backlog / Re-ETE / Summer Exam
       </label>
 
-      {!examId && !disabled && (
+      {!disabled && (
         <div className="flex justify-end">
           <Button onClick={save} disabled={loading}>
-            {loading ? "Saving..." : "Save & Continue"}
+            {loading ? "Saving..." : examId ? "Update" : "Save & Continue"}
           </Button>
         </div>
       )}
+
     </Card>
   );
 }

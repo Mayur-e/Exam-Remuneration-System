@@ -18,18 +18,15 @@ export default function BillSummary({ examId }) {
 
       <div className="flex justify-between">
         <span>Examiner Amount</span>
-        <span>₹ {bill.examiner_amount}</span>
+        <span>₹ {bill.examiner_amount_calculated}</span>
       </div>
 
-      <div className="flex justify-between">
-        <span>Staff Amount</span>
-        <span>₹ {bill.staff_amount}</span>
-      </div>
-
-      <div className="flex justify-between">
-        <span>Conveyance</span>
-        <span>₹ {bill.conveyance_amount}</span>
-      </div>
+      {bill.min_applied && (
+        <div className="flex justify-between text-xs text-muted-foreground">
+          <span>Minimum Payable Applied</span>
+          <span>₹ 500</span>
+        </div>
+      )}
 
       <hr />
 
