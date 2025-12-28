@@ -30,5 +30,6 @@ router.get("/drafts", ctrl.listDraftClaims);
 router.delete("/drafts/:id", ctrl.deleteDraft);
 router.get("/exams/:id/summary", ctrl.getExamSummary);
 
+router.post("/exams/:id/external-link", ctrl.generateExternalLink);
 
 module.exports = router;

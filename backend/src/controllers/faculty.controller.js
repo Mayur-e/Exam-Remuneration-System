@@ -1,4 +1,5 @@
 const pool = require("../config/db");
+const crypto = require("crypto");
 
 /**
  * Create Exam (Form selection + common header)
@@ -121,9 +122,24 @@ exports.submitExam = async (req, res) => {
 
   // Ensure exam belongs to faculty
   const exam = await pool.query(
-    `SELECT id FROM exams WHERE id=$1 AND faculty_id=$2`,
+    `
+    SELECT id, claim_form_type
+    FROM exams
+    WHERE id=$1 AND faculty_id=$2
+    `,
     [examId, req.user.id]
   );
+
+  if (exam.rows.length === 0) {
+    return res.status(404).json({ message: "Exam not found" });
+  }
+
+  if (exam.rows[0].claim_form_type === 'TEACHING_EXTERNAL') {
+    return res.status(400).json({
+      message: "External claims must be submitted by external examiner"
+    });
+  }
+
 
   if (exam.rows.length === 0) {
     return res.status(404).json({ message: "Exam not found" });
@@ -142,8 +158,6 @@ exports.submitExam = async (req, res) => {
 };
 
 
-
-
 /**
  * List Faculty’s Own Exams
  */
@@ -159,7 +173,7 @@ exports.listMyExams = async (req, res) => {
     FROM exams e
     LEFT JOIN remuneration_calculations r ON r.exam_id = e.id
     WHERE e.faculty_id = $1
-    AND status = 'submitted'
+    AND claim_form_type='TEACHING_INTERNAL'
     ORDER BY e.created_at DESC
     `,
     [req.user.id]
@@ -210,7 +224,7 @@ exports.dashboardStats = async (req, res) => {
       COALESCE(SUM(rc.total_amount), 0) AS total_amount
     FROM exams e
     LEFT JOIN remuneration_calculations rc ON rc.exam_id = e.id
-    WHERE e.faculty_id = $1
+    WHERE e.faculty_id = $1 AND e.claim_form_type = 'TEACHING_INTERNAL'
   `, [facultyId]);
 
   return res.json(rows[0]);
@@ -446,3 +460,57 @@ exports.listDraftClaims = async (req, res) => {
 
   res.json(result.rows);
 };
+
+exports.generateExternalLink = async (req, res) => {
+  const examId = req.params.id;
+
+  // 1. Validate exam
+  const exam = await pool.query(
+    `
+    SELECT id, status
+    FROM exams
+    WHERE id=$1
+      AND faculty_id=$2
+      AND claim_form_type='TEACHING_EXTERNAL'
+    `,
+    [examId, req.user.id]
+  );
+
+  if (!exam.rows.length) {
+    return res.status(400).json({ message: "Invalid external exam" });
+  }
+
+  if (exam.rows[0].status !== "draft") {
+    return res.status(400).json({
+      message: "Cannot generate link after submission"
+    });
+  }
+
+  // 2. Revoke existing unused links
+  await pool.query(
+    `
+    UPDATE external_exam_links
+    SET used = true
+    WHERE exam_id = $1
+      AND used = false
+    `,
+    [examId]
+  );
+
+  // 3. Generate fresh token
+  const token = crypto.randomBytes(32).toString("hex");
+
+  await pool.query(
+    `
+    INSERT INTO external_exam_links (exam_id, token, expires_at)
+    VALUES ($1, $2, NOW() + INTERVAL '7 days')
+    `,
+    [examId, token]
+  );
+
+  res.json({
+    link: `${process.env.FRONTEND_URL}/external/claim/${token}`,
+    message: "New external link generated (old links revoked)"
+  });
+};
+

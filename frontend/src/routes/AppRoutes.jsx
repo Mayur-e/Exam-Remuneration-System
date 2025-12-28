@@ -16,7 +16,7 @@ import TeachingBillForm from "../pages/faculty/TeachingBillForm";
 import MyClaims from "../pages/faculty/MyClaims";
 import Queries from "../pages/faculty/Queries";
 import Settings from "../pages/faculty/Settings";
-
+import ExternalTeachingForm from "../pages/external/ExternalTeachingForm"
 // Protection
 import ProtectedRoute from "./ProtectedRoutes";
 
@@ -63,7 +63,8 @@ export default function AppRoutes() {
         <Route path="queries" element={<Queries />} />
         <Route path="settings" element={<Settings />} />
       </Route>
-
+      
+      <Route path="/external/claim/:token" element={<ExternalTeachingForm />} />
       {/* ================= FALLBACK ================= */}
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>

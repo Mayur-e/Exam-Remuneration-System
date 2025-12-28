@@ -1,14 +1,34 @@
+import { Card } from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
+
+// Icons
+import { 
+  CalculatorIcon,
+  UsersIcon,
+  GraduationCapIcon,
+  BookOpenIcon,
+  CurrencyRupeeIcon,
+  InfoIcon,
+  CheckCircleIcon
+} from "../../components/icons/logo";
+
 export default function ClaimsSection({ exam }) {
-  if (!exam) return null;
+  if (!exam) {
+    return (
+      <Card className="p-6 bg-white border-gray-200">
+        <div className="text-center py-8">
+          <CalculatorIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+          <p className="text-gray-600">Please complete exam details first to view claim calculation</p>
+        </div>
+      </Card>
+    );
+  }
 
   const { exam_type, program, level, students_count } = exam;
 
   /**
    * Teaching staff rate mapping (DISPLAY ONLY)
-   * Backend (remuneration_rates) remains authoritative. [file:4][file:5]
-   *
-   * This table covers all per-student examiner rates from the remuneration booklet
-   * and the seeded remuneration_rates rows. [file:1][file:4]
+   * Backend (remuneration_rates) remains authoritative.
    */
   const rateTable = {
     // ------------------------
@@ -16,20 +36,17 @@ export default function ClaimsSection({ exam }) {
     // ------------------------
     PR: {
       // Practical: Examining (PR)
-      // remuneration_rates: ('PR', 30, 35, 58, 500) [file:4]
       BTECH: { FY: 30, SY: 30, TY: 35, FINAL: 35 },
       BVOC:  { FY: 30, SY: 30, TY: 35 },
-      MTECH: 58,   // M.Tech PR (mtech_mca_rate) [file:4]
-      MCA:   58,   // MCA PR (mtech_mca_rate) [file:4]
+      MTECH: 58,
+      MCA:   58,
       min: 500
     },
 
     OR: {
       // Practical: Examining (OR)
-      // Booklet: 18 (B.Tech/B.Voc/MCA), 25 (M.Tech) – you overrode for TY/final. [file:1]
       BTECH: { FY: 18, SY: 18, TY: 25, FINAL: 25 },
       BVOC:  { FY: 18, SY: 18, TY: 25 },
-      // In DB we stored mtech_mca_rate = 30 for OR, but UI shows 35 as per your correction. [file:4]
       MTECH: 35,
       MCA:   35,
       min: 500
@@ -37,7 +54,6 @@ export default function ClaimsSection({ exam }) {
 
     TW: {
       // Practical / MOOCs / Entrepreneurship: Examining (TW)
-      // remuneration_rates: ('TW', 18, 25, 30, 500) [file:4]
       BTECH: { FY: 18, SY: 18, TY: 25, FINAL: 25 },
       BVOC:  { FY: 18, SY: 18, TY: 25 },
       MTECH: 30,
@@ -49,26 +65,19 @@ export default function ClaimsSection({ exam }) {
     // B.Tech Seminar / Mini / Stage1 / Stage2
     // ------------------------
     Project_Seminar_MiniProject: {
-      // DB row for generic B.Tech seminar / mini-project (TY & FINAL) [file:4]
-      // ('Project_Seminar_MiniProject', NULL, 58, NULL, 500)
       BTECH: { TY: 58, FINAL: 58 },
       min: 500
     },
 
     BTech_Project_Stage1: {
-      // B.Tech Project Stage 1 (TW + OR) – 3rd & Final year [file:1]
-      // remuneration_rates: ('BTech_Project_Stage1', 100, NULL, 250, 500) [file:4]
       BTECH: { TY: 100, FINAL: 100 },
-      // If you ever encode M.Tech/MCA project stage 1 via this type, mtech_mca_rate=250 exists in DB. [file:4]
       MTECH: 250,
       min: 500
     },
 
     BTech_Project_Stage2: {
-      // B.Tech Dissertation / Project Stage 2 – 3rd & Final year [file:1]
-      // remuneration_rates: ('BTech_Project_Stage2', 200, NULL, 500, 500) [file:4]
       BTECH: { FINAL: 200 },
-      MTECH: 500, // if reused for PG in DB
+      MTECH: 500,
       min: 500
     },
 
@@ -76,29 +85,21 @@ export default function ClaimsSection({ exam }) {
     // M.Tech specific heads
     // ------------------------
     MTech_MiniProject: {
-      // M.Tech Mini Project / Internship [file:1]
-      // ('MTech_MiniProject', NULL, NULL, 125, 500) [file:4]
       MTECH: 125,
       min: 500
     },
 
     MTech_Seminar: {
-      // M.Tech Seminar [file:1]
-      // ('MTech_Seminar', NULL, NULL, 125, 500) [file:4]
       MTECH: 125,
       min: 500
     },
 
     MTech_Project_Stage1: {
-      // M.Tech Dissertation / Project Stage 1 [file:1]
-      // ('MTech_Project_Stage1', NULL, NULL, 260, 500) [file:4]
       MTECH: 260,
       min: 500
     },
 
     MTech_Dissertation: {
-      // M.Tech Dissertation / Project Stage 2 [file:1]
-      // ('MTech_Dissertation', NULL, NULL, 490, 500) [file:4]
       MTECH: 490,
       min: 500
     },
@@ -107,15 +108,11 @@ export default function ClaimsSection({ exam }) {
     // MCA specific heads
     // ------------------------
     MCA_MiniProject: {
-      // MCA Mini Project [file:1]
-      // ('MCA_MiniProject', NULL, NULL, 58, 500) [file:4]
       MCA: 58,
       min: 500
     },
 
     MCA_MajorProject: {
-      // MCA Major Project [file:1]
-      // ('MCA_MajorProject', NULL, NULL, 250, 500) [file:4]
       MCA: 250,
       min: 500
     },
@@ -124,8 +121,6 @@ export default function ClaimsSection({ exam }) {
     // Audit / Life Skill / PDT
     // ------------------------
     Audit_Course: {
-      // Audit / Life Skill / Professional Development [file:1]
-      // ('Audit_Course', 5, 5, 5, 250) [file:4]
       BTECH: 5,
       BVOC:  5,
       MTECH: 5,
@@ -145,12 +140,7 @@ export default function ClaimsSection({ exam }) {
 
     // If program is an object with level keys
     if (typeof cfg[program] === "object") {
-      // level may be 'FY','SY','TY','FINAL','TERMINAL' etc.
-      return (
-        cfg[program][level] ||
-        cfg[program].ALL || // fallback if you add ALL later
-        null
-      );
+      return cfg[program][level] || null;
     }
 
     return null;
@@ -158,33 +148,142 @@ export default function ClaimsSection({ exam }) {
 
   const rate = resolveRate();
   const minAmount = rateTable[exam_type]?.min;
+  
+  // Calculate amounts
+  const students = Number(students_count) || 0;
+  const baseAmount = rate ? rate * students : 0;
+  const finalAmount = Math.max(baseAmount, minAmount || 0);
 
   return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-semibold">Claim Details (Teaching Staff)</h3>
-
-      <div className="border rounded-md p-4 space-y-2">
-        <p><strong>Exam Type:</strong> {exam_type}</p>
-        <p><strong>Program:</strong> {program}</p>
-        <p><strong>Level:</strong> {level}</p>
-        <p><strong>No. of Students:</strong> {students_count}</p>
-
-        {rate && (
-          <p>
-            <strong>Applicable Rate:</strong> ₹{rate} per student
-          </p>
-        )}
-
-        {minAmount && (
-          <p className="text-sm text-muted-foreground">
-            Minimum remuneration per day: ₹{minAmount}
-          </p>
-        )}
-
-        <p className="text-xs text-muted-foreground">
-          Final payable amount will be calculated by the system after submission.
-        </p>
+    <Card className="p-6 bg-white border-gray-200">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+          <CalculatorIcon className="w-5 h-5 text-green-600" />
+        </div>
+        <div>
+          <h3 className="text-xl font-semibold text-gray-800">Claim Calculation</h3>
+          <p className="text-sm text-gray-600">Teaching Staff Remuneration Details</p>
+        </div>
       </div>
-    </div>
+
+      {/* Exam Details Summary */}
+      <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <h4 className="font-medium text-gray-700 mb-3 flex items-center gap-2">
+          <BookOpenIcon className="w-4 h-4" />
+          Exam Information
+        </h4>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <p className="text-xs text-gray-500">Exam Type</p>
+            <p className="font-semibold text-gray-800">{exam_type}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">Program</p>
+            <p className="font-semibold text-gray-800">{program}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">Level</p>
+            <p className="font-semibold text-gray-800">{level}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">No. of Students</p>
+            <p className="font-semibold text-gray-800 flex items-center gap-1">
+              <UsersIcon className="w-4 h-4" />
+              {students_count}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Rate Information */}
+      {rate ? (
+        <div className="space-y-4">
+          <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <h4 className="font-medium text-blue-800 mb-3 flex items-center gap-2">
+              <CurrencyRupeeIcon className="w-4 h-4" />
+              Rate Information
+            </h4>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-blue-700">Applicable Rate:</span>
+              <span className="font-bold text-blue-800 text-lg">₹{rate} per student</span>
+            </div>
+            <div className="text-xs text-blue-600">
+              Based on {program} - {level} - {exam_type}
+            </div>
+          </div>
+
+          {/* Amount Calculation */}
+          <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+            <h4 className="font-medium text-green-800 mb-3 flex items-center gap-2">
+              <CalculatorIcon className="w-4 h-4" />
+              Amount Calculation
+            </h4>
+            
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Base Calculation:</span>
+                <span className="text-gray-800">
+                  {rate} × {students_count} students
+                </span>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Base Amount:</span>
+                <span className="font-medium text-gray-800">₹{baseAmount.toFixed(2)}</span>
+              </div>
+              
+              {minAmount && baseAmount < minAmount && (
+                <div className="flex justify-between items-center pt-2 border-t border-green-300">
+                  <span className="text-sm text-gray-600">Minimum Amount:</span>
+                  <span className="font-medium text-green-700">₹{minAmount}</span>
+                </div>
+              )}
+              
+              <div className="flex justify-between items-center pt-3 border-t border-green-300 mt-2">
+                <span className="font-semibold text-gray-800">Final Payable:</span>
+                <span className="text-xl font-bold text-green-700">
+                  ₹{finalAmount.toFixed(2)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Important Notes */}
+          <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+            <div className="flex items-start gap-2">
+              <InfoIcon className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-medium text-yellow-800 mb-1">Important Notes</h4>
+                <ul className="text-sm text-yellow-700 space-y-1">
+                  <li>• Minimum remuneration per day: ₹{minAmount || 250}</li>
+                  <li>• TDS @10% will be deducted from final amount</li>
+                  <li>• Final approval subject to department verification</li>
+                  <li>• Payment processed within 7-10 working days after approval</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* Ready Indicator */}
+          <div className="flex items-center justify-center p-3 bg-green-50 border border-green-200 rounded-lg">
+            <CheckCircleIcon className="w-5 h-5 text-green-600 mr-2" />
+            <span className="text-green-700 font-medium">Ready for submission</span>
+          </div>
+        </div>
+      ) : (
+        <div className="text-center py-6">
+          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <InfoIcon className="w-6 h-6 text-red-500" />
+          </div>
+          <h4 className="text-red-700 font-medium mb-2">Rate Not Configured</h4>
+          <p className="text-sm text-gray-600">
+            No rate found for {program} - {level} - {exam_type}
+          </p>
+          <p className="text-xs text-gray-500 mt-2">
+            Please contact the admin department to configure rates for this exam type.
+          </p>
+        </div>
+      )}
+    </Card>
   );
 }

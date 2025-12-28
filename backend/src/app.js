@@ -4,6 +4,7 @@ const cors = require("cors");
 
 const authRoutes = require("./routes/auth/authRoutes");
 const facultyRoutes = require("./routes/faculty/facultyRoutes");
+const externalRoutes = require("./routes/faculty/external.routes");
 
 const app = express();
 
@@ -22,6 +23,8 @@ app.use(express.json());
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/faculty", facultyRoutes);
+app.use("/api/external", externalRoutes);
+app.use("/uploads", express.static("uploads"));
 
 // Health check
 app.get("/", (req, res) => {
