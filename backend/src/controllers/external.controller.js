@@ -8,6 +8,27 @@ exports.getExternalClaim = async (req, res) => {
   const { token } = req.params;
 
   try {
+    // 1. Check Link Status first
+    const linkCheck = await pool.query(
+      `SELECT exam_id, used, expires_at FROM external_exam_links WHERE token = $1`,
+      [token]
+    );
+
+    if (linkCheck.rows.length === 0) {
+      return res.status(404).json({ message: "Invalid link" });
+    }
+
+    const link = linkCheck.rows[0];
+
+    if (link.used) {
+      return res.status(400).json({ message: "This claim has already been submitted." });
+    }
+
+    if (link.expires_at && new Date(link.expires_at) < new Date()) {
+      return res.status(400).json({ message: "This link has expired." });
+    }
+
+    // 2. Fetch Exam Details
     const result = await pool.query(
       `
       SELECT
@@ -22,19 +43,16 @@ exports.getExternalClaim = async (req, res) => {
         e.academic_year,
         e.exam_date
       FROM exams e
-      JOIN external_exam_links l ON l.exam_id = e.id
-      WHERE l.token = $1
-        AND l.used = false
-        AND (l.expires_at IS NULL OR l.expires_at > NOW())
+      WHERE e.id = $1
         AND e.claim_form_type = 'TEACHING_EXTERNAL'
         AND e.status = 'draft'
       `,
-      [token]
+      [link.exam_id]
     );
 
     if (result.rows.length === 0) {
       return res.status(404).json({
-        message: "Invalid or expired external claim link",
+        message: "Claim not found or explicitly closed.",
       });
     }
 
@@ -172,8 +190,18 @@ exports.submitExternalClaim = async (req, res) => {
     );
 
     /**
-     * 5️⃣ Calculate remuneration
+     * 5️⃣ Save Conveyance Amount (if provided) & Calculate
      */
+    const { conveyance_amount } = req.body;
+
+    await client.query(
+      `INSERT INTO remuneration_calculations (exam_id, conveyance_amount)
+       VALUES ($1, $2)
+       ON CONFLICT (exam_id) DO UPDATE SET conveyance_amount = EXCLUDED.conveyance_amount`,
+      [examId, conveyance_amount || 0]
+    );
+
+    // Trigger calculation
     await client.query(`SELECT calculate_exam($1)`, [examId]);
 
     await client.query("COMMIT");

@@ -6,18 +6,18 @@ const crypto = require("crypto");
  */
 exports.createExam = async (req, res) => {
   const {
-  claim_form_type,
-  exam_type,
-  program,
-  level,
-  students_count,
-  subject_name,
-  subject_code,
-  semester,
-  academic_year,
-  exam_date,
-  is_backlog
-} = req.body;
+    claim_form_type,
+    exam_type,
+    program,
+    level,
+    students_count,
+    subject_name,
+    subject_code,
+    semester,
+    academic_year,
+    exam_date,
+    is_backlog
+  } = req.body;
 
   if (
     !claim_form_type ||
@@ -149,6 +149,18 @@ exports.submitExam = async (req, res) => {
   await pool.query(
     `UPDATE exams SET status='submitted' WHERE id=$1`,
     [examId]
+  );
+
+  // Save Allowances (Upsert into remuneration_calculations)
+  const { chairman_allowance, conveyance_amount } = req.body;
+
+  await pool.query(
+    `INSERT INTO remuneration_calculations (exam_id, chairman_allowance, conveyance_amount)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (exam_id) DO UPDATE SET
+       chairman_allowance = EXCLUDED.chairman_allowance,
+       conveyance_amount = EXCLUDED.conveyance_amount`,
+    [examId, chairman_allowance || 0, conveyance_amount || 0]
   );
 
   // 🔥 TRIGGER CALCULATION
@@ -329,6 +341,8 @@ exports.getBillSummary = async (req, res) => {
       r.chairman_allowance,
       r.conveyance_amount,
       r.total_amount,
+      r.tds_amount,
+      r.net_amount,
       r.min_applied
 
     FROM remuneration_calculations r

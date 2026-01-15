@@ -2,7 +2,7 @@ import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 
 // Icons
-import { 
+import {
   CalculatorIcon,
   UsersIcon,
   GraduationCapIcon,
@@ -37,27 +37,27 @@ export default function ClaimsSection({ exam }) {
     PR: {
       // Practical: Examining (PR)
       BTECH: { FY: 30, SY: 30, TY: 35, FINAL: 35 },
-      BVOC:  { FY: 30, SY: 30, TY: 35 },
+      BVOC: { FY: 30, SY: 30, TY: 35 },
       MTECH: 58,
-      MCA:   58,
+      MCA: 58,
       min: 500
     },
 
     OR: {
       // Practical: Examining (OR)
       BTECH: { FY: 18, SY: 18, TY: 25, FINAL: 25 },
-      BVOC:  { FY: 18, SY: 18, TY: 25 },
+      BVOC: { FY: 18, SY: 18, TY: 25 },
       MTECH: 35,
-      MCA:   35,
+      MCA: 35,
       min: 500
     },
 
     TW: {
       // Practical / MOOCs / Entrepreneurship: Examining (TW)
       BTECH: { FY: 18, SY: 18, TY: 25, FINAL: 25 },
-      BVOC:  { FY: 18, SY: 18, TY: 25 },
+      BVOC: { FY: 18, SY: 18, TY: 25 },
       MTECH: 30,
-      MCA:   30,
+      MCA: 30,
       min: 500
     },
 
@@ -122,9 +122,9 @@ export default function ClaimsSection({ exam }) {
     // ------------------------
     Audit_Course: {
       BTECH: 5,
-      BVOC:  5,
+      BVOC: 5,
       MTECH: 5,
-      MCA:   5,
+      MCA: 5,
       min: 250
     }
   };
@@ -148,7 +148,7 @@ export default function ClaimsSection({ exam }) {
 
   const rate = resolveRate();
   const minAmount = rateTable[exam_type]?.min;
-  
+
   // Calculate amounts
   const students = Number(students_count) || 0;
   const baseAmount = rate ? rate * students : 0;
@@ -218,7 +218,7 @@ export default function ClaimsSection({ exam }) {
               <CalculatorIcon className="w-4 h-4" />
               Amount Calculation
             </h4>
-            
+
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Base Calculation:</span>
@@ -226,19 +226,19 @@ export default function ClaimsSection({ exam }) {
                   {rate} × {students_count} students
                 </span>
               </div>
-              
+
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Base Amount:</span>
                 <span className="font-medium text-gray-800">₹{baseAmount.toFixed(2)}</span>
               </div>
-              
+
               {minAmount && baseAmount < minAmount && (
                 <div className="flex justify-between items-center pt-2 border-t border-green-300">
                   <span className="text-sm text-gray-600">Minimum Amount:</span>
                   <span className="font-medium text-green-700">₹{minAmount}</span>
                 </div>
               )}
-              
+
               <div className="flex justify-between items-center pt-3 border-t border-green-300 mt-2">
                 <span className="font-semibold text-gray-800">Final Payable:</span>
                 <span className="text-xl font-bold text-green-700">
@@ -265,10 +265,7 @@ export default function ClaimsSection({ exam }) {
           </div>
 
           {/* Ready Indicator */}
-          <div className="flex items-center justify-center p-3 bg-green-50 border border-green-200 rounded-lg">
-            <CheckCircleIcon className="w-5 h-5 text-green-600 mr-2" />
-            <span className="text-green-700 font-medium">Ready for submission</span>
-          </div>
+
         </div>
       ) : (
         <div className="text-center py-6">

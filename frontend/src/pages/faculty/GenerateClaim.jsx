@@ -7,13 +7,13 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 
 // Icons
-import { 
-  FileTextIcon, 
-  UserIcon, 
-  UsersIcon, 
+import {
+  FileTextIcon,
+  UserIcon,
+  UsersIcon,
   ClockIcon,
   TrashIcon,
-  EditIcon 
+  EditIcon
 } from "../../components/icons/logo";
 
 export default function GenerateClaim() {
@@ -70,15 +70,16 @@ export default function GenerateClaim() {
                 </Button>
               </div>
 
-              <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
+              <div className="p-4 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 transition-all duration-200">
                 <Button
-                  disabled
-                  className="w-full h-auto py-4 bg-gray-200 text-gray-600 font-semibold cursor-not-allowed"
+                  onClick={() => navigate("/faculty/claim/non-teaching")}
+                  variant="outline"
+                  className="w-full h-auto py-4 border-purple-400 hover:border-purple-500 hover:bg-purple-50 text-purple-700 font-semibold"
                 >
                   <div className="flex flex-col items-center gap-2">
-                    <ClockIcon className="w-6 h-6" />
+                    <UsersIcon className="w-6 h-6" />
                     <span className="text-lg">Non-Teaching Staff Claim</span>
-                    <span className="text-sm opacity-90">(Coming Soon)</span>
+                    <span className="text-sm opacity-90">(Support Staff)</span>
                   </div>
                 </Button>
               </div>
@@ -220,7 +221,7 @@ function DraftList({ onEdit }) {
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
                 <Button
                   size="sm"

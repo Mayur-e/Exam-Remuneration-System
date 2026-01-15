@@ -12,7 +12,7 @@ import {
   FileTextIcon
 } from "../../components/icons/logo";
 
-export default function BillSummary({ examId }) {
+export default function BillSummary({ examId, refreshKey }) {
   const [bill, setBill] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -25,7 +25,7 @@ export default function BillSummary({ examId }) {
       .then((res) => setBill(res.data))
       .catch(() => setBill(null))
       .finally(() => setLoading(false));
-  }, [examId]);
+  }, [examId, refreshKey]);
 
   if (loading) {
     return (
@@ -51,13 +51,15 @@ export default function BillSummary({ examId }) {
     chairman_allowance,
     conveyance_amount,
     total_amount,
+    tds_amount,
+    net_amount,
     min_applied
   } = bill;
 
-  // Frontend calculations (safe)
-  const tds = total_amount * 0.1;
-  const netPayable = total_amount - tds;
-  const requiresRevenueStamp = total_amount > 5000;
+  // Use backend values
+  const finalTds = tds_amount !== null ? Number(tds_amount) : (total_amount * 0.1);
+  const finalNet = net_amount !== null ? Number(net_amount) : (total_amount - finalTds);
+  const requiresRevenueStamp = finalNet > 5000;
 
   return (
     <Card className="p-6 bg-white border-gray-200 space-y-6">
@@ -129,7 +131,7 @@ export default function BillSummary({ examId }) {
       <div className="p-3 bg-red-50 border border-red-200 rounded">
         <div className="flex justify-between text-red-700">
           <span>TDS (10%)</span>
-          <span>-₹{tds.toFixed(2)}</span>
+          <span>-₹{finalTds.toFixed(2)}</span>
         </div>
       </div>
 
@@ -137,7 +139,7 @@ export default function BillSummary({ examId }) {
       <div className="p-3 bg-green-50 border border-green-200 rounded">
         <div className="flex justify-between font-semibold text-green-700">
           <span>Net Payable</span>
-          <span>₹{netPayable.toFixed(2)}</span>
+          <span>₹{finalNet.toFixed(2)}</span>
         </div>
       </div>
 

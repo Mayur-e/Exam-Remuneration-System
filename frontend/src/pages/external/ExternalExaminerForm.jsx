@@ -18,7 +18,8 @@ export default function ExternalExaminerForm({ token }) {
     bank_name: "",
     branch_name: "",
     account_number: "",
-    ifsc_code: ""
+    ifsc_code: "",
+    conveyance_amount: ""
   });
 
   const [panFile, setPanFile] = useState(null);
@@ -28,7 +29,7 @@ export default function ExternalExaminerForm({ token }) {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm({ ...form, [name]: value });
-    
+
     // Clear error for this field
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: "" }));
@@ -37,34 +38,34 @@ export default function ExternalExaminerForm({ token }) {
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     // Required fields validation
     if (!form.full_name.trim()) newErrors.full_name = "Full name is required";
     if (!form.email.trim()) newErrors.email = "Email is required";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) newErrors.email = "Invalid email format";
-    
+
     if (!form.mobile.trim()) newErrors.mobile = "Mobile number is required";
     else if (!/^[0-9]{10}$/.test(form.mobile)) newErrors.mobile = "Invalid mobile number";
-    
+
     if (!form.parent_institute.trim()) newErrors.parent_institute = "Institute name is required";
     if (!form.pan_number.trim()) newErrors.pan_number = "PAN number is required";
     else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(form.pan_number)) newErrors.pan_number = "Invalid PAN format";
-    
+
     if (!form.bank_name.trim()) newErrors.bank_name = "Bank name is required";
     if (!form.branch_name.trim()) newErrors.branch_name = "Branch name is required";
     if (!form.account_number.trim()) newErrors.account_number = "Account number is required";
     if (!form.ifsc_code.trim()) newErrors.ifsc_code = "IFSC code is required";
     else if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(form.ifsc_code)) newErrors.ifsc_code = "Invalid IFSC format";
-    
+
     if (!panFile) newErrors.panFile = "PAN card document is required";
     if (!chequeFile) newErrors.chequeFile = "Cancelled cheque document is required";
-    
+
     return newErrors;
   };
 
   const handleSubmit = async () => {
     const validationErrors = validateForm();
-    
+
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
@@ -122,7 +123,7 @@ export default function ExternalExaminerForm({ token }) {
           {/* Personal Information */}
           <div className="space-y-6">
             <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Personal Information</h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">Full Name *</label>
@@ -203,7 +204,7 @@ export default function ExternalExaminerForm({ token }) {
           {/* Bank Information */}
           <div className="space-y-6">
             <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Bank Information</h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">Bank Name *</label>
@@ -255,85 +256,105 @@ export default function ExternalExaminerForm({ token }) {
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Document Upload */}
-          <div className="space-y-6">
-            <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Document Upload</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-3">
-                <label className="text-sm font-medium text-gray-700">PAN Card Document *</label>
-                <div className={`border-2 border-dashed rounded-lg p-6 text-center ${errors.panFile ? "border-red-500 bg-red-50" : "border-gray-300 hover:border-gray-400"}`}>
-                  <input
-                    type="file"
-                    id="panFile"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={handleFileChange(setPanFile, "panFile")}
-                    className="hidden"
-                  />
-                  <label htmlFor="panFile" className="cursor-pointer block">
-                    <div className="space-y-2">
-                      <svg className="w-8 h-8 text-gray-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                      </svg>
-                      <p className="text-sm text-gray-600">
-                        {panFile ? panFile.name : "Click to upload PAN card"}
-                      </p>
-                      <p className="text-xs text-gray-500">PDF, JPG, JPEG, PNG (Max 5MB)</p>
-                    </div>
-                  </label>
-                </div>
-                {errors.panFile && <p className="text-xs text-red-600">{errors.panFile}</p>}
-              </div>
-
-              <div className="space-y-3">
-                <label className="text-sm font-medium text-gray-700">Cancelled Cheque *</label>
-                <div className={`border-2 border-dashed rounded-lg p-6 text-center ${errors.chequeFile ? "border-red-500 bg-red-50" : "border-gray-300 hover:border-gray-400"}`}>
-                  <input
-                    type="file"
-                    id="chequeFile"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={handleFileChange(setChequeFile, "chequeFile")}
-                    className="hidden"
-                  />
-                  <label htmlFor="chequeFile" className="cursor-pointer block">
-                    <div className="space-y-2">
-                      <svg className="w-8 h-8 text-gray-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                      </svg>
-                      <p className="text-sm text-gray-600">
-                        {chequeFile ? chequeFile.name : "Click to upload cancelled cheque"}
-                      </p>
-                      <p className="text-xs text-gray-500">PDF, JPG, JPEG, PNG (Max 5MB)</p>
-                    </div>
-                  </label>
-                </div>
-                {errors.chequeFile && <p className="text-xs text-red-600">{errors.chequeFile}</p>}
-              </div>
-            </div>
-          </div>
-
-          {/* Submit Button */}
-          <div className="pt-6 border-t border-gray-200">
-            <div className="flex justify-end">
-              <Button
-                onClick={handleSubmit}
-                className="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
-                loading={loading}
-              >
-                Submit Claim
-              </Button>
-            </div>
-            
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-700">
-                <span className="font-semibold">Note:</span> Please ensure all information is accurate. 
-                Claims with incorrect bank details or missing documents will be rejected.
-              </p>
+        {/* Allowances */}
+        <div className="space-y-6">
+          <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Claim Allowances</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Conveyance Amount (₹)</label>
+              <Input
+                type="number"
+                name="conveyance_amount"
+                value={form.conveyance_amount}
+                onChange={handleChange}
+                placeholder="Enter conveyance amount"
+                className={errors.conveyance_amount ? "border-red-500" : ""}
+                min="0"
+              />
+              {errors.conveyance_amount && <p className="text-xs text-red-600">{errors.conveyance_amount}</p>}
             </div>
           </div>
         </div>
-      </Card>
-    </div>
+
+        {/* Document Upload */}
+        <div className="space-y-6">
+          <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Document Upload</h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-gray-700">PAN Card Document *</label>
+              <div className={`border-2 border-dashed rounded-lg p-6 text-center ${errors.panFile ? "border-red-500 bg-red-50" : "border-gray-300 hover:border-gray-400"}`}>
+                <input
+                  type="file"
+                  id="panFile"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={handleFileChange(setPanFile, "panFile")}
+                  className="hidden"
+                />
+                <label htmlFor="panFile" className="cursor-pointer block">
+                  <div className="space-y-2">
+                    <svg className="w-8 h-8 text-gray-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <p className="text-sm text-gray-600">
+                      {panFile ? panFile.name : "Click to upload PAN card"}
+                    </p>
+                    <p className="text-xs text-gray-500">PDF, JPG, JPEG, PNG (Max 5MB)</p>
+                  </div>
+                </label>
+              </div>
+              {errors.panFile && <p className="text-xs text-red-600">{errors.panFile}</p>}
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-gray-700">Cancelled Cheque *</label>
+              <div className={`border-2 border-dashed rounded-lg p-6 text-center ${errors.chequeFile ? "border-red-500 bg-red-50" : "border-gray-300 hover:border-gray-400"}`}>
+                <input
+                  type="file"
+                  id="chequeFile"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={handleFileChange(setChequeFile, "chequeFile")}
+                  className="hidden"
+                />
+                <label htmlFor="chequeFile" className="cursor-pointer block">
+                  <div className="space-y-2">
+                    <svg className="w-8 h-8 text-gray-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <p className="text-sm text-gray-600">
+                      {chequeFile ? chequeFile.name : "Click to upload cancelled cheque"}
+                    </p>
+                    <p className="text-xs text-gray-500">PDF, JPG, JPEG, PNG (Max 5MB)</p>
+                  </div>
+                </label>
+              </div>
+              {errors.chequeFile && <p className="text-xs text-red-600">{errors.chequeFile}</p>}
+            </div>
+          </div>
+        </div>
+
+        {/* Submit Button */}
+        <div className="pt-6 border-t border-gray-200">
+          <div className="flex justify-end">
+            <Button
+              onClick={handleSubmit}
+              className="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
+              loading={loading}
+            >
+              Submit Claim
+            </Button>
+          </div>
+
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-700">
+              <span className="font-semibold">Note:</span> Please ensure all information is accurate.
+              Claims with incorrect bank details or missing documents will be rejected.
+            </p>
+          </div>
+        </div>
+      </Card >
+    </div >
   );
 }

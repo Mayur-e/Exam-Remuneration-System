@@ -27,6 +27,8 @@ export default function TeachingBillForm() {
   const [exam, setExam] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [externalLink, setExternalLink] = useState("");
+  const [chairmanAllowance, setChairmanAllowance] = useState("");
+  const [conveyanceAllowance, setConveyanceAllowance] = useState("");
 
 
   useEffect(() => {
@@ -35,6 +37,8 @@ export default function TeachingBillForm() {
       setExamId(null);
       setStatus("draft");
       setExam(null);
+      setChairmanAllowance("");
+      setConveyanceAllowance("");
     }
   }, [claimTypeFromUrl]);
 
@@ -54,15 +58,19 @@ export default function TeachingBillForm() {
   };
 
   useEffect(() => {
-    
+
     fetchExam();
   }, [examId]);
 
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      await api.post(`/faculty/exams/${examId}/submit`);
+      await api.post(`/faculty/exams/${examId}/submit`, {
+        chairman_allowance: Number(chairmanAllowance) || 0,
+        conveyance_amount: Number(conveyanceAllowance) || 0
+      });
       setStatus("submitted");
+      setRefreshKey(k => k + 1); // Refresh summary
     } catch (err) {
       alert(err.response?.data?.message || "Submit failed");
     } finally {
@@ -113,25 +121,33 @@ export default function TeachingBillForm() {
             </Button>
 
             {externalLink && (
-              <div className="flex gap-2 items-center">
-                <Input
-                  value={externalLink}
-                  readOnly
-                  className="flex-1"
-                />
-                <Button
-                  variant="secondary"
-                  onClick={async () => {
-                    await navigator.clipboard.writeText(externalLink);
-                    alert("Link copied to clipboard");
-                  }}
-                >
-                  Copy
-                </Button>
+              <div className="space-y-3">
+                <div className="p-3 bg-green-50 text-green-700 border border-green-200 rounded text-sm font-medium">
+                  ✅ Link generated successfully! Please share this link with the external examiner.
+                </div>
+                <div className="flex gap-2 items-center">
+                  <Input
+                    value={externalLink}
+                    readOnly
+                    className="flex-1"
+                  />
+                  <Button
+                    variant="secondary"
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(externalLink);
+                      alert("Link copied to clipboard");
+                    }}
+                  >
+                    Copy
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Note: This link is valid for 7 days. Once the examiner submits, it cannot be used again.
+                </p>
               </div>
             )}
           </Card>
-      )}
+        )}
 
 
 
@@ -140,28 +156,54 @@ export default function TeachingBillForm() {
         <Card className="p-6">
           <ClaimsSection
             examId={examId}
-            exam = {exam}
+            exam={exam}
           />
         </Card>
       )}
 
-      {/* STEP 3 */}
-      {/* {examId && (
-        <Card className="p-6">
-          <DocumentsSection examId={examId} />
+      {/* STEP 2.5: Allowances (Internal Only) */}
+      {examId && claimTypeFromUrl === "TEACHING_INTERNAL" && (
+        <Card className="p-6 space-y-4">
+          <h3 className="text-lg font-semibold">Allowances</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Chairman Allowance</label>
+              <Input
+                type="number"
+                placeholder="0"
+                value={chairmanAllowance}
+                onChange={(e) => setChairmanAllowance(e.target.value)}
+                disabled={status !== "draft"}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Conveyance Allowance (External Only)</label>
+              <Input
+                type="number"
+                placeholder="0"
+                value={conveyanceAllowance}
+                onChange={(e) => setConveyanceAllowance(e.target.value)}
+                disabled={status !== "draft"}
+              />
+            </div>
+          </div>
         </Card>
-      )} */}
+      )}
 
       {/* STEP 4 */}
       {examId && status === "submitted" && (
-        <Card className="p-6">
+        <Card className="p-6 bg-green-50 border-green-200">
+          <div className="text-center space-y-2 mb-4">
+            <h3 className="text-lg font-bold text-green-700">Claim Submitted Successfully</h3>
+            <p className="text-green-600">Your claim has been submitted for approval.</p>
+          </div>
           <BillSummary examId={examId} refreshKey={refreshKey} />
         </Card>
       )}
 
       {/* SUBMIT */}
       {examId && status === "draft" && claimTypeFromUrl === "TEACHING_INTERNAL" && (
-        <div className="flex justify-end">
+        <div className="flex justify-end p-4">
           <Button onClick={handleSubmit} disabled={loading}>
             {loading ? "Submitting..." : "Submit Claim"}
           </Button>
