@@ -62,8 +62,29 @@ export default function MyClaims() {
     setFilteredClaims(result);
   };
 
-  const handleView = (id) => {
-    navigate(`/faculty/claim/teaching?examId=${id}`);
+  const handleView = (claim) => {
+    if (claim.claim_form_type === 'TEACHING_EXTERNAL' && claim.external_link_token) {
+      window.open(`/external/claim/${claim.external_link_token}`, '_blank');
+    } else if (claim.claim_form_type === 'NON_TEACHING') {
+      navigate(`/faculty/claim/non-teaching?examId=${claim.id}`);
+    } else {
+      navigate(`/faculty/claim/teaching?examId=${claim.id}`);
+    }
+  };
+
+  const handleCopyExternalLink = async (claim) => {
+    try {
+      if (claim.external_link_token) {
+        const link = `${window.location.origin}/external/claim/${claim.external_link_token}`;
+        await navigator.clipboard.writeText(link);
+        alert("External examiner link copied to clipboard!\n\nShare this link with the external examiner to resubmit the claim.");
+      } else {
+        alert("External link not found (Token missing). Please contact support.");
+      }
+    } catch (err) {
+      console.error("Failed to copy link:", err);
+      alert("Failed to copy link");
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -123,24 +144,53 @@ export default function MyClaims() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-4">
-          <p className="text-sm text-gray-500">Total Claims</p>
-          <p className="text-2xl font-bold">{claims.length}</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="p-6 bg-gradient-to-br from-gray-50 to-white border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 mb-1">Total Claims</p>
+              <h2 className="text-3xl font-bold text-gray-800">{claims.length}</h2>
+            </div>
+            <div className="p-3 bg-gray-100 rounded-full">
+              <FileTextIcon className="w-8 h-8 text-gray-600" />
+            </div>
+          </div>
         </Card>
 
-        <Card className="p-4">
-          <p className="text-sm text-gray-500">Submitted</p>
-          <p className="text-2xl font-bold text-yellow-600">
-            {getStatusCount("submitted")}
-          </p>
+        <Card className="p-6 bg-gradient-to-br from-orange-50 to-white border-orange-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-orange-600 mb-1">Submitted</p>
+              <h2 className="text-3xl font-bold text-orange-700">{getStatusCount("submitted")}</h2>
+            </div>
+            <div className="p-3 bg-orange-100 rounded-full">
+              <ClockIcon className="w-8 h-8 text-orange-600" />
+            </div>
+          </div>
         </Card>
 
-        <Card className="p-4">
-          <p className="text-sm text-gray-500">Approved</p>
-          <p className="text-2xl font-bold text-green-600">
-            {getStatusCount("approved")}
-          </p>
+        <Card className="p-6 bg-gradient-to-br from-green-50 to-white border-green-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-green-600 mb-1">Approved</p>
+              <h2 className="text-3xl font-bold text-green-700">{getStatusCount("approved")}</h2>
+            </div>
+            <div className="p-3 bg-green-100 rounded-full">
+              <CheckCircleIcon className="w-8 h-8 text-green-600" />
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6 bg-gradient-to-br from-red-50 to-white border-red-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-red-600 mb-1">Rejected</p>
+              <h2 className="text-3xl font-bold text-red-700">{getStatusCount("rejected")}</h2>
+            </div>
+            <div className="p-3 bg-red-100 rounded-full">
+              <XIcon className="w-8 h-8 text-red-600" />
+            </div>
+          </div>
         </Card>
       </div>
 
@@ -191,31 +241,63 @@ export default function MyClaims() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {filteredClaims.map(c => (
-            <Card key={c.id} className="p-4">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="font-semibold">
-                    {c.subject_name || "Unnamed Subject"}
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    {c.exam_type}
-                  </p>
-                  <p className="text-sm font-medium mt-1">
-                    ₹ {c.total_amount || "0.00"}
-                  </p>
+          {filteredClaims.map((c, index) => (
+            <Card key={`claim-${c.id}-${index}`} className="p-6 hover:shadow-md transition-shadow">
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="font-semibold text-lg text-gray-900">
+                      {c.subject_name || "Unnamed Subject"}
+                    </h3>
+                    {c.claim_form_type === 'TEACHING_EXTERNAL' && (
+                      <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded-full border border-purple-200">
+                        External Examiner
+                      </span>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm text-gray-600">
+                      <span className="font-medium">Exam Type:</span> {c.exam_type}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      <span className="font-medium">Program:</span> {c.program} - {c.level}
+                    </p>
+                    {c.status === 'rejected' && c.claim_form_type === 'TEACHING_EXTERNAL' && (
+                      <p className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded mt-2 border border-red-200">
+                        ⚠️ Share the link with external examiner to resubmit
+                      </p>
+                    )}
+                    <p className="text-base font-semibold text-green-700 mt-2">
+                      ₹ {Number(c.total_amount || 0).toLocaleString('en-IN')}
+                    </p>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col items-end gap-3">
                   {getStatusBadge(c.status)}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleView(c.id)}
-                  >
-                    <EyeIcon className="w-4 h-4 mr-1" />
-                    View
-                  </Button>
+                  <div className="flex gap-2">
+                    {c.status === 'rejected' && c.claim_form_type === 'TEACHING_EXTERNAL' && (
+                      <Button
+                        size="sm"
+                        onClick={() => handleCopyExternalLink(c)}
+                        className="bg-purple-600 hover:bg-purple-700 text-white"
+                        title="Copy link to share with external examiner"
+                      >
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        Copy Link
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleView(c)}
+                    >
+                      <EyeIcon className="w-4 h-4 mr-1" />
+                      View
+                    </Button>
+                  </div>
                 </div>
               </div>
             </Card>

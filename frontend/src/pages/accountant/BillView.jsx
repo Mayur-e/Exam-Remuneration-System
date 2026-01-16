@@ -5,6 +5,7 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import BillSummary from "../faculty/BillSummary";
 import PaymentModal from "./PaymentModal";
+import RejectModal from "./RejectModal";
 
 // Icons
 import {
@@ -22,6 +23,7 @@ export default function BillView() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
   const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
@@ -67,10 +69,24 @@ export default function BillView() {
     }
   };
 
+  const handleReject = async (reason) => {
+    setProcessing(true);
+    try {
+      await api.post(`/accountant/claims/${id}/reject`, { reason });
+      alert("Claim rejected successfully!");
+      setShowRejectModal(false);
+      fetchDetails(); // Refresh
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to reject claim");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   if (loading) return <div className="p-8 text-center">Loading details...</div>;
   if (!data) return <div className="p-8 text-center text-red-500">Claim not found</div>;
 
-  const { exam, staff, payment } = data;
+  const { exam, staff, payment, actions } = data;
   const isPaid = exam.status === 'paid';
   const canPay = exam.status === 'submitted' || exam.status === 'approved';
 
@@ -101,8 +117,8 @@ export default function BillView() {
             <span>{exam.claim_form_type}</span>
             <span>•</span>
             <span className={`capitalize font-medium ${exam.status === 'paid' ? 'text-green-600' :
-                exam.status === 'approved' ? 'text-blue-600' :
-                  'text-orange-600'
+              exam.status === 'approved' ? 'text-blue-600' :
+                'text-orange-600'
               }`}>
               {exam.status}
             </span>
@@ -129,6 +145,16 @@ export default function BillView() {
             >
               <CreditCardIcon className="w-5 h-5 mr-2" />
               Process Payment
+            </Button>
+          )}
+
+          {/* Reject button for submitted/approved claims */}
+          {(exam.status === 'submitted' || exam.status === 'approved') && (
+            <Button
+              onClick={() => setShowRejectModal(true)}
+              className="bg-red-600 hover:bg-red-700 text-white shadow-md hover:shadow-lg transition-all"
+            >
+              Reject Claim
             </Button>
           )}
 
@@ -314,6 +340,26 @@ export default function BillView() {
         </div>
       </div>
 
+      {/* Rejection History */}
+      {actions && actions.filter(a => a.action_type === 'REJECTED').length > 0 && (
+        <Card className="p-6 mt-6 bg-red-50 border-red-200">
+          <h3 className="font-semibold text-red-900 mb-3">Rejection History</h3>
+          <div className="space-y-3">
+            {actions.filter(a => a.action_type === 'REJECTED').map((action, idx) => (
+              <div key={idx} className="bg-white p-4 rounded-lg border border-red-200">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="font-medium text-gray-900">{action.action_by_name}</span>
+                  <span className="text-sm text-gray-500">
+                    {new Date(action.action_at).toLocaleString()}
+                  </span>
+                </div>
+                <p className="text-gray-700 text-sm">{action.comment}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       {/* Payment Modal */}
       <PaymentModal
         open={showPaymentModal}
@@ -321,6 +367,14 @@ export default function BillView() {
         onConfirm={handlePayment}
         amount={data.calculation?.net_amount || 0}
         loading={processing}
+      />
+
+      {/* Reject Modal */}
+      <RejectModal
+        isOpen={showRejectModal}
+        onClose={() => setShowRejectModal(false)}
+        onReject={handleReject}
+        processing={processing}
       />
     </div>
   );

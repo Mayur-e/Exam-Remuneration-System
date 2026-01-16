@@ -282,24 +282,33 @@ exports.submitExam = async (req, res) => {
  * List Faculty’s Own Exams
  */
 exports.listMyExams = async (req, res) => {
-  const result = await pool.query(
-    `
+  try {
+    const result = await pool.query(
+      `
     SELECT
       e.id,
       e.exam_type,
       e.subject_name,
       e.status,
+      e.claim_form_type,
+      e.program,
+      e.level,
+      eel.token as external_link_token,
       r.total_amount
     FROM exams e
     LEFT JOIN remuneration_calculations r ON r.exam_id = e.id
+    LEFT JOIN external_exam_links eel ON eel.exam_id = e.id
     WHERE e.faculty_id = $1
-    AND claim_form_type='TEACHING_INTERNAL'
     ORDER BY e.created_at DESC
     `,
-    [req.user.id]
-  );
+      [req.user.id]
+    );
 
-  return res.json(result.rows);
+    return res.json(result.rows);
+  } catch (error) {
+    console.error("listMyExams error:", error);
+    return res.status(500).json({ message: "Failed to fetch claims" });
+  }
 };
 
 /**
@@ -327,10 +336,21 @@ exports.getExamDetails = async (req, res) => {
     [examId]
   );
 
+  // Get rejection history if any
+  const rejections = await pool.query(
+    `SELECT ca.comment, ca.action_at, u.name AS rejected_by
+     FROM claim_actions ca
+     JOIN users u ON ca.action_by = u.id
+     WHERE ca.exam_id = $1 AND ca.action_type = 'REJECTED'
+     ORDER BY ca.action_at DESC`,
+    [examId]
+  );
+
   return res.json({
     exam: exam.rows[0],
     staff: staff.rows,
-    calculation: calculation.rows[0] || null
+    calculation: calculation.rows[0] || null,
+    rejections: rejections.rows
   });
 };
 
@@ -341,6 +361,7 @@ exports.dashboardStats = async (req, res) => {
     SELECT
       COUNT(*) FILTER (WHERE status = 'approved') AS approved_count,
       COUNT(*) FILTER (WHERE status = 'submitted') AS pending_count,
+      COUNT(*) FILTER (WHERE status = 'rejected') AS rejected_count,
       COALESCE(SUM(rc.net_amount), 0) AS total_amount
     FROM exams e
     LEFT JOIN remuneration_calculations rc ON rc.exam_id = e.id
@@ -483,7 +504,20 @@ exports.getExamById = async (req, res) => {
     return res.status(404).json({ message: "Exam not found" });
   }
 
-  return res.json(result.rows[0]);
+  // Get rejection history if any
+  const rejections = await pool.query(
+    `SELECT ca.comment, ca.action_at, u.name AS rejected_by
+     FROM claim_actions ca
+     JOIN users u ON ca.action_by = u.id
+     WHERE ca.exam_id = $1 AND ca.action_type = 'REJECTED'
+     ORDER BY ca.action_at DESC`,
+    [id]
+  );
+
+  return res.json({
+    ...result.rows[0],
+    rejections: rejections.rows
+  });
 };
 
 exports.updateExam = async (req, res) => {
@@ -502,7 +536,7 @@ exports.updateExam = async (req, res) => {
     is_backlog
   } = req.body;
 
-  // only draft allowed
+  // only draft or rejected allowed
   const check = await pool.query(
     `SELECT status FROM exams WHERE id=$1 AND faculty_id=$2`,
     [examId, req.user.id]
@@ -511,8 +545,8 @@ exports.updateExam = async (req, res) => {
   if (check.rows.length === 0)
     return res.status(404).json({ message: "Exam not found" });
 
-  if (check.rows[0].status !== "draft")
-    return res.status(400).json({ message: "Cannot edit submitted claim" });
+  if (check.rows[0].status !== "draft" && check.rows[0].status !== "rejected")
+    return res.status(400).json({ message: "Cannot edit submitted or approved claim" });
 
   await pool.query(
     `
@@ -721,5 +755,40 @@ exports.updateProfile = async (req, res) => {
   } catch (error) {
     console.error("Profile update error:", error);
     res.status(500).json({ message: "Failed to update profile" });
+  }
+};
+
+/* ==============================
+   RESUBMIT REJECTED CLAIM
+================================ */
+exports.resubmitClaim = async (req, res) => {
+  const examId = req.params.id;
+  const facultyId = req.user.id;
+
+  try {
+    // Check if claim exists, belongs to faculty, and is rejected
+    const exam = await pool.query(
+      `SELECT id, status FROM exams WHERE id = $1 AND faculty_id = $2`,
+      [examId, facultyId]
+    );
+
+    if (exam.rowCount === 0) {
+      return res.status(404).json({ message: "Claim not found" });
+    }
+
+    if (exam.rows[0].status !== 'rejected') {
+      return res.status(400).json({ message: "Only rejected claims can be resubmitted" });
+    }
+
+    // Update status back to submitted
+    await pool.query(
+      `UPDATE exams SET status = 'submitted', updated_at = NOW() WHERE id = $1`,
+      [examId]
+    );
+
+    res.json({ message: "Claim resubmitted successfully" });
+  } catch (error) {
+    console.error("Resubmit claim error:", error);
+    res.status(500).json({ message: "Failed to resubmit claim" });
   }
 };

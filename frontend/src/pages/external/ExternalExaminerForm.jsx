@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import api from "../../services/api";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -9,6 +9,10 @@ import { UserIcon, MailIcon, BuildingOfficeIcon } from "../../components/icons/l
 
 export default function ExternalExaminerForm({ token }) {
   const [loading, setLoading] = useState(false);
+  const [fetchingInfo, setFetchingInfo] = useState(true);
+  const [rejections, setRejections] = useState([]);
+  const [isResubmission, setIsResubmission] = useState(false);
+
   const [form, setForm] = useState({
     full_name: "",
     email: "",
@@ -28,6 +32,44 @@ export default function ExternalExaminerForm({ token }) {
   const [chequeFile, setChequeFile] = useState(null);
   const [travelProofFile, setTravelProofFile] = useState(null);
   const [errors, setErrors] = useState({});
+
+  // Fetch claim info on mount (for resubmission)
+  useEffect(() => {
+    fetchClaimInfo();
+  }, [token]);
+
+  const fetchClaimInfo = async () => {
+    try {
+      const res = await api.get(`/external/claim/${token}/info`);
+      const { exam, rejections: rejectionHistory, isResubmission: isResub } = res.data;
+
+      setRejections(rejectionHistory || []);
+      setIsResubmission(isResub);
+
+      // Pre-fill form if resubmission
+      if (isResub && exam) {
+        setForm({
+          full_name: exam.full_name || "",
+          email: exam.email || "",
+          mobile: exam.mobile || "",
+          parent_institute: exam.parent_institute || "",
+          pan_number: exam.pan_number || "",
+          bank_name: exam.bank_name || "",
+          branch_name: exam.branch_name || "",
+          account_number: exam.account_number || "",
+          ifsc_code: exam.ifsc_code || "",
+          is_local: exam.is_local !== undefined ? exam.is_local : true,
+          journey_days: exam.journey_days || "1",
+          user_entered_travel_amount: exam.travel_allowance || ""
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch claim info:", err);
+    } finally {
+      setFetchingInfo(false);
+    }
+  };
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -60,8 +102,11 @@ export default function ExternalExaminerForm({ token }) {
     if (!form.ifsc_code.trim()) newErrors.ifsc_code = "IFSC code is required";
     else if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(form.ifsc_code)) newErrors.ifsc_code = "Invalid IFSC format";
 
-    if (!panFile) newErrors.panFile = "PAN card document is required";
-    if (!chequeFile) newErrors.chequeFile = "Cancelled cheque document is required";
+    // Files are required only for first submission, optional for resubmission
+    if (!isResubmission) {
+      if (!panFile) newErrors.panFile = "PAN card document is required";
+      if (!chequeFile) newErrors.chequeFile = "Cancelled cheque document is required";
+    }
 
     return newErrors;
   };
@@ -99,7 +144,11 @@ export default function ExternalExaminerForm({ token }) {
         }
       });
 
-      alert("Claim submitted successfully!");
+      const successMessage = isResubmission
+        ? "Claim resubmitted successfully! The accountant will review it again."
+        : "Claim submitted successfully!";
+
+      alert(successMessage);
       window.location.reload();
     } catch (err) {
       alert(err.response?.data?.message || "Submission failed. Please try again.");
@@ -119,13 +168,99 @@ export default function ExternalExaminerForm({ token }) {
     }
   };
 
+  if (fetchingInfo) {
+    return (
+      <div className="max-w-4xl mx-auto p-8">
+        <div className="flex items-center justify-center h-64">
+          <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto">
-      <Card className="p-8 border-gray-200">
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">External Examiner Claim Form</h2>
-          <p className="text-gray-600">Please fill in your details and upload the required documents</p>
+      <Card className="p-8 border-gray-200 shadow-lg">
+        {/* Header */}
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-3xl font-bold text-gray-900">External Examiner Claim Form</h2>
+              <p className="text-gray-600">Complete all required fields to submit your examination claim</p>
+            </div>
+          </div>
         </div>
+
+        {/* Instructions */}
+        <Card className="p-6 bg-blue-50 border-blue-200 mb-8">
+          <h3 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Important Instructions
+          </h3>
+          <ul className="space-y-2 text-sm text-blue-800">
+            <li className="flex items-start gap-2">
+              <span className="text-blue-600 font-bold">•</span>
+              <span>All fields marked with <span className="text-red-600 font-bold">*</span> are mandatory</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-blue-600 font-bold">•</span>
+              <span>PAN number must be in format: <code className="bg-white px-2 py-0.5 rounded">ABCDE1234F</code></span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-blue-600 font-bold">•</span>
+              <span>IFSC code must be in format: <code className="bg-white px-2 py-0.5 rounded">ABCD0123456</code></span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-blue-600 font-bold">•</span>
+              <span>Upload clear, legible copies of PAN card and cancelled cheque (PDF, JPG, PNG - Max 5MB)</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-blue-600 font-bold">•</span>
+              <span>If traveling more than 25km, upload travel proof (tickets/bills) to claim travel allowance</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-blue-600 font-bold">•</span>
+              <span className="font-semibold text-blue-900">Ensure all bank details are accurate to avoid payment delays</span>
+            </li>
+          </ul>
+        </Card>
+
+        {/* Rejection Notice */}
+        {rejections && rejections.length > 0 && (
+          <Card className="p-6 bg-red-50 border-red-200 mb-8">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0">
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-red-900 mb-2">Your Claim Was Rejected</h3>
+                {rejections.map((rejection, idx) => (
+                  <div key={idx} className="mb-3 last:mb-0">
+                    <p className="text-sm text-red-700 mb-1">
+                      <strong>Rejected by:</strong> {rejection.rejected_by} on{' '}
+                      {new Date(rejection.action_at).toLocaleString()}
+                    </p>
+                    <p className="text-sm text-red-800 bg-white p-3 rounded border border-red-200">
+                      {rejection.comment}
+                    </p>
+                  </div>
+                ))}
+                <p className="text-sm text-red-700 mt-3">
+                  Please review the feedback above, make necessary corrections, and resubmit your claim.
+                </p>
+              </div>
+            </div>
+          </Card>
+        )}
 
         <div className="space-y-8">
           {/* Personal Information */}
@@ -456,7 +591,7 @@ export default function ExternalExaminerForm({ token }) {
               className="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
               loading={loading}
             >
-              Submit Claim
+              {isResubmission ? 'Resubmit Claim' : 'Submit Claim'}
             </Button>
           </div>
 

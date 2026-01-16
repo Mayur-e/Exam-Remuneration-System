@@ -66,15 +66,21 @@ exports.listSubmittedClaims = async (req, res) => {
     `
     SELECT
       e.id,
-      u.name AS faculty_name,
+      CASE 
+        WHEN e.claim_form_type = 'TEACHING_EXTERNAL' THEN ex.full_name 
+        ELSE u.name 
+      END AS claimant_name,
+      e.claim_form_type,
       e.exam_type,
       e.subject_name,
       e.program,
       e.status,
-      rc.total_amount,
-      e.created_at
+      rc.net_amount AS total_amount,
+      e.created_at,
+      u.name AS original_faculty_name
     FROM exams e
     JOIN users u ON u.id = e.faculty_id
+    LEFT JOIN external_examiners ex ON ex.id = e.external_examiner_id
     LEFT JOIN remuneration_calculations rc ON rc.exam_id = e.id
     ${where}
     ORDER BY e.created_at DESC
@@ -168,11 +174,22 @@ exports.getClaimDetails = async (req, res) => {
       [examId]
     );
 
+    // Get claim actions (approval/rejection history)
+    const actions = await pool.query(
+      `SELECT ca.*, u.name AS action_by_name
+       FROM claim_actions ca
+       JOIN users u ON ca.action_by = u.id
+       WHERE ca.exam_id = $1
+       ORDER BY ca.action_at DESC`,
+      [examId]
+    );
+
     res.json({
       exam: exam.rows[0],
       staff: staff.rows,
       calculation: calc.rows[0] || null,
-      payment: payment.rows[0] || null
+      payment: payment.rows[0] || null,
+      actions: actions.rows
     });
   } catch (err) {
     console.error("getClaimDetails error:", err);
@@ -186,25 +203,36 @@ exports.getClaimDetails = async (req, res) => {
 exports.approveClaim = async (req, res) => {
   const examId = req.params.id;
 
-  await pool.query("BEGIN");
+  try {
+    await pool.query("BEGIN");
 
-  await pool.query(
-    `UPDATE exams SET status='approved' WHERE id=$1 AND status='submitted'`,
-    [examId]
-  );
+    const result = await pool.query(
+      `UPDATE exams SET status='approved' WHERE id=$1 AND status='submitted' RETURNING id`,
+      [examId]
+    );
 
-  await pool.query(
-    `
-    INSERT INTO claim_actions
-    (exam_id, action_by, action_role, action_type)
-    VALUES ($1,$2,'ACCOUNTANT','APPROVED')
-    `,
-    [examId, req.user.id]
-  );
+    if (result.rowCount === 0) {
+      await pool.query("ROLLBACK");
+      return res.status(400).json({ message: "Claim not found or already processed" });
+    }
 
-  await pool.query("COMMIT");
+    await pool.query(
+      `
+      INSERT INTO claim_actions
+      (exam_id, action_by, action_role, action_type)
+      VALUES ($1,$2,'ACCOUNTANT','APPROVED')
+      `,
+      [examId, req.user.id]
+    );
 
-  res.json({ message: "Claim approved" });
+    await pool.query("COMMIT");
+
+    res.json({ message: "Claim approved" });
+  } catch (error) {
+    await pool.query("ROLLBACK");
+    console.error("Approve claim error:", error);
+    res.status(500).json({ message: "Failed to approve claim" });
+  }
 };
 
 
@@ -213,23 +241,42 @@ exports.approveClaim = async (req, res) => {
 ================================ */
 exports.rejectClaim = async (req, res) => {
   const examId = req.params.id;
-  const { remarks } = req.body;
+  const { reason } = req.body;
 
-  await pool.query(
-    `UPDATE exams SET status='rejected' WHERE id=$1`,
-    [examId]
-  );
+  if (!reason || reason.trim() === '') {
+    return res.status(400).json({ message: "Rejection reason is required" });
+  }
 
-  await pool.query(
-    `
-    INSERT INTO claim_actions
-    (exam_id, action_by, action_role, action_type, remarks)
-    VALUES ($1,$2,'ACCOUNTANT','REJECTED',$3)
-    `,
-    [examId, req.user.id, remarks || null]
-  );
+  try {
+    await pool.query("BEGIN");
 
-  res.json({ message: "Claim rejected" });
+    const result = await pool.query(
+      `UPDATE exams SET status='rejected' WHERE id=$1 AND status IN ('submitted', 'approved') RETURNING id`,
+      [examId]
+    );
+
+    if (result.rowCount === 0) {
+      await pool.query("ROLLBACK");
+      return res.status(400).json({ message: "Claim not found or cannot be rejected" });
+    }
+
+    await pool.query(
+      `
+      INSERT INTO claim_actions
+      (exam_id, action_by, action_role, action_type, comment)
+      VALUES ($1,$2,'ACCOUNTANT','REJECTED',$3)
+      `,
+      [examId, req.user.id, reason]
+    );
+
+    await pool.query("COMMIT");
+
+    res.json({ message: "Claim rejected" });
+  } catch (error) {
+    await pool.query("ROLLBACK");
+    console.error("Reject claim error:", error);
+    res.status(500).json({ message: "Failed to reject claim" });
+  }
 };
 
 /* ==============================

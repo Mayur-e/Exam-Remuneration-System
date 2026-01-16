@@ -83,11 +83,41 @@ export default function TeachingBillForm() {
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Teaching Staff Claim</h2>
 
+      {/* Rejection Notice */}
+      {exam && exam.rejections && exam.rejections.length > 0 && (
+        <Card className="p-6 bg-red-50 border-red-200">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0">
+              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-red-900 mb-2">Claim Rejected</h3>
+              {exam.rejections.map((rejection, idx) => (
+                <div key={idx} className="mb-3 last:mb-0">
+                  <p className="text-sm text-red-700 mb-1">
+                    <strong>Rejected by:</strong> {rejection.rejected_by} on{' '}
+                    {new Date(rejection.action_at).toLocaleString()}
+                  </p>
+                  <p className="text-sm text-red-800 bg-white p-3 rounded border border-red-200">
+                    {rejection.comment}
+                  </p>
+                </div>
+              ))}
+              <p className="text-sm text-red-700 mt-3">
+                Please review the feedback above, make necessary corrections, and resubmit your claim.
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* STEP 1 */}
       <Card className="p-6">
         <ExamDetails
           examId={examId}
-          disabled={examId && status !== "draft"}
+          disabled={examId && status !== "draft" && status !== "rejected"}
           onCreated={(id) => {
             setExamId(id);
             fetchExam(id); // load immediately after create
@@ -173,7 +203,7 @@ export default function TeachingBillForm() {
                 placeholder="0"
                 value={chairmanAllowance}
                 onChange={(e) => setChairmanAllowance(e.target.value)}
-                disabled={status !== "draft"}
+                disabled={status !== "draft" && status !== "rejected"}
               />
             </div>
             <div className="space-y-2">
@@ -183,7 +213,7 @@ export default function TeachingBillForm() {
                 placeholder="0"
                 value={conveyanceAllowance}
                 onChange={(e) => setConveyanceAllowance(e.target.value)}
-                disabled={status !== "draft"}
+                disabled={status !== "draft" && status !== "rejected"}
               />
             </div>
           </div>
@@ -208,6 +238,48 @@ export default function TeachingBillForm() {
             {loading ? "Submitting..." : "Submit Claim"}
           </Button>
         </div>
+      )}
+
+      {/* RESUBMIT for Rejected Claims */}
+      {examId && status === "rejected" && claimTypeFromUrl === "TEACHING_INTERNAL" && (
+        <Card className="p-6 bg-orange-50 border-orange-200">
+          <div className="space-y-4">
+            <div className="flex items-start gap-3">
+              <svg className="w-6 h-6 text-orange-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div className="flex-1">
+                <h3 className="font-semibold text-orange-900 mb-2">Ready to Resubmit?</h3>
+                <p className="text-sm text-orange-800 mb-4">
+                  Please ensure you have addressed all the issues mentioned in the rejection notice above before resubmitting your claim.
+                </p>
+                <div className="flex justify-end">
+                  <Button
+                    onClick={async () => {
+                      if (!confirm("Have you fixed all the issues mentioned in the rejection? Click OK to resubmit.")) {
+                        return;
+                      }
+                      try {
+                        setLoading(true);
+                        await api.post(`/faculty/exams/${examId}/resubmit`);
+                        alert("Claim resubmitted successfully!");
+                        fetchExam(); // Refresh to show new status
+                      } catch (err) {
+                        alert(err.response?.data?.message || "Failed to resubmit claim");
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    disabled={loading}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    {loading ? "Resubmitting..." : "Resubmit Claim"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Card>
       )}
     </div>
   );

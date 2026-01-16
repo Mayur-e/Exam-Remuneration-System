@@ -185,8 +185,14 @@ export default function Bills() {
                   return (
                     <tr key={claim.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="font-medium text-gray-900">{claim.faculty_name}</div>
-                        <div className="text-sm text-gray-500">{claim.faculty_email}</div>
+                        <div className="font-medium text-gray-900">
+                          {claim.claimant_name || claim.faculty_name || 'Unknown'}
+                        </div>
+                        {claim.claim_form_type === 'TEACHING_EXTERNAL' && claim.original_faculty_name && (
+                          <div className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full inline-block mt-1 border border-blue-100">
+                            Ref: {claim.original_faculty_name}
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm text-gray-900">{claim.subject_name || 'N/A'}</div>
@@ -204,19 +210,20 @@ export default function Bills() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center text-gray-900 font-semibold">
                           <CurrencyRupeeIcon className="w-4 h-4 mr-1" />
-                          {Number(claim.net_amount || claim.total_amount || 0).toLocaleString('en-IN')}
+                          {Number(claim.total_amount || 0).toLocaleString('en-IN')}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {claim.status === 'submitted' ? (
-                          <span className="px-3 py-1 text-xs font-semibold bg-orange-100 text-orange-700 rounded-full">
-                            Pending
-                          </span>
-                        ) : (
-                          <span className="px-3 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-full">
-                            Paid
-                          </span>
-                        )}
+                        <span className={`px-3 py-1 text-xs font-semibold rounded-full border ${claim.status === 'paid'
+                          ? 'bg-green-100 text-green-700 border-green-200'
+                          : claim.status === 'approved'
+                            ? 'bg-blue-100 text-blue-700 border-blue-200'
+                            : 'bg-orange-100 text-orange-700 border-orange-200'
+                          }`}>
+                          {claim.status === 'submitted' ? 'Pending' :
+                            claim.status === 'approved' ? 'Approved' :
+                              'Paid'}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <Button

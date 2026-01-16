@@ -13,4 +13,7 @@ router.post(
   externalCtrl.submitExternalClaim
 );
 
+// Get claim info (including rejections for resubmission)
+router.get("/claim/:token/info", externalCtrl.getExternalClaimInfo);
+
 module.exports = router;
