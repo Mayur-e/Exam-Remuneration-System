@@ -6,15 +6,23 @@ const pool = require("../config/db");
 exports.dashboardStats = async (req, res) => {
   const { rows } = await pool.query(`
     SELECT
-      COUNT(*) FILTER (WHERE status = 'submitted') AS submitted,
-      COUNT(*) FILTER (WHERE status = 'approved') AS approved_pending,
-      COUNT(*) FILTER (WHERE status = 'paid') AS paid,
+      COUNT(*) FILTER (WHERE status IN ('submitted', 'approved')) AS pending_count,
+      COUNT(*) FILTER (WHERE status = 'paid') AS paid_count,
       COALESCE(
-        SUM(rc.total_amount) FILTER (WHERE e.status = 'paid'),
+        SUM(rc.net_amount) FILTER (WHERE e.status IN ('submitted', 'approved')),
         0
-      ) AS total_paid_amount
+      ) AS pending_amount,
+      COALESCE(
+        SUM(rc.net_amount) FILTER (WHERE e.status = 'paid'),
+        0
+      ) AS paid_amount,
+      COALESCE(
+        SUM(rc.net_amount),
+        0
+      ) AS total_amount
     FROM exams e
     LEFT JOIN remuneration_calculations rc ON rc.exam_id = e.id
+    WHERE e.status IN ('submitted', 'approved', 'paid')
   `);
 
   res.json(rows[0]);
@@ -25,13 +33,34 @@ exports.dashboardStats = async (req, res) => {
    CLAIM LIST
 ================================ */
 exports.listSubmittedClaims = async (req, res) => {
-  const { status } = req.query;
+  const { status, facultyId } = req.query;
 
-  const where = status
-    ? `WHERE e.status = $1`
-    : `WHERE e.status IN ('submitted','approved','paid')`;
+  // Filter logic:
+  // - 'submitted' shows only submitted claims (pending approval)
+  // - 'approved' shows only approved claims (ready for payment)
+  // - 'paid' shows only paid claims
+  // - no status shows all
+  let where = `WHERE e.status IN ('submitted','approved','paid')`;
+  let params = [];
+  let paramIndex = 1;
 
-  const params = status ? [status] : [];
+  if (status === 'submitted') {
+    where = `WHERE e.status = 'submitted'`;
+  } else if (status === 'approved') {
+    where = `WHERE e.status = 'approved'`;
+  } else if (status === 'paid') {
+    where = `WHERE e.status = 'paid'`;
+  } else if (status) {
+    where = `WHERE e.status = $${paramIndex}`;
+    params = [status];
+    paramIndex++;
+  }
+
+  // Add faculty filter if provided
+  if (facultyId) {
+    where += ` AND e.faculty_id = $${paramIndex}`;
+    params.push(facultyId);
+  }
 
   const { rows } = await pool.query(
     `
@@ -63,32 +92,92 @@ exports.listSubmittedClaims = async (req, res) => {
 exports.getClaimDetails = async (req, res) => {
   const examId = req.params.id;
 
-  const exam = await pool.query(
-    `SELECT e.*, u.name, u.email
-     FROM exams e
-     JOIN users u ON u.id = e.faculty_id
-     WHERE e.id = $1`,
-    [examId]
-  );
+  try {
+    // Get exam details with faculty and external examiner bank info
+    const exam = await pool.query(
+      `SELECT
+        e.*,
+        u.name AS faculty_name,
+        u.email AS faculty_email,
+        u.department AS faculty_department,
+        fb.bank_name AS faculty_bank_name,
+        fb.branch_name AS faculty_branch_name,
+        fb.account_number AS faculty_account_number,
+        fb.ifsc_code AS faculty_ifsc_code,
+        fb.pan_number AS faculty_pan_number,
+        fb.cancelled_cheque_url AS faculty_cheque_url,
+        fb.pan_document_url AS faculty_pan_url,
+        ee.full_name AS external_examiner_name,
+        ee.email AS external_examiner_email,
+        ee.mobile AS external_examiner_mobile,
+        ee.parent_institute,
+        ee.bank_name AS external_bank_name,
+        ee.branch_name AS external_branch_name,
+        ee.account_number AS external_account_number,
+        ee.ifsc_code AS external_ifsc_code,
+        ee.pan_number AS external_pan_number,
+        ee.pan_document_url AS external_pan_url,
+        ee.cancelled_cheque_url AS external_cheque_url,
+        ee.travel_proof_url,
+        ee.is_local,
+        ee.journey_days,
+        ee.travel_allowance
+      FROM exams e
+      JOIN users u ON u.id = e.faculty_id
+      LEFT JOIN faculty_bank_accounts fb ON u.id = fb.faculty_id
+      LEFT JOIN external_examiners ee ON e.external_examiner_id = ee.id
+      WHERE e.id = $1`,
+      [examId]
+    );
 
-  if (!exam.rows.length)
-    return res.status(404).json({ message: "Claim not found" });
+    if (!exam.rows.length) {
+      return res.status(404).json({ message: "Claim not found" });
+    }
 
-  const staff = await pool.query(
-    `SELECT * FROM exam_staff WHERE exam_id = $1`,
-    [examId]
-  );
+    // Get staff members (for non-teaching claims)
+    const staff = await pool.query(
+      `SELECT * FROM exam_staff_members WHERE exam_id = $1 ORDER BY id`,
+      [examId]
+    );
 
-  const calc = await pool.query(
-    `SELECT * FROM remuneration_calculations WHERE exam_id = $1`,
-    [examId]
-  );
+    // Get calculation details with computed rate
+    const calc = await pool.query(
+      `SELECT
+        rc.*,
+        CASE
+          WHEN e.program IN ('BTECH','BVOC') AND e.level IN ('FY','SY')
+            THEN e.students_count * rr.fy_sy_rate
+          WHEN e.program IN ('BTECH','BVOC')
+            THEN e.students_count * rr.ty_final_rate
+          ELSE
+            e.students_count * rr.mtech_mca_rate
+        END AS examiner_amount_calculated
+      FROM remuneration_calculations rc
+      JOIN exams e ON e.id = rc.exam_id
+      LEFT JOIN remuneration_rates rr ON rr.exam_type = e.exam_type
+      WHERE rc.exam_id = $1`,
+      [examId]
+    );
 
-  res.json({
-    exam: exam.rows[0],
-    staff: staff.rows,
-    calculation: calc.rows[0]
-  });
+    // Get payment info if exists
+    const payment = await pool.query(
+      `SELECT p.*, u.name AS processed_by
+       FROM payments p
+       JOIN users u ON p.accountant_id = u.id
+       WHERE p.exam_id = $1`,
+      [examId]
+    );
+
+    res.json({
+      exam: exam.rows[0],
+      staff: staff.rows,
+      calculation: calc.rows[0] || null,
+      payment: payment.rows[0] || null
+    });
+  } catch (err) {
+    console.error("getClaimDetails error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
 };
 
 /* ==============================
@@ -148,59 +237,92 @@ exports.rejectClaim = async (req, res) => {
 ================================ */
 exports.markAsPaid = async (req, res) => {
   const examId = req.params.id;
-  const { transaction_ref, method, payment_date } = req.body;
+  const { reference_number, payment_method, payment_date, notes } = req.body;
 
-  const calc = await pool.query(
-    `SELECT id, total_amount FROM remuneration_calculations WHERE exam_id=$1`,
-    [examId]
-  );
-
-  if (!calc.rows.length) {
-    return res.status(400).json({ message: "Calculation missing" });
+  if (!reference_number || !payment_method || !payment_date) {
+    return res.status(400).json({
+      message: "Reference number, payment method, and payment date are required"
+    });
   }
 
-  await pool.query("BEGIN");
+  const client = await pool.connect();
 
-  await pool.query(
-    `
-    INSERT INTO payments (
-      remuneration_id,
-      amount,
-      accountant_id,
-      transaction_ref,
-      method,
-      status,
-      payment_date
-    )
-    VALUES ($1,$2,$3,$4,$5,'paid',$6)
-    `,
-    [
-      calc.rows[0].id,
-      calc.rows[0].total_amount,
-      req.user.id,
-      transaction_ref,
-      method,
-      payment_date
-    ]
-  );
+  try {
+    await client.query("BEGIN");
 
-  await pool.query(
-    `UPDATE exams SET status='paid' WHERE id=$1 AND status='approved'`,
-    [examId]
-  );
+    // Get calculation and verify status
+    const calc = await client.query(
+      `SELECT e.id, e.status, rc.net_amount
+       FROM exams e
+       LEFT JOIN remuneration_calculations rc ON rc.exam_id = e.id
+       WHERE e.id = $1`,
+      [examId]
+    );
 
-  await pool.query(
-    `
-    INSERT INTO claim_actions
-    (exam_id, action_by, action_role, action_type)
-    VALUES ($1,$2,'ACCOUNTANT','PAID')
-    `,
-    [examId, req.user.id]
-  );
+    if (!calc.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Claim not found" });
+    }
 
-  await pool.query("COMMIT");
+    const exam = calc.rows[0];
 
-  res.json({ message: "Payment recorded successfully" });
+    if (exam.status !== 'submitted' && exam.status !== 'approved') {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        message: `Cannot process payment. Current status: ${exam.status}`
+      });
+    }
+
+    if (!exam.net_amount) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "Calculation missing" });
+    }
+
+    // Check if already paid
+    const existing = await client.query(
+      "SELECT id FROM payments WHERE exam_id = $1",
+      [examId]
+    );
+
+    if (existing.rows.length > 0) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "Payment already recorded" });
+    }
+
+    // Insert payment
+    await client.query(
+      `INSERT INTO payments (
+        exam_id,
+        amount,
+        payment_method,
+        reference_number,
+        payment_date,
+        accountant_id,
+        notes
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [examId, exam.net_amount, payment_method, reference_number, payment_date, req.user.id, notes || null]
+    );
+
+    // Update exam status to paid
+    await client.query(
+      `UPDATE exams SET status = 'paid', updated_at = NOW() WHERE id = $1`,
+      [examId]
+    );
+
+    await client.query("COMMIT");
+
+    res.json({
+      message: "Payment recorded successfully",
+      amount: exam.net_amount
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("markAsPaid error:", err);
+    res.status(500).json({ message: "Server error" });
+  } finally {
+    client.release();
+  }
 };
 
 
@@ -209,10 +331,19 @@ exports.markAsPaid = async (req, res) => {
 ================================ */
 exports.listFaculty = async (req, res) => {
   const { rows } = await pool.query(`
-    SELECT id, name, email, department
-    FROM users
-    WHERE role='FACULTY'
-    ORDER BY name
+    SELECT 
+      u.id, 
+      u.name, 
+      u.email, 
+      u.department,
+      u.created_at,
+      COUNT(e.id) FILTER (WHERE e.status IN ('submitted', 'approved')) AS active_claims,
+      COUNT(e.id) AS total_claims
+    FROM users u
+    LEFT JOIN exams e ON e.faculty_id = u.id
+    WHERE u.role='FACULTY'
+    GROUP BY u.id, u.name, u.email, u.department, u.created_at
+    ORDER BY u.name
   `);
 
   res.json(rows);
@@ -225,18 +356,39 @@ exports.getFacultyDetails = async (req, res) => {
   const facultyId = req.params.id;
 
   const user = await pool.query(
-    `SELECT id, name, email, department FROM users WHERE id=$1`,
+    `SELECT id, name, email, department, role, created_at, is_active FROM users WHERE id=$1`,
     [facultyId]
   );
+
+  if (!user.rows.length) {
+    return res.status(404).json({ message: "Faculty not found" });
+  }
 
   const bank = await pool.query(
     `SELECT * FROM faculty_bank_accounts WHERE faculty_id=$1`,
     [facultyId]
   );
 
+  const claims = await pool.query(
+    `SELECT 
+      e.id,
+      e.subject_name,
+      e.exam_type,
+      e.status,
+      e.created_at,
+      rc.total_amount,
+      rc.net_amount
+    FROM exams e
+    LEFT JOIN remuneration_calculations rc ON rc.exam_id = e.id
+    WHERE e.faculty_id = $1
+    ORDER BY e.created_at DESC`,
+    [facultyId]
+  );
+
   res.json({
     faculty: user.rows[0],
-    bank: bank.rows[0] || null
+    bank: bank.rows[0] || null,
+    claims: claims.rows
   });
 };
 
@@ -258,4 +410,26 @@ exports.listPayments = async (req, res) => {
   `);
 
   res.json(rows);
+};
+
+/* ==============================
+   UPDATE PROFILE
+================================ */
+exports.updateProfile = async (req, res) => {
+  const accountantId = req.user.id;
+  const { name } = req.body;
+
+  try {
+    if (name) {
+      await pool.query(
+        `UPDATE users SET name = $1 WHERE id = $2`,
+        [name, accountantId]
+      );
+    }
+
+    res.json({ message: "Profile updated successfully" });
+  } catch (error) {
+    console.error("Profile update error:", error);
+    res.status(500).json({ message: "Failed to update profile" });
+  }
 };

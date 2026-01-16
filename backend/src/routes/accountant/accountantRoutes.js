@@ -18,5 +18,7 @@ router.get("/faculty", ctrl.listFaculty);
 router.get("/faculty/:id", ctrl.getFacultyDetails);
 router.get("/payments", ctrl.listPayments);
 
+router.put("/profile", ctrl.updateProfile);
+
 
 module.exports = router;

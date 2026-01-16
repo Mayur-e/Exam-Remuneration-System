@@ -19,8 +19,16 @@ import {
 export default function GenerateClaim() {
   const navigate = useNavigate();
 
-  const handleEditDraft = (examId) => {
-    navigate(`/faculty/claim/teaching?examId=${examId}`);
+  const handleEditDraft = (draft) => {
+    // Route to appropriate form based on claim_form_type
+    if (draft.claim_form_type === 'NON_TEACHING') {
+      navigate(`/faculty/claim/non-teaching?examId=${draft.id}`);
+    } else if (draft.claim_form_type === 'TEACHING_EXTERNAL') {
+      navigate(`/faculty/claim/teaching?examId=${draft.id}&claimType=TEACHING_EXTERNAL`);
+    } else {
+      // Default to TEACHING_INTERNAL
+      navigate(`/faculty/claim/teaching?examId=${draft.id}`);
+    }
   };
 
   return (
@@ -206,10 +214,25 @@ function DraftList({ onEdit }) {
               <div className="flex justify-between items-start mb-3">
                 <div>
                   <h4 className="font-semibold text-gray-800">{draft.subject_name}</h4>
-                  <div className="flex items-center gap-4 mt-1">
+                  <div className="flex items-center gap-2 mt-1">
                     <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded">
                       {draft.exam_type}
                     </span>
+                    {draft.claim_form_type === 'NON_TEACHING' && (
+                      <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded">
+                        Non-Teaching
+                      </span>
+                    )}
+                    {draft.claim_form_type === 'TEACHING_EXTERNAL' && (
+                      <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded">
+                        External
+                      </span>
+                    )}
+                    {draft.claim_form_type === 'TEACHING_INTERNAL' && (
+                      <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">
+                        Internal
+                      </span>
+                    )}
                     <span className="text-sm text-gray-500">
                       <ClockIcon className="w-3 h-3 inline mr-1" />
                       {new Date(draft.created_at).toLocaleDateString('en-IN', {
@@ -226,7 +249,7 @@ function DraftList({ onEdit }) {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => onEdit(draft.id)}
+                  onClick={() => onEdit(draft)}
                   className="flex items-center gap-2"
                 >
                   <EditIcon className="w-4 h-4" />

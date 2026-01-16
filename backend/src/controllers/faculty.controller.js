@@ -80,39 +80,147 @@ exports.createExam = async (req, res) => {
 };
 
 /**
- * Add / Update Exam Staff (STAFF form only)
+ * Add Exam Staff Member (NON_TEACHING form)
  */
 exports.addExamStaff = async (req, res) => {
   const examId = req.params.id;
-  const { staff_role, count, preparation_days, cleaning_days } = req.body;
+  const { staff_name, staff_role, preparation_days, examination_days, cleaning_days } = req.body;
 
+  // Validation
+  if (!staff_name || !staff_role) {
+    return res.status(400).json({ message: "Staff name and role are required" });
+  }
+
+  // Verify exam exists and belongs to faculty
+  const exam = await pool.query(
+    `SELECT id, exam_type, students_count, status, is_backlog FROM exams WHERE id=$1 AND faculty_id=$2`,
+    [examId, req.user.id]
+  );
+
+  if (exam.rows.length === 0) {
+    return res.status(404).json({ message: "Exam not found" });
+  }
+
+  if (exam.rows[0].status !== "draft") {
+    return res.status(400).json({ message: "Cannot modify submitted claim" });
+  }
+
+  // Verify staff role exists
+  const roleCheck = await pool.query(
+    `SELECT staff_role FROM staff_role_rates WHERE staff_role=$1`,
+    [staff_role]
+  );
+
+  if (roleCheck.rows.length === 0) {
+    return res.status(400).json({ message: "Invalid staff role" });
+  }
+
+  const examData = exam.rows[0];
+  const studentCount = examData.students_count;
+  const examType = examData.exam_type;
+  const examCategory = examData.is_backlog ? 'BACKLOG' : 'REGULAR';
+
+  // RULE: Expert Assistants cannot claim preparation or cleaning days
+  if (staff_role === "Expert Assistant") {
+    if ((preparation_days && preparation_days > 0) || (cleaning_days && cleaning_days > 0)) {
+      return res.status(400).json({
+        message: "Expert Assistants are not entitled to claim preparation or cleaning day remuneration"
+      });
+    }
+  }
+
+  // Fetch norms from database
+  const norms = await pool.query(
+    `SELECT * FROM exam_staff_norms 
+     WHERE exam_type = $1 
+     AND exam_category = $2 
+     AND min_students <= $3 
+     AND (max_students IS NULL OR max_students >= $3)
+     ORDER BY min_students DESC
+     LIMIT 1`,
+    [examType, examCategory, studentCount]
+  );
+
+  if (norms.rows.length === 0) {
+    return res.status(400).json({
+      message: `No staff norms defined for ${examType} (${examCategory}) with ${studentCount} students`
+    });
+  }
+
+  const norm = norms.rows[0];
+
+  // Map staff role to norm column
+  const roleToColumnMap = {
+    "Expert Assistant": "max_expert_assistants",
+    "Laboratory/Technical Assistant": "max_lab_assistants",
+    "Foreman": "max_foreman",
+    "Peon": "max_peon"
+  };
+
+  const normColumn = roleToColumnMap[staff_role];
+  if (!normColumn) {
+    return res.status(400).json({ message: "Invalid staff role" });
+  }
+
+  const maxAllowed = norm[normColumn];
+
+  // Count current staff of this role
+  const currentCount = await pool.query(
+    `SELECT COUNT(*) as count FROM exam_staff_members 
+     WHERE exam_id=$1 AND staff_role=$2`,
+    [examId, staff_role]
+  );
+
+  const existingCount = parseInt(currentCount.rows[0].count);
+
+  if (existingCount >= maxAllowed) {
+    return res.status(400).json({
+      message: `Maximum ${maxAllowed} ${staff_role}(s) allowed for ${examCategory} ${examType} exam with ${studentCount} students`
+    });
+  }
+
+  // Validate preparation and cleaning days against norms
+  const prepDays = parseInt(preparation_days) || 0;
+  const cleanDays = parseInt(cleaning_days) || 0;
+
+  if (prepDays > norm.max_preparation_days) {
+    return res.status(400).json({
+      message: `Maximum ${norm.max_preparation_days} preparation day(s) allowed for this exam type`
+    });
+  }
+
+  if (cleanDays > norm.max_cleaning_days) {
+    return res.status(400).json({
+      message: `Maximum ${norm.max_cleaning_days} cleaning day(s) allowed for this exam type`
+    });
+  }
+
+  // Insert staff member
   await pool.query(
     `
-    INSERT INTO exam_staff (
+    INSERT INTO exam_staff_members (
       exam_id,
+      staff_name,
       staff_role,
-      count,
       preparation_days,
+      examination_days,
       cleaning_days
     )
-    VALUES ($1,$2,$3,$4,$5)
-    ON CONFLICT (exam_id, staff_role)
-    DO UPDATE SET
-      count = EXCLUDED.count,
-      preparation_days = EXCLUDED.preparation_days,
-      cleaning_days = EXCLUDED.cleaning_days
+    VALUES ($1,$2,$3,$4,$5,$6)
     `,
     [
       examId,
+      staff_name,
       staff_role,
-      count,
-      preparation_days || 0,
-      cleaning_days || 0
+      prepDays,
+      examination_days || 0,
+      cleanDays
     ]
   );
 
-  return res.json({ message: "Staff details saved" });
+  return res.json({ message: "Staff member added successfully" });
 };
+
 
 /**
  * Submit Exam (Triggers calculation)
@@ -233,10 +341,10 @@ exports.dashboardStats = async (req, res) => {
     SELECT
       COUNT(*) FILTER (WHERE status = 'approved') AS approved_count,
       COUNT(*) FILTER (WHERE status = 'submitted') AS pending_count,
-      COALESCE(SUM(rc.total_amount), 0) AS total_amount
+      COALESCE(SUM(rc.net_amount), 0) AS total_amount
     FROM exams e
     LEFT JOIN remuneration_calculations rc ON rc.exam_id = e.id
-    WHERE e.faculty_id = $1 AND e.claim_form_type = 'TEACHING_INTERNAL'
+    WHERE e.faculty_id = $1
   `, [facultyId]);
 
   return res.json(rows[0]);
@@ -462,11 +570,10 @@ exports.deleteDraft = async (req, res) => {
 exports.listDraftClaims = async (req, res) => {
   const result = await pool.query(
     `
-    SELECT id, exam_type, subject_name, created_at
+    SELECT id, exam_type, subject_name, claim_form_type, created_at
     FROM exams
     WHERE faculty_id=$1
       AND status='draft'
-      AND claim_form_type='TEACHING_INTERNAL'
     ORDER BY created_at DESC
     `,
     [req.user.id]
@@ -528,3 +635,91 @@ exports.generateExternalLink = async (req, res) => {
   });
 };
 
+/* ==============================
+   GET PROFILE
+================================ */
+exports.getProfile = async (req, res) => {
+  const facultyId = req.user.id;
+
+  const user = await pool.query(
+    `SELECT id, name, email, department, created_at FROM users WHERE id=$1`,
+    [facultyId]
+  );
+
+  const bank = await pool.query(
+    `SELECT account_holder_name, bank_name, branch_name, account_number, ifsc_code, account_type 
+     FROM faculty_bank_accounts WHERE faculty_id=$1`,
+    [facultyId]
+  );
+
+  res.json({
+    ...user.rows[0],
+    bank: bank.rows[0] || null
+  });
+};
+
+/* ==============================
+   UPDATE PROFILE
+================================ */
+exports.updateProfile = async (req, res) => {
+  const facultyId = req.user.id;
+  const { name, department, bank } = req.body;
+
+  try {
+    // Update user profile
+    if (name || department) {
+      const updates = [];
+      const params = [];
+      let paramIndex = 1;
+
+      if (name) {
+        updates.push(`name = $${paramIndex++}`);
+        params.push(name);
+      }
+      if (department) {
+        updates.push(`department = $${paramIndex++}`);
+        params.push(department);
+      }
+
+      params.push(facultyId);
+      await pool.query(
+        `UPDATE users SET ${updates.join(', ')} WHERE id = $${paramIndex}`,
+        params
+      );
+    }
+
+    // Update or insert bank details
+    if (bank) {
+      const { account_holder_name, bank_name, branch_name, account_number, ifsc_code, account_type } = bank;
+
+      const existing = await pool.query(
+        `SELECT id FROM faculty_bank_accounts WHERE faculty_id = $1`,
+        [facultyId]
+      );
+
+      if (existing.rows.length > 0) {
+        // Update existing
+        await pool.query(
+          `UPDATE faculty_bank_accounts 
+           SET account_holder_name = $1, bank_name = $2, branch_name = $3, 
+               account_number = $4, ifsc_code = $5, account_type = $6
+           WHERE faculty_id = $7`,
+          [account_holder_name, bank_name, branch_name, account_number, ifsc_code, account_type || 'Savings', facultyId]
+        );
+      } else {
+        // Insert new
+        await pool.query(
+          `INSERT INTO faculty_bank_accounts 
+           (faculty_id, account_holder_name, bank_name, branch_name, account_number, ifsc_code, account_type)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [facultyId, account_holder_name, bank_name, branch_name, account_number, ifsc_code, account_type || 'Savings']
+        );
+      }
+    }
+
+    res.json({ message: "Profile updated successfully" });
+  } catch (error) {
+    console.error("Profile update error:", error);
+    res.status(500).json({ message: "Failed to update profile" });
+  }
+};

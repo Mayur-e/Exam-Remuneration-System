@@ -84,14 +84,32 @@ exports.submitExternalClaim = async (req, res) => {
     branch_name,
     account_number,
     ifsc_code,
+    is_local,
+    journey_days,
+    user_entered_travel_amount,
   } = req.body;
 
   // Files (multer)
   const panFile = req.files?.pan_document?.[0];
   const chequeFile = req.files?.cancelled_cheque?.[0];
+  const travelProofFile = req.files?.travel_proof_document?.[0];
 
-  const pan_document_url = panFile ? `/uploads/${panFile.filename}` : null;
-  const cancelled_cheque_url = chequeFile ? `/uploads/${chequeFile.filename}` : null;
+  const pan_document_url = panFile ? `/uploads/external/pan/${panFile.filename}` : null;
+  const cancelled_cheque_url = chequeFile ? `/uploads/external/cheque/${chequeFile.filename}` : null;
+  const travel_proof_url = travelProofFile ? `/uploads/external/travel/${travelProofFile.filename}` : null;
+
+  // Calculate travel allowance
+  let travel_allowance = 0;
+  const isLocal = is_local === true || is_local === 'true';
+  const days = parseInt(journey_days) || 1;
+
+  if (isLocal) {
+    // Within 25km: ₹500 × journey_days
+    travel_allowance = 500 * days;
+  } else {
+    // Beyond 25km: User-entered total travel expense
+    travel_allowance = parseFloat(user_entered_travel_amount) || 0;
+  }
 
   const client = await pool.connect();
 
@@ -123,7 +141,7 @@ exports.submitExternalClaim = async (req, res) => {
     const examId = linkRes.rows[0].exam_id;
 
     /**
-     * 2️⃣ Insert External Examiner
+     * 2️⃣ Insert External Examiner with travel allowance
      */
     const examinerRes = await client.query(
       `
@@ -138,9 +156,13 @@ exports.submitExternalClaim = async (req, res) => {
         account_number,
         ifsc_code,
         pan_document_url,
-        cancelled_cheque_url
+        cancelled_cheque_url,
+        is_local,
+        journey_days,
+        travel_allowance,
+        travel_proof_url
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
       RETURNING id
       `,
       [
@@ -155,6 +177,10 @@ exports.submitExternalClaim = async (req, res) => {
         ifsc_code,
         pan_document_url,
         cancelled_cheque_url,
+        isLocal,
+        days,
+        travel_allowance,
+        travel_proof_url,
       ]
     );
 
@@ -190,15 +216,13 @@ exports.submitExternalClaim = async (req, res) => {
     );
 
     /**
-     * 5️⃣ Save Conveyance Amount (if provided) & Calculate
+     * 5️⃣ Save Travel Allowance as Conveyance Amount & Calculate
      */
-    const { conveyance_amount } = req.body;
-
     await client.query(
       `INSERT INTO remuneration_calculations (exam_id, conveyance_amount)
        VALUES ($1, $2)
        ON CONFLICT (exam_id) DO UPDATE SET conveyance_amount = EXCLUDED.conveyance_amount`,
-      [examId, conveyance_amount || 0]
+      [examId, travel_allowance]
     );
 
     // Trigger calculation

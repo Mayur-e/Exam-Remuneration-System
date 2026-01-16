@@ -5,7 +5,7 @@ const fs = require("fs");
 const baseDir = path.join(__dirname, "../../uploads/external");
 
 // ensure folders exist
-["pan", "cheque"].forEach(dir => {
+["pan", "cheque", "travel"].forEach(dir => {
   const full = path.join(baseDir, dir);
   if (!fs.existsSync(full)) fs.mkdirSync(full, { recursive: true });
 });
@@ -16,6 +16,8 @@ const storage = multer.diskStorage({
       cb(null, path.join(baseDir, "pan"));
     } else if (file.fieldname === "cancelled_cheque") {
       cb(null, path.join(baseDir, "cheque"));
+    } else if (file.fieldname === "travel_proof_document") {
+      cb(null, path.join(baseDir, "travel"));
     } else {
       cb(new Error("Invalid file field"));
     }

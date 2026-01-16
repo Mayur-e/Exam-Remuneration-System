@@ -19,11 +19,14 @@ export default function ExternalExaminerForm({ token }) {
     branch_name: "",
     account_number: "",
     ifsc_code: "",
-    conveyance_amount: ""
+    is_local: true, // Default: Within 25km
+    journey_days: "1",
+    user_entered_travel_amount: ""
   });
 
   const [panFile, setPanFile] = useState(null);
   const [chequeFile, setChequeFile] = useState(null);
+  const [travelProofFile, setTravelProofFile] = useState(null);
   const [errors, setErrors] = useState({});
 
   const handleChange = (e) => {
@@ -84,6 +87,11 @@ export default function ExternalExaminerForm({ token }) {
       // Add files
       data.append("pan_document", panFile);
       data.append("cancelled_cheque", chequeFile);
+
+      // Add travel proof if outstation (beyond 25km)
+      if (!form.is_local && travelProofFile) {
+        data.append("travel_proof_document", travelProofFile);
+      }
 
       await api.post(`/external/claim/${token}`, data, {
         headers: {
@@ -258,24 +266,129 @@ export default function ExternalExaminerForm({ token }) {
           </div>
         </div>
 
-        {/* Allowances */}
+        {/* Travel Allowance */}
         <div className="space-y-6">
-          <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Claim Allowances</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Conveyance Amount (₹)</label>
-              <Input
-                type="number"
-                name="conveyance_amount"
-                value={form.conveyance_amount}
-                onChange={handleChange}
-                placeholder="Enter conveyance amount"
-                className={errors.conveyance_amount ? "border-red-500" : ""}
-                min="0"
-              />
-              {errors.conveyance_amount && <p className="text-xs text-red-600">{errors.conveyance_amount}</p>}
+          <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Travel Allowance</h3>
+
+          {/* Distance Selection */}
+          <div className="space-y-4">
+            <label className="text-sm font-medium text-gray-700">Institute Distance from PCCOE *</label>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="is_local"
+                  checked={form.is_local === true}
+                  onChange={() => setForm({ ...form, is_local: true, user_entered_travel_amount: "" })}
+                  className="w-4 h-4 text-blue-600"
+                />
+                <span className="text-sm text-gray-700">Within 25km (Local)</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="is_local"
+                  checked={form.is_local === false}
+                  onChange={() => setForm({ ...form, is_local: false, journey_days: "1" })}
+                  className="w-4 h-4 text-blue-600"
+                />
+                <span className="text-sm text-gray-700">Beyond 25km (Outstation)</span>
+              </label>
             </div>
           </div>
+
+          {/* Conditional Fields Based on Distance */}
+          {form.is_local ? (
+            // Local: Within 25km
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-4">
+              <div className="flex items-start gap-2">
+                <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-blue-800">Local Conveyance Allowance (LCA)</p>
+                  <p className="text-xs text-blue-600 mt-1">Rate: ₹500 per day/visit</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Number of Days/Visits *</label>
+                <Input
+                  type="number"
+                  name="journey_days"
+                  value={form.journey_days}
+                  onChange={handleChange}
+                  placeholder="Enter number of days"
+                  min="1"
+                  className="max-w-xs"
+                />
+                <p className="text-xs text-gray-600">
+                  Total LCA: ₹{500 * (parseInt(form.journey_days) || 0)}
+                </p>
+              </div>
+            </div>
+          ) : (
+            // Outstation: Beyond 25km
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-4">
+              <div className="flex items-start gap-2">
+                <svg className="w-5 h-5 text-amber-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-amber-800">Outstation Travel Allowance</p>
+                  <p className="text-xs text-amber-600 mt-1">
+                    Includes: TA (Train/Bus fare) + DA + Auto charges (Max ₹200)
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Total Travel Expense (₹) *</label>
+                <Input
+                  type="number"
+                  name="user_entered_travel_amount"
+                  value={form.user_entered_travel_amount}
+                  onChange={handleChange}
+                  placeholder="Enter total amount (TA + DA + Auto)"
+                  min="0"
+                  className="max-w-xs"
+                />
+              </div>
+
+              {/* Travel Proof Upload */}
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-gray-700">Upload Travel Proof (Tickets/Bills) *</label>
+                <div className={`border-2 border-dashed rounded-lg p-4 text-center ${errors.travelProofFile ? "border-red-500 bg-red-50" : "border-amber-300 hover:border-amber-400 bg-white"}`}>
+                  <input
+                    type="file"
+                    id="travelProofFile"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={handleFileChange(setTravelProofFile, "travelProofFile")}
+                    className="hidden"
+                  />
+                  <label htmlFor="travelProofFile" className="cursor-pointer block">
+                    <div className="space-y-2">
+                      <svg className="w-8 h-8 text-amber-500 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                      <p className="text-sm text-gray-600">
+                        {travelProofFile ? travelProofFile.name : "Click to upload travel proof"}
+                      </p>
+                      <p className="text-xs text-gray-500">PDF, JPG, JPEG, PNG (Max 5MB)</p>
+                    </div>
+                  </label>
+                </div>
+                {errors.travelProofFile && <p className="text-xs text-red-600">{errors.travelProofFile}</p>}
+              </div>
+
+              <div className="bg-amber-100 border border-amber-300 rounded p-2">
+                <p className="text-xs text-amber-800">
+                  <span className="font-semibold">⚠️ Important:</span> Upload tickets, bills, and receipts for validation.
+                  Accountant will verify against institutional norms.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Document Upload */}

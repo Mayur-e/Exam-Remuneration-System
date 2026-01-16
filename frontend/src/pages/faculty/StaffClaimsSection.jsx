@@ -29,9 +29,10 @@ export default function StaffClaimsSection({ examId, disabled }) {
             ...staffList,
             {
                 id: Date.now(),
+                staff_name: "",
                 staff_role: "",
-                count: "",
                 preparation_days: "",
+                examination_days: "",
                 cleaning_days: ""
             }
         ]);
@@ -48,22 +49,25 @@ export default function StaffClaimsSection({ examId, disabled }) {
     };
 
     const saveStaff = async (staffRow) => {
-        if (!staffRow.staff_role || !staffRow.count) {
-            alert("Please fill in Staff Role and Count");
+        if (!staffRow.staff_role || !staffRow.staff_name) {
+            alert("Please fill in Staff Name and Role");
             return;
         }
 
         setLoading(true);
         try {
             await api.post(`/faculty/exams/${examId}/staff`, {
+                staff_name: staffRow.staff_name,
                 staff_role: staffRow.staff_role,
-                count: Number(staffRow.count),
                 preparation_days: Number(staffRow.preparation_days) || 0,
+                examination_days: Number(staffRow.examination_days) || 0,
                 cleaning_days: Number(staffRow.cleaning_days) || 0
             });
-            alert("Staff details saved successfully!");
+            alert("Staff member added successfully!");
+            // Remove the saved row from the list
+            removeStaffRow(staffRow.id);
         } catch (err) {
-            alert(err.response?.data?.message || "Failed to save staff details");
+            alert(err.response?.data?.message || "Failed to add staff member");
         } finally {
             setLoading(false);
         }
@@ -125,7 +129,23 @@ export default function StaffClaimsSection({ examId, disabled }) {
                             key={staff.id}
                             className="p-4 border border-gray-200 rounded-lg bg-gray-50"
                         >
-                            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+                                {/* Staff Name */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-gray-700">
+                                        Staff Name *
+                                    </label>
+                                    <Input
+                                        type="text"
+                                        disabled={disabled}
+                                        placeholder="Enter name"
+                                        value={staff.staff_name}
+                                        onChange={(e) =>
+                                            updateStaffRow(staff.id, "staff_name", e.target.value)
+                                        }
+                                    />
+                                </div>
+
                                 {/* Staff Role */}
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-gray-700">
@@ -148,23 +168,6 @@ export default function StaffClaimsSection({ examId, disabled }) {
                                     </select>
                                 </div>
 
-                                {/* Count */}
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">
-                                        Count *
-                                    </label>
-                                    <Input
-                                        type="number"
-                                        min="1"
-                                        disabled={disabled}
-                                        placeholder="0"
-                                        value={staff.count}
-                                        onChange={(e) =>
-                                            updateStaffRow(staff.id, "count", e.target.value)
-                                        }
-                                    />
-                                </div>
-
                                 {/* Preparation Days */}
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-gray-700">
@@ -182,6 +185,23 @@ export default function StaffClaimsSection({ examId, disabled }) {
                                                 "preparation_days",
                                                 e.target.value
                                             )
+                                        }
+                                    />
+                                </div>
+
+                                {/* Examination Days */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-gray-700">
+                                        Exam Days
+                                    </label>
+                                    <Input
+                                        type="number"
+                                        min="0"
+                                        disabled={disabled}
+                                        placeholder="0"
+                                        value={staff.examination_days}
+                                        onChange={(e) =>
+                                            updateStaffRow(staff.id, "examination_days", e.target.value)
                                         }
                                     />
                                 </div>

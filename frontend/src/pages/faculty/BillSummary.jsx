@@ -12,11 +12,17 @@ import {
   FileTextIcon
 } from "../../components/icons/logo";
 
-export default function BillSummary({ examId, refreshKey }) {
+export default function BillSummary({ examId, refreshKey, billData }) {
   const [bill, setBill] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!billData);
 
   useEffect(() => {
+    if (billData) {
+      setBill(billData);
+      setLoading(false);
+      return;
+    }
+
     if (!examId) return;
 
     setLoading(true);
@@ -25,7 +31,7 @@ export default function BillSummary({ examId, refreshKey }) {
       .then((res) => setBill(res.data))
       .catch(() => setBill(null))
       .finally(() => setLoading(false));
-  }, [examId, refreshKey]);
+  }, [examId, refreshKey, billData]);
 
   if (loading) {
     return (

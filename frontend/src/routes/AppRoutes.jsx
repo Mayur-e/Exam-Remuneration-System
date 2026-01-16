@@ -27,7 +27,7 @@ import Bills from "../pages/accountant/Bills";
 import BillView from "../pages/accountant/BillView";
 import FacultyList from "../pages/accountant/FacultyList";
 import FacultyProfile from "../pages/accountant/FacultyProfile";
-// import Settingsacc from "../pages/accountant/Settings";
+import Settingsacc from "../pages/accountant/Settings";
 
 // Protection
 import ProtectedRoute from "./ProtectedRoutes";
@@ -54,12 +54,13 @@ export default function AppRoutes() {
         <AccountantLayout />
       </ProtectedRoute>
       }>
+        <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<AccountantDashboard />} />
         <Route path="bills" element={<Bills />} />
         <Route path="bills/:id" element={<BillView />} />
         <Route path="faculty" element={<FacultyList />} />
         <Route path="faculty/:id" element={<FacultyProfile />} />
-        {/* <Route path="settings" element={<Settingsacc />} /> */}
+        <Route path="settings" element={<Settingsacc />} />
       </Route>
 
 
