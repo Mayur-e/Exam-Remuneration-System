@@ -33,11 +33,6 @@ export default function FacultyProfile() {
   const fetchFacultyData = async () => {
     try {
       const res = await api.get(`/accountant/faculty/${id}`);
-      console.log('Faculty Profile Data:', res.data);
-      console.log('Claims count:', res.data.claims?.length);
-      console.log('Sample claim:', res.data.claims?.[0]);
-      console.log('Total amount sum:', res.data.claims?.reduce((sum, c) => sum + (parseFloat(c.total_amount) || 0), 0));
-      console.log('Net amount sum:', res.data.claims?.reduce((sum, c) => sum + (parseFloat(c.net_amount) || 0), 0));
       setData(res.data);
     } catch (error) {
       console.error("Failed to fetch faculty data:", error);

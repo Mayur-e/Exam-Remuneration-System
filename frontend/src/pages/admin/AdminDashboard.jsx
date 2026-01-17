@@ -23,7 +23,6 @@ export default function AdminDashboard() {
   useEffect(() => {
     api.get("/admin/dashboard/stats")
       .then(res => {
-        console.log("Admin dashboard stats:", res.data);
         setStats(res.data.stats);
         setAlerts(res.data.alerts);
       })

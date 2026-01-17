@@ -72,7 +72,7 @@ export default function AdminClaimView() {
             setProcessing(false);
         }
     };
-
+    
     if (loading) return <div className="p-8 text-center">Loading details...</div>;
     if (!data) return <div className="p-8 text-center text-red-500">Claim not found</div>;
 
@@ -102,9 +102,9 @@ export default function AdminClaimView() {
                         <span>{exam.claim_form_type}</span>
                         <span>•</span>
                         <span className={`capitalize font-medium ${exam.status === 'paid' ? 'text-green-600' :
-                                exam.status === 'approved' ? 'text-blue-600' :
-                                    exam.status === 'rejected' ? 'text-red-600' :
-                                        'text-orange-600'
+                            exam.status === 'approved' ? 'text-blue-600' :
+                                exam.status === 'rejected' ? 'text-red-600' :
+                                    'text-orange-600'
                             }`}>
                             {exam.status}
                         </span>
@@ -146,8 +146,8 @@ export default function AdminClaimView() {
                     <button
                         onClick={() => setActiveTab("details")}
                         className={`px-4 py-2 font-medium border-b-2 transition-colors ${activeTab === "details"
-                                ? "border-purple-600 text-purple-600"
-                                : "border-transparent text-gray-500 hover:text-gray-700"
+                            ? "border-purple-600 text-purple-600"
+                            : "border-transparent text-gray-500 hover:text-gray-700"
                             }`}
                     >
                         Claim Details
@@ -155,8 +155,8 @@ export default function AdminClaimView() {
                     <button
                         onClick={() => setActiveTab("calculation")}
                         className={`px-4 py-2 font-medium border-b-2 transition-colors ${activeTab === "calculation"
-                                ? "border-purple-600 text-purple-600"
-                                : "border-transparent text-gray-500 hover:text-gray-700"
+                            ? "border-purple-600 text-purple-600"
+                            : "border-transparent text-gray-500 hover:text-gray-700"
                             }`}
                     >
                         Calculation Breakdown
@@ -164,8 +164,8 @@ export default function AdminClaimView() {
                     <button
                         onClick={() => setActiveTab("audit")}
                         className={`px-4 py-2 font-medium border-b-2 transition-colors ${activeTab === "audit"
-                                ? "border-purple-600 text-purple-600"
-                                : "border-transparent text-gray-500 hover:text-gray-700"
+                            ? "border-purple-600 text-purple-600"
+                            : "border-transparent text-gray-500 hover:text-gray-700"
                             }`}
                     >
                         Audit Logs
@@ -272,9 +272,9 @@ export default function AdminClaimView() {
                         <div className="space-y-3">
                             {auditLogs.map((log, idx) => (
                                 <div key={idx} className={`p-4 rounded-lg border ${log.action_type === 'REJECTED' ? 'bg-red-50 border-red-200' :
-                                        log.action_type === 'APPROVED' ? 'bg-green-50 border-green-200' :
-                                            log.action_type === 'SENT_BACK' ? 'bg-orange-50 border-orange-200' :
-                                                'bg-gray-50 border-gray-200'
+                                    log.action_type === 'APPROVED' ? 'bg-green-50 border-green-200' :
+                                        log.action_type === 'SENT_BACK' ? 'bg-orange-50 border-orange-200' :
+                                            'bg-gray-50 border-gray-200'
                                     }`}>
                                     <div className="flex justify-between items-start mb-2">
                                         <div>
@@ -287,9 +287,9 @@ export default function AdminClaimView() {
                                     </div>
                                     <div className="flex items-center gap-2 mb-1">
                                         <span className={`px-2 py-1 text-xs font-semibold rounded ${log.action_type === 'REJECTED' ? 'bg-red-100 text-red-700' :
-                                                log.action_type === 'APPROVED' ? 'bg-green-100 text-green-700' :
-                                                    log.action_type === 'SENT_BACK' ? 'bg-orange-100 text-orange-700' :
-                                                        'bg-gray-100 text-gray-700'
+                                            log.action_type === 'APPROVED' ? 'bg-green-100 text-green-700' :
+                                                log.action_type === 'SENT_BACK' ? 'bg-orange-100 text-orange-700' :
+                                                    'bg-gray-100 text-gray-700'
                                             }`}>
                                             {log.action_type}
                                         </span>

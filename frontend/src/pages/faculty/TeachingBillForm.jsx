@@ -164,8 +164,25 @@ export default function TeachingBillForm() {
                   <Button
                     variant="secondary"
                     onClick={async () => {
-                      await navigator.clipboard.writeText(externalLink);
-                      alert("Link copied to clipboard");
+                      try {
+                        // Focus the window first to ensure clipboard access
+                        window.focus();
+                        await navigator.clipboard.writeText(externalLink);
+                        alert("Link copied to clipboard");
+                      } catch (err) {
+                        console.error("Clipboard error:", err);
+                        // Fallback: Select the text
+                        const input = document.querySelector('input[readonly]');
+                        if (input) {
+                          input.select();
+                          try {
+                            document.execCommand('copy');
+                            alert("Link copied to clipboard");
+                          } catch (e) {
+                            alert("Failed to copy. Please manually copy the link.");
+                          }
+                        }
+                      }
                     }}
                   >
                     Copy

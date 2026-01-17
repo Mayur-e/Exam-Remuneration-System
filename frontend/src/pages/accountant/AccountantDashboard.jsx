@@ -20,7 +20,6 @@ export default function AccountantDashboard() {
   useEffect(() => {
     api.get("/accountant/dashboard")
       .then(res => {
-        console.log("Dashboard stats:", res.data);
         setStats(res.data);
       })
       .catch(err => {
