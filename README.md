@@ -199,9 +199,6 @@ _Client runs on port 5173 by default._
 
 ---
 
-## 👥 Contributors
-- **Advanced Agentic Coding Team** (Google Deepmind)
-- **User** (Lead Developer)
 
 ---
 *© 2026 Exam Remuneration Management System. All Rights Reserved.*
