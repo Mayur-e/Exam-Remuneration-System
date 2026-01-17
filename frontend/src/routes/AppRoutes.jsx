@@ -4,9 +4,16 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import Login from "../pages/auth/Login";
 import Signup from "../pages/auth/Register";
 
-// Admin & Accountant
+// Admin
+import AdminLayout from "../pages/admin/AdminLayout";
 import AdminDashboard from "../pages/admin/AdminDashboard";
-
+import AdminClaimsList from "../pages/admin/AdminClaimsList";
+import AdminClaimView from "../pages/admin/AdminClaimView";
+import AdminFacultyList from "../pages/admin/AdminFacultyList";
+import AdminFacultyProfile from "../pages/admin/AdminFacultyProfile";
+import AdminAuditLogs from "../pages/admin/AdminAuditLogs";
+import AdminExternalSupervision from "../pages/admin/AdminExternalSupervision";
+import AdminSettings from "../pages/admin/AdminSettings";
 
 // Faculty
 import FacultyLayout from "../pages/faculty/FacultyLayout";
@@ -44,10 +51,20 @@ export default function AppRoutes() {
         path="/admin"
         element={
           <ProtectedRoute role="ADMIN">
-            <AdminDashboard />
+            <AdminLayout />
           </ProtectedRoute>
         }
-      />
+      >
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<AdminDashboard />} />
+        <Route path="claims" element={<AdminClaimsList />} />
+        <Route path="claims/:id" element={<AdminClaimView />} />
+        <Route path="faculty" element={<AdminFacultyList />} />
+        <Route path="faculty/:id" element={<AdminFacultyProfile />} />
+        <Route path="external" element={<AdminExternalSupervision />} />
+        <Route path="audit-logs" element={<AdminAuditLogs />} />
+        <Route path="settings" element={<AdminSettings />} />
+      </Route>
 
       {/* ================= ACCOUNTANT ================= */}
       <Route path="/accountant" element={<ProtectedRoute role="ACCOUNTANT">
@@ -88,3 +105,4 @@ export default function AppRoutes() {
     </Routes>
   );
 }
+

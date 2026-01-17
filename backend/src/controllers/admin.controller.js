@@ -1,0 +1,658 @@
+const pool = require("../config/db");
+
+/* ==============================
+   DASHBOARD STATS
+================================ */
+exports.getDashboardStats = async (req, res) => {
+    try {
+        const { rows } = await pool.query(`
+      SELECT
+        COUNT(*) AS total_claims,
+        COUNT(*) FILTER (WHERE status = 'submitted') AS submitted_claims,
+        COUNT(*) FILTER (WHERE status = 'approved') AS approved_claims,
+        COUNT(*) FILTER (WHERE status = 'paid') AS paid_claims,
+        COUNT(*) FILTER (WHERE status = 'rejected') AS rejected_claims,
+        COUNT(*) FILTER (WHERE claim_form_type = 'TEACHING_EXTERNAL') AS external_claims,
+        COUNT(*) FILTER (WHERE status = 'draft') AS draft_claims
+      FROM exams
+    `);
+
+        // Get alerts
+        const alerts = await pool.query(`
+      SELECT
+        COUNT(*) FILTER (
+          WHERE status = 'submitted' 
+          AND created_at < NOW() - INTERVAL '7 days'
+        ) AS pending_beyond_limit,
+        COUNT(DISTINCT exam_id) FILTER (
+          WHERE action_type = 'REJECTED'
+        ) AS repeated_rejections,
+        COUNT(*) FILTER (
+          WHERE claim_form_type = 'TEACHING_EXTERNAL'
+          AND external_examiner_id IS NULL
+        ) AS external_without_docs,
+        COUNT(*) FILTER (
+          WHERE EXISTS (
+            SELECT 1 FROM remuneration_calculations rc 
+            WHERE rc.exam_id = e.id AND rc.min_applied = true
+          )
+        ) AS rate_mismatch_flags
+      FROM exams e
+      LEFT JOIN claim_actions ca ON ca.exam_id = e.id
+    `);
+
+        res.json({
+            stats: rows[0],
+            alerts: alerts.rows[0]
+        });
+    } catch (error) {
+        console.error("getDashboardStats error:", error);
+        res.status(500).json({ message: "Failed to fetch dashboard stats" });
+    }
+};
+
+/* ==============================
+   GET ALL CLAIMS (WITH FILTERS)
+================================ */
+exports.getAllClaims = async (req, res) => {
+    try {
+        const { status, department, exam_type, academic_year, claim_form_type } = req.query;
+
+        let where = [];
+        let params = [];
+        let paramIndex = 1;
+
+        if (status) {
+            where.push(`e.status = $${paramIndex++}`);
+            params.push(status);
+        }
+
+        if (department) {
+            where.push(`u.department = $${paramIndex++}`);
+            params.push(department);
+        }
+
+        if (exam_type) {
+            where.push(`e.exam_type = $${paramIndex++}`);
+            params.push(exam_type);
+        }
+
+        if (academic_year) {
+            where.push(`e.academic_year = $${paramIndex++}`);
+            params.push(academic_year);
+        }
+
+        if (claim_form_type) {
+            where.push(`e.claim_form_type = $${paramIndex++}`);
+            params.push(claim_form_type);
+        }
+
+        const whereClause = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
+
+        const { rows } = await pool.query(
+            `
+      SELECT
+        e.id,
+        e.claim_form_type,
+        e.exam_type,
+        e.subject_name,
+        e.program,
+        e.level,
+        e.status,
+        e.created_at,
+        e.updated_at,
+        CASE 
+          WHEN e.claim_form_type = 'TEACHING_EXTERNAL' THEN ex.full_name 
+          ELSE u.name 
+        END AS claimant_name,
+        u.name AS faculty_name,
+        u.department,
+        rc.total_amount,
+        rc.net_amount,
+        rc.min_applied
+      FROM exams e
+      JOIN users u ON u.id = e.faculty_id
+      LEFT JOIN external_examiners ex ON ex.id = e.external_examiner_id
+      LEFT JOIN remuneration_calculations rc ON rc.exam_id = e.id
+      ${whereClause}
+      ORDER BY e.created_at DESC
+      `,
+            params
+        );
+
+        res.json(rows);
+    } catch (error) {
+        console.error("getAllClaims error:", error);
+        res.status(500).json({ message: "Failed to fetch claims" });
+    }
+};
+
+/* ==============================
+   GET CLAIM DETAILS
+================================ */
+exports.getClaimDetails = async (req, res) => {
+    const examId = req.params.id;
+
+    try {
+        // Get exam details
+        const exam = await pool.query(
+            `SELECT
+        e.*,
+        u.name AS faculty_name,
+        u.email AS faculty_email,
+        u.department AS faculty_department,
+        fb.bank_name AS faculty_bank_name,
+        fb.branch_name AS faculty_branch_name,
+        fb.account_number AS faculty_account_number,
+        fb.ifsc_code AS faculty_ifsc_code,
+        fb.pan_number AS faculty_pan_number,
+        ee.full_name AS external_examiner_name,
+        ee.email AS external_examiner_email,
+        ee.mobile AS external_examiner_mobile,
+        ee.parent_institute,
+        ee.bank_name AS external_bank_name,
+        ee.branch_name AS external_branch_name,
+        ee.account_number AS external_account_number,
+        ee.ifsc_code AS external_ifsc_code,
+        ee.pan_number AS external_pan_number
+      FROM exams e
+      JOIN users u ON u.id = e.faculty_id
+      LEFT JOIN faculty_bank_accounts fb ON u.id = fb.faculty_id
+      LEFT JOIN external_examiners ee ON e.external_examiner_id = ee.id
+      WHERE e.id = $1`,
+            [examId]
+        );
+
+        if (!exam.rows.length) {
+            return res.status(404).json({ message: "Claim not found" });
+        }
+
+        // Get staff members
+        const staff = await pool.query(
+            `SELECT * FROM exam_staff_members WHERE exam_id = $1 ORDER BY id`,
+            [examId]
+        );
+
+        // Get calculation details
+        const calc = await pool.query(
+            `SELECT
+        rc.*,
+        CASE
+          WHEN e.program IN ('BTECH','BVOC') AND e.level IN ('FY','SY')
+            THEN e.students_count * rr.fy_sy_rate
+          WHEN e.program IN ('BTECH','BVOC')
+            THEN e.students_count * rr.ty_final_rate
+          ELSE
+            e.students_count * rr.mtech_mca_rate
+        END AS examiner_amount_calculated
+      FROM remuneration_calculations rc
+      JOIN exams e ON e.id = rc.exam_id
+      LEFT JOIN remuneration_rates rr ON rr.exam_type = e.exam_type
+      WHERE rc.exam_id = $1`,
+            [examId]
+        );
+
+        // Get audit logs (claim actions)
+        const auditLogs = await pool.query(
+            `SELECT ca.*, u.name AS action_by_name, u.role AS action_by_role
+       FROM claim_actions ca
+       JOIN users u ON ca.action_by = u.id
+       WHERE ca.exam_id = $1
+       ORDER BY ca.action_at DESC`,
+            [examId]
+        );
+
+        res.json({
+            exam: exam.rows[0],
+            staff: staff.rows,
+            calculation: calc.rows[0] || null,
+            auditLogs: auditLogs.rows
+        });
+    } catch (err) {
+        console.error("getClaimDetails error:", err);
+        res.status(500).json({ message: "Server error" });
+    }
+};
+
+/* ==============================
+   REJECT CLAIM (ADMIN)
+================================ */
+exports.rejectClaim = async (req, res) => {
+    const examId = req.params.id;
+    const { reason, policy_reference } = req.body;
+
+    if (!reason || reason.trim() === '') {
+        return res.status(400).json({ message: "Rejection reason is required" });
+    }
+
+    try {
+        await pool.query("BEGIN");
+
+        const result = await pool.query(
+            `UPDATE exams SET status='rejected', updated_at=NOW() 
+       WHERE id=$1 AND status IN ('submitted', 'approved', 'draft') 
+       RETURNING id`,
+            [examId]
+        );
+
+        if (result.rowCount === 0) {
+            await pool.query("ROLLBACK");
+            return res.status(400).json({ message: "Claim not found or cannot be rejected" });
+        }
+
+        const comment = policy_reference
+            ? `${reason}\n\nPolicy Reference: ${policy_reference}`
+            : reason;
+
+        await pool.query(
+            `INSERT INTO claim_actions
+       (exam_id, action_by, action_role, action_type, comment)
+       VALUES ($1, $2, 'ADMIN', 'REJECTED', $3)`,
+            [examId, req.user.id, comment]
+        );
+
+        await pool.query("COMMIT");
+
+        res.json({ message: "Claim rejected by Admin" });
+    } catch (error) {
+        await pool.query("ROLLBACK");
+        console.error("Admin reject claim error:", error);
+        res.status(500).json({ message: "Failed to reject claim" });
+    }
+};
+
+/* ==============================
+   SEND BACK FOR CORRECTION
+================================ */
+exports.sendBackClaim = async (req, res) => {
+    const examId = req.params.id;
+    const { instructions } = req.body;
+
+    if (!instructions || instructions.trim() === '') {
+        return res.status(400).json({ message: "Correction instructions are required" });
+    }
+
+    try {
+        await pool.query("BEGIN");
+
+        const result = await pool.query(
+            `UPDATE exams SET status='draft', updated_at=NOW() 
+       WHERE id=$1 AND status IN ('submitted', 'approved') 
+       RETURNING id`,
+            [examId]
+        );
+
+        if (result.rowCount === 0) {
+            await pool.query("ROLLBACK");
+            return res.status(400).json({ message: "Claim not found or cannot be sent back" });
+        }
+
+        await pool.query(
+            `INSERT INTO claim_actions
+       (exam_id, action_by, action_role, action_type, comment)
+       VALUES ($1, $2, 'ADMIN', 'SENT_BACK', $3)`,
+            [examId, req.user.id, instructions]
+        );
+
+        await pool.query("COMMIT");
+
+        res.json({ message: "Claim sent back for correction" });
+    } catch (error) {
+        await pool.query("ROLLBACK");
+        console.error("Admin send back claim error:", error);
+        res.status(500).json({ message: "Failed to send back claim" });
+    }
+};
+
+/* ==============================
+   GET FACULTY PROFILE
+================================ */
+exports.getFacultyProfile = async (req, res) => {
+    const facultyId = req.params.id;
+
+    try {
+        const user = await pool.query(
+            `SELECT id, name, email, department, role, created_at, is_active 
+       FROM users WHERE id=$1 AND role='FACULTY'`,
+            [facultyId]
+        );
+
+        if (!user.rows.length) {
+            return res.status(404).json({ message: "Faculty not found" });
+        }
+
+        const bank = await pool.query(
+            `SELECT * FROM faculty_bank_accounts WHERE faculty_id=$1`,
+            [facultyId]
+        );
+
+        const claims = await pool.query(
+            `SELECT 
+        e.id,
+        e.subject_name,
+        e.exam_type,
+        e.claim_form_type,
+        e.status,
+        e.created_at,
+        rc.total_amount,
+        rc.net_amount
+      FROM exams e
+      LEFT JOIN remuneration_calculations rc ON rc.exam_id = e.id
+      WHERE e.faculty_id = $1
+      ORDER BY e.created_at DESC`,
+            [facultyId]
+        );
+
+        const rejectionHistory = await pool.query(
+            `SELECT e.id, e.subject_name, ca.comment, ca.action_at
+       FROM exams e
+       JOIN claim_actions ca ON ca.exam_id = e.id
+       WHERE e.faculty_id = $1 AND ca.action_type = 'REJECTED'
+       ORDER BY ca.action_at DESC`,
+            [facultyId]
+        );
+
+        const externalLinks = await pool.query(
+            `SELECT e.id, e.subject_name, eel.token, eel.created_at, eel.expires_at, eel.used
+       FROM exams e
+       JOIN external_exam_links eel ON eel.exam_id = e.id
+       WHERE e.faculty_id = $1 AND e.claim_form_type = 'TEACHING_EXTERNAL'
+       ORDER BY eel.created_at DESC`,
+            [facultyId]
+        );
+
+        res.json({
+            faculty: user.rows[0],
+            bank: bank.rows[0] || null,
+            claims: claims.rows,
+            rejectionHistory: rejectionHistory.rows,
+            externalLinks: externalLinks.rows
+        });
+    } catch (error) {
+        console.error("getFacultyProfile error:", error);
+        res.status(500).json({ message: "Failed to fetch faculty profile" });
+    }
+};
+
+/* ==============================
+   GET ACCOUNTANT AUDIT
+================================ */
+exports.getAccountantAudit = async (req, res) => {
+    try {
+        const { rows } = await pool.query(`
+      SELECT
+        u.id,
+        u.name,
+        COUNT(ca.id) FILTER (WHERE ca.action_type = 'APPROVED') AS approvals_count,
+        COUNT(ca.id) FILTER (WHERE ca.action_type = 'REJECTED') AS rejections_count,
+        COUNT(p.id) AS payments_count,
+        COALESCE(SUM(p.amount), 0) AS total_paid_amount
+      FROM users u
+      LEFT JOIN claim_actions ca ON ca.action_by = u.id AND ca.action_role = 'ACCOUNTANT'
+      LEFT JOIN payments p ON p.accountant_id = u.id
+      WHERE u.role = 'ACCOUNTANT'
+      GROUP BY u.id, u.name
+      ORDER BY u.name
+    `);
+
+        res.json(rows);
+    } catch (error) {
+        console.error("getAccountantAudit error:", error);
+        res.status(500).json({ message: "Failed to fetch accountant audit" });
+    }
+};
+
+/* ==============================
+   GET ACCOUNTANT ACTIONS DETAIL
+================================ */
+exports.getAccountantActions = async (req, res) => {
+    const accountantId = req.params.id;
+
+    try {
+        const actions = await pool.query(
+            `SELECT
+        ca.*,
+        e.id AS exam_id,
+        e.subject_name,
+        e.exam_type,
+        u.name AS faculty_name
+      FROM claim_actions ca
+      JOIN exams e ON e.id = ca.exam_id
+      JOIN users u ON u.id = e.faculty_id
+      WHERE ca.action_by = $1 AND ca.action_role = 'ACCOUNTANT'
+      ORDER BY ca.action_at DESC`,
+            [accountantId]
+        );
+
+        const payments = await pool.query(
+            `SELECT
+        p.*,
+        e.id AS exam_id,
+        e.subject_name,
+        u.name AS faculty_name
+      FROM payments p
+      JOIN exams e ON e.id = p.exam_id
+      JOIN users u ON u.id = e.faculty_id
+      WHERE p.accountant_id = $1
+      ORDER BY p.payment_date DESC`,
+            [accountantId]
+        );
+
+        res.json({
+            actions: actions.rows,
+            payments: payments.rows
+        });
+    } catch (error) {
+        console.error("getAccountantActions error:", error);
+        res.status(500).json({ message: "Failed to fetch accountant actions" });
+    }
+};
+
+/* ==============================
+   GET AUDIT LOGS (SYSTEM-WIDE)
+================================ */
+exports.getAuditLogs = async (req, res) => {
+    try {
+        const { exam_id, action_type, date_from, date_to } = req.query;
+
+        let where = [];
+        let params = [];
+        let paramIndex = 1;
+
+        if (exam_id) {
+            where.push(`ca.exam_id = $${paramIndex++}`);
+            params.push(exam_id);
+        }
+
+        if (action_type) {
+            where.push(`ca.action_type = $${paramIndex++}`);
+            params.push(action_type);
+        }
+
+        if (date_from) {
+            where.push(`ca.action_at >= $${paramIndex++}`);
+            params.push(date_from);
+        }
+
+        if (date_to) {
+            where.push(`ca.action_at <= $${paramIndex++}`);
+            params.push(date_to);
+        }
+
+        const whereClause = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
+
+        const { rows } = await pool.query(
+            `SELECT
+        ca.*,
+        u.name AS action_by_name,
+        e.subject_name,
+        e.exam_type,
+        f.name AS faculty_name
+      FROM claim_actions ca
+      JOIN users u ON u.id = ca.action_by
+      JOIN exams e ON e.id = ca.exam_id
+      JOIN users f ON f.id = e.faculty_id
+      ${whereClause}
+      ORDER BY ca.action_at DESC
+      LIMIT 500`,
+            params
+        );
+
+        res.json(rows);
+    } catch (error) {
+        console.error("getAuditLogs error:", error);
+        res.status(500).json({ message: "Failed to fetch audit logs" });
+    }
+};
+
+/* ==============================
+   GET EXTERNAL EXAMINERS (NOT LINKS)
+================================ */
+exports.getExternalExaminers = async (req, res) => {
+    try {
+        const { rows } = await pool.query(`
+      SELECT
+        ee.id,
+        ee.full_name,
+        ee.email,
+        ee.mobile,
+        ee.parent_institute,
+        ee.pan_number,
+        ee.pan_document_url,
+        ee.cancelled_cheque_url,
+        ee.travel_proof_url,
+        ee.is_local,
+        ee.journey_days,
+        ee.travel_allowance,
+        e.id AS exam_id,
+        e.subject_name,
+        e.exam_type,
+        e.program,
+        e.level,
+        e.status AS claim_status,
+        u.name AS generated_by,
+        u.department,
+        eel.created_at AS link_created_at,
+        eel.expires_at AS link_expires_at,
+        eel.used AS link_used
+      FROM external_examiners ee
+      JOIN exams e ON e.external_examiner_id = ee.id
+      JOIN users u ON u.id = e.faculty_id
+      LEFT JOIN external_exam_links eel ON eel.exam_id = e.id
+      WHERE e.claim_form_type = 'TEACHING_EXTERNAL'
+      ORDER BY ee.id DESC
+    `);
+
+        res.json(rows);
+    } catch (error) {
+        console.error("getExternalExaminers error:", error);
+        res.status(500).json({ message: "Failed to fetch external examiners" });
+    }
+};
+
+/* ==============================
+   GET EXTERNAL LINK STATS (LEGACY - for link monitoring)
+================================ */
+exports.getExternalLinkStats = async (req, res) => {
+    try {
+        const { rows } = await pool.query(`
+      SELECT
+        eel.id,
+        eel.token,
+        eel.created_at,
+        eel.expires_at,
+        eel.used,
+        e.id AS exam_id,
+        e.subject_name,
+        e.exam_type,
+        e.status,
+        u.name AS generated_by,
+        u.department,
+        ee.full_name AS external_examiner_name,
+        ee.email AS external_examiner_email,
+        ee.pan_document_url,
+        ee.cancelled_cheque_url,
+        ee.travel_proof_url
+      FROM external_exam_links eel
+      JOIN exams e ON e.id = eel.exam_id
+      JOIN users u ON u.id = e.faculty_id
+      LEFT JOIN external_examiners ee ON ee.id = e.external_examiner_id
+      ORDER BY eel.created_at DESC
+    `);
+
+        res.json(rows);
+    } catch (error) {
+        console.error("getExternalLinkStats error:", error);
+        res.status(500).json({ message: "Failed to fetch external link stats" });
+    }
+};
+
+/* ==============================
+   GET EXTERNAL CLAIM DOCUMENTS
+================================ */
+exports.getExternalDocuments = async (req, res) => {
+    const examId = req.params.id;
+
+    try {
+        const { rows } = await pool.query(
+            `SELECT
+        e.id,
+        e.subject_name,
+        e.exam_type,
+        e.status,
+        ee.full_name,
+        ee.email,
+        ee.mobile,
+        ee.parent_institute,
+        ee.pan_number,
+        ee.pan_document_url,
+        ee.cancelled_cheque_url,
+        ee.travel_proof_url,
+        ee.is_local,
+        ee.journey_days,
+        ee.travel_allowance
+      FROM exams e
+      LEFT JOIN external_examiners ee ON ee.id = e.external_examiner_id
+      WHERE e.id = $1 AND e.claim_form_type = 'TEACHING_EXTERNAL'`,
+            [examId]
+        );
+
+        if (!rows.length) {
+            return res.status(404).json({ message: "External claim not found" });
+        }
+
+        res.json(rows[0]);
+    } catch (error) {
+        console.error("getExternalDocuments error:", error);
+        res.status(500).json({ message: "Failed to fetch external documents" });
+    }
+};
+
+/* ==============================
+   LIST ALL FACULTY
+================================ */
+exports.listAllFaculty = async (req, res) => {
+    try {
+        const { rows } = await pool.query(`
+      SELECT 
+        u.id, 
+        u.name, 
+        u.email, 
+        u.department,
+        u.created_at,
+        COUNT(e.id) AS total_claims,
+        COUNT(e.id) FILTER (WHERE e.status = 'submitted') AS pending_claims,
+        COUNT(e.id) FILTER (WHERE e.status = 'rejected') AS rejected_claims
+      FROM users u
+      LEFT JOIN exams e ON e.faculty_id = u.id
+      WHERE u.role='FACULTY'
+      GROUP BY u.id, u.name, u.email, u.department, u.created_at
+      ORDER BY u.name
+    `);
+
+        res.json(rows);
+    } catch (error) {
+        console.error("listAllFaculty error:", error);
+        res.status(500).json({ message: "Failed to fetch faculty list" });
+    }
+};

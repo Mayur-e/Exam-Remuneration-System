@@ -55,13 +55,6 @@ export default function FacultyDashboard() {
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-gray-600 mt-1">Welcome back! Here's your claims overview</p>
         </div>
-        <Button
-          onClick={() => navigate("/faculty/claim/teaching")}
-          className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all"
-        >
-          <PlusIcon className="w-5 h-5 mr-2" />
-          New Claim
-        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -127,7 +120,7 @@ export default function FacultyDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Button
             variant="outline"
-            onClick={() => navigate("/faculty/claim/teaching")}
+            onClick={() => navigate("/faculty/generateclaim")}
             className="justify-start h-auto py-4 hover:bg-blue-50 hover:border-blue-300 transition-colors"
           >
             <div className="flex items-center gap-3">
