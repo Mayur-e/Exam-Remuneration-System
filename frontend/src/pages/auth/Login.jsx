@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
+import { validateEmail, validatePassword } from "../../utils/validation";
 
 // Enhanced UI components
 import { Button } from "../../components/ui/button";
@@ -25,6 +26,21 @@ export default function Login() {
     setEmailError("");
     setPasswordError("");
     setGeneralError("");
+
+    // Frontend validation
+    const emailValidationError = validateEmail(email);
+    const passwordValidationError = validatePassword(password);
+
+    if (emailValidationError) {
+      setEmailError(emailValidationError);
+      return;
+    }
+
+    if (passwordValidationError) {
+      setPasswordError(passwordValidationError);
+      return;
+    }
+
     setIsLoading(true);
 
     try {

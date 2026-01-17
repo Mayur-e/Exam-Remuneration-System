@@ -1,71 +1,49 @@
 import { useState } from "react";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-
-// Icons
-import {
-    SettingsIcon,
-    CheckCircleIcon,
-    AlertCircleIcon
-} from "../../components/icons/logo";
+import ProfileSettings from "../../components/settings/ProfileSettings";
+import SecuritySettings from "../../components/settings/SecuritySettings";
+import { SettingsIcon, CheckCircleIcon, AlertCircleIcon } from "../../components/icons/logo";
+import { MailIcon } from "../../components/icons/logo";
 
 export default function AdminSettings() {
     const [activeTab, setActiveTab] = useState("profile");
-    const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState(null);
+    const user = JSON.parse(localStorage.getItem("user")) || {};
 
-    // Profile settings
-    const [profileData, setProfileData] = useState({
-        name: "",
-        email: ""
-    });
+    // Profile data
+    const profileData = {
+        name: user.name || "",
+        email: user.email || ""
+    };
 
-    // Password change settings
-    const [passwordData, setPasswordData] = useState({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: ""
-    });
-
-    const handleSaveProfile = async (e) => {
-        e.preventDefault();
-        setSaving(true);
-        setMessage(null);
-
+    const handleSaveProfile = async (data) => {
         try {
             // API call would go here
             await new Promise(resolve => setTimeout(resolve, 1000)); // Simulated delay
             setMessage({ type: "success", text: "Profile updated successfully!" });
+            setTimeout(() => setMessage(null), 3000);
         } catch (err) {
             setMessage({ type: "error", text: "Failed to update profile" });
-        } finally {
-            setSaving(false);
+            throw err;
         }
     };
 
-    const handleChangePassword = async (e) => {
-        e.preventDefault();
-        setSaving(true);
-        setMessage(null);
-
+    const handleChangePassword = async (passwordData) => {
         // Validation
         if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
             setMessage({ type: "error", text: "All password fields are required" });
-            setSaving(false);
-            return;
+            throw new Error("All fields required");
         }
 
         if (passwordData.newPassword.length < 6) {
             setMessage({ type: "error", text: "New password must be at least 6 characters" });
-            setSaving(false);
-            return;
+            throw new Error("Password too short");
         }
 
         if (passwordData.newPassword !== passwordData.confirmPassword) {
             setMessage({ type: "error", text: "New passwords do not match" });
-            setSaving(false);
-            return;
+            throw new Error("Passwords do not match");
         }
 
         try {
@@ -89,17 +67,29 @@ export default function AdminSettings() {
             }
 
             setMessage({ type: "success", text: "Password changed successfully!" });
-            setPasswordData({
-                currentPassword: "",
-                newPassword: "",
-                confirmPassword: ""
-            });
+            setTimeout(() => setMessage(null), 3000);
         } catch (err) {
             setMessage({ type: "error", text: err.message || "Failed to change password" });
-        } finally {
-            setSaving(false);
+            throw err;
         }
     };
+
+    const profileFields = [
+        {
+            name: "name",
+            label: "Name",
+            type: "text",
+            placeholder: "Enter your name"
+        },
+        {
+            name: "email",
+            label: "Email",
+            type: "email",
+            icon: MailIcon,
+            placeholder: "Enter your email",
+            hint: "Email cannot be changed"
+        }
+    ];
 
     return (
         <div className="space-y-6">
@@ -161,108 +151,19 @@ export default function AdminSettings() {
 
             {/* Tab Content */}
             {activeTab === "profile" && (
-                <Card className="p-6">
-                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                        <SettingsIcon className="w-5 h-5 text-purple-600" />
-                        Profile Settings
-                    </h3>
-                    <form onSubmit={handleSaveProfile} className="space-y-4 max-w-md">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Name
-                            </label>
-                            <Input
-                                type="text"
-                                value={profileData.name}
-                                onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
-                                placeholder="Enter your name"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Email
-                            </label>
-                            <Input
-                                type="email"
-                                value={profileData.email}
-                                onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
-                                placeholder="Enter your email"
-                                disabled
-                            />
-                            <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
-                        </div>
-                        <Button
-                            type="submit"
-                            disabled={saving}
-                            className="bg-purple-600 hover:bg-purple-700"
-                        >
-                            {saving ? "Saving..." : "Save Changes"}
-                        </Button>
-                    </form>
-                </Card>
+                <ProfileSettings
+                    initialData={profileData}
+                    onSave={handleSaveProfile}
+                    readOnlyFields={['email']}
+                    fields={profileFields}
+                />
             )}
 
             {activeTab === "security" && (
-                <Card className="p-6">
-                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                        <SettingsIcon className="w-5 h-5 text-purple-600" />
-                        Security Settings
-                    </h3>
-                    <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Current Password
-                            </label>
-                            <Input
-                                type="password"
-                                value={passwordData.currentPassword}
-                                onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                                placeholder="Enter current password"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                New Password
-                            </label>
-                            <Input
-                                type="password"
-                                value={passwordData.newPassword}
-                                onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                                placeholder="Enter new password (min 6 characters)"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Confirm New Password
-                            </label>
-                            <Input
-                                type="password"
-                                value={passwordData.confirmPassword}
-                                onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                                placeholder="Confirm new password"
-                            />
-                        </div>
-                        <Button
-                            type="submit"
-                            disabled={saving}
-                            className="bg-purple-600 hover:bg-purple-700"
-                        >
-                            {saving ? "Changing Password..." : "Change Password"}
-                        </Button>
-                    </form>
-
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-6">
-                        <div className="flex items-start gap-3">
-                            <AlertCircleIcon className="w-5 h-5 text-yellow-600 mt-0.5" />
-                            <div>
-                                <p className="text-sm font-medium text-yellow-900">Password Security</p>
-                                <p className="text-sm text-yellow-700 mt-1">
-                                    Make sure your password is at least 6 characters long and contains a mix of letters and numbers for better security.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </Card>
+                <SecuritySettings
+                    onSave={handleChangePassword}
+                    primaryColor="purple-600"
+                />
             )}
 
             {activeTab === "system" && (

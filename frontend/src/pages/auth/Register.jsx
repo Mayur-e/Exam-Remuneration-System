@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
+import { validateName, validateEmail, validatePassword, validateRequired } from "../../utils/validation";
 
 // UI components
 import { Button } from "../../components/ui/button";
@@ -12,7 +13,7 @@ import { MailIcon, LockIcon, UserIcon, BuildingOfficeIcon } from "../../componen
 
 export default function Register() {
   const navigate = useNavigate();
-  
+
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -20,7 +21,7 @@ export default function Register() {
     department: "",
     role: "FACULTY",
   });
-  
+
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
@@ -28,25 +29,17 @@ export default function Register() {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!form.name.trim()) {
-      newErrors.name = "Full name is required";
-    }
+    const nameError = validateName(form.name, "Full name");
+    if (nameError) newErrors.name = nameError;
 
-    if (!form.email.trim()) {
-      newErrors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-      newErrors.email = "Please enter a valid email";
-    }
+    const emailError = validateEmail(form.email);
+    if (emailError) newErrors.email = emailError;
 
-    if (!form.password) {
-      newErrors.password = "Password is required";
-    } else if (form.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
-    }
+    const passwordError = validatePassword(form.password, 6);
+    if (passwordError) newErrors.password = passwordError;
 
-    if (!form.department.trim()) {
-      newErrors.department = "Department is required";
-    }
+    const departmentError = validateRequired(form.department, "Department");
+    if (departmentError) newErrors.department = departmentError;
 
     return newErrors;
   };
@@ -67,7 +60,7 @@ export default function Register() {
 
   const submit = async (e) => {
     e.preventDefault();
-    
+
     const newErrors = validateForm();
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -79,9 +72,9 @@ export default function Register() {
 
     try {
       await api.post("/auth/register", form);
-      
+
       setSuccessMessage("Registered successfully! Redirecting to login...");
-      
+
       // Redirect to login after 2 seconds
       setTimeout(() => {
         navigate("/")
@@ -207,7 +200,7 @@ export default function Register() {
                   className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-500 focus:outline-none transition-all duration-300 text-gray-700"
                 >
                   <option value="FACULTY">Faculty</option>
-                  
+
                 </select>
               </div>
 
