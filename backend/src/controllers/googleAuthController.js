@@ -137,10 +137,10 @@ exports.registerGoogleUser = async (req, res) => {
         const hashedPassword = await bcrypt.hash(randomPassword, 10);
 
         const result = await pool.query(
-            `INSERT INTO users (name, email, password, role, department, prn)
-       VALUES ($1, $2, $3, 'FACULTY', $4, $5)
-       RETURNING id, name, email, role, department, prn`,
-            [name, email, hashedPassword, department, prn]
+            `INSERT INTO users (name, email, password, role, department, prn, google_id)
+       VALUES ($1, $2, $3, 'FACULTY', $4, $5, $6)
+       RETURNING id, name, email, role, department, prn, google_id`,
+            [name, email, hashedPassword, department, prn, payload.sub]
         );
 
         const user = result.rows[0];

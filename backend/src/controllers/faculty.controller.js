@@ -676,7 +676,7 @@ exports.getProfile = async (req, res) => {
   const facultyId = req.user.id;
 
   const user = await pool.query(
-    `SELECT id, name, email, department, created_at FROM users WHERE id=$1`,
+    `SELECT id, name, email, department, prn, google_id, has_set_password, created_at FROM users WHERE id=$1`,
     [facultyId]
   );
 
@@ -697,11 +697,11 @@ exports.getProfile = async (req, res) => {
 ================================ */
 exports.updateProfile = async (req, res) => {
   const facultyId = req.user.id;
-  const { name, department, bank } = req.body;
+  const { name, department, prn, bank } = req.body;
 
   try {
     // Update user profile
-    if (name || department) {
+    if (name || department || prn) {
       const updates = [];
       const params = [];
       let paramIndex = 1;
@@ -714,12 +714,28 @@ exports.updateProfile = async (req, res) => {
         updates.push(`department = $${paramIndex++}`);
         params.push(department);
       }
+      if (prn) {
+        // Check if PRN is already taken by another user
+        const prnCheck = await pool.query(
+          `SELECT id FROM users WHERE prn = $1 AND id != $2`,
+          [prn, facultyId]
+        );
 
-      params.push(facultyId);
-      await pool.query(
-        `UPDATE users SET ${updates.join(', ')} WHERE id = $${paramIndex}`,
-        params
-      );
+        if (prnCheck.rows.length > 0) {
+          return res.status(409).json({ message: "PRN already exists" });
+        }
+
+        updates.push(`prn = $${paramIndex++}`);
+        params.push(prn);
+      }
+
+      if (updates.length > 0) {
+        params.push(facultyId);
+        await pool.query(
+          `UPDATE users SET ${updates.join(', ')} WHERE id = $${paramIndex}`,
+          params
+        );
+      }
     }
 
     // Update or insert bank details

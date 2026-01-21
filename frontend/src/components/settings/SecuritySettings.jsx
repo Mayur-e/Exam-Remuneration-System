@@ -6,13 +6,15 @@ import { LockIcon, AlertCircleIcon } from "../icons/logo";
 import { validatePassword, validateRequired } from "../../utils/validation";
 
 /**
- * Reusable Security Settings Component (Password Change)
+ * Reusable Security Settings Component (Password Change/Set)
  * 
  * @param {Object} props
  * @param {Function} props.onSave - Callback when password change is submitted
+ * @param {Function} props.onSetPassword - Callback when password is set (for Google users)
+ * @param {boolean} props.isGoogleUser - Whether the user signed up with Google
  * @param {string} props.primaryColor - Primary color for the icon (default: blue-600)
  */
-export default function SecuritySettings({ onSave, primaryColor = "blue-600" }) {
+export default function SecuritySettings({ onSave, onSetPassword, isGoogleUser = false, primaryColor = "blue-600" }) {
     const [passwordData, setPasswordData] = useState({
         currentPassword: "",
         newPassword: "",
@@ -24,6 +26,8 @@ export default function SecuritySettings({ onSave, primaryColor = "blue-600" }) 
     const validateField = (fieldName, value) => {
         switch (fieldName) {
             case 'currentPassword':
+                // Skip validation for Google users (they don't have a current password)
+                if (isGoogleUser) return null;
                 return validateRequired(value, "Current password");
             case 'newPassword':
                 return validatePassword(value, 6);
@@ -44,6 +48,9 @@ export default function SecuritySettings({ onSave, primaryColor = "blue-600" }) 
         let hasErrors = false;
 
         Object.keys(passwordData).forEach(field => {
+            // Skip currentPassword validation for Google users
+            if (isGoogleUser && field === 'currentPassword') return;
+
             const error = validateField(field, passwordData[field]);
             if (error) {
                 newErrors[field] = error;
@@ -59,7 +66,17 @@ export default function SecuritySettings({ onSave, primaryColor = "blue-600" }) 
 
         setSaving(true);
         try {
-            await onSave(passwordData);
+            if (isGoogleUser) {
+                // For Google users, call setPassword
+                await onSetPassword({
+                    newPassword: passwordData.newPassword,
+                    confirmPassword: passwordData.confirmPassword
+                });
+            } else {
+                // For regular users, call changePassword
+                await onSave(passwordData);
+            }
+
             // Reset form on success
             setPasswordData({
                 currentPassword: "",
@@ -101,27 +118,44 @@ export default function SecuritySettings({ onSave, primaryColor = "blue-600" }) 
                 <LockIcon className={`w-5 h-5 text-${primaryColor}`} />
                 Security Settings
             </h2>
-            <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Current Password <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                        type="password"
-                        placeholder="Enter current password"
-                        value={passwordData.currentPassword}
-                        onChange={(e) => handleChange('currentPassword', e.target.value)}
-                        onBlur={() => handleBlur('currentPassword')}
-                        className={errors.currentPassword ? "border-red-500" : ""}
-                        required
-                    />
-                    {errors.currentPassword && (
-                        <p className="text-xs text-red-600 mt-1">{errors.currentPassword}</p>
-                    )}
+
+            {isGoogleUser && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                    <div className="flex items-start gap-3">
+                        <AlertCircleIcon className="w-5 h-5 text-blue-600 mt-0.5" />
+                        <div>
+                            <p className="text-sm font-medium text-blue-900">Google Account</p>
+                            <p className="text-sm text-blue-700 mt-1">
+                                You signed up with Google. Set a password below to enable email/password login as an alternative to Google Sign-In.
+                            </p>
+                        </div>
+                    </div>
                 </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
+                {!isGoogleUser && (
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Current Password <span className="text-red-500">*</span>
+                        </label>
+                        <Input
+                            type="password"
+                            placeholder="Enter current password"
+                            value={passwordData.currentPassword}
+                            onChange={(e) => handleChange('currentPassword', e.target.value)}
+                            onBlur={() => handleBlur('currentPassword')}
+                            className={errors.currentPassword ? "border-red-500" : ""}
+                            required
+                        />
+                        {errors.currentPassword && (
+                            <p className="text-xs text-red-600 mt-1">{errors.currentPassword}</p>
+                        )}
+                    </div>
+                )}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                        New Password <span className="text-red-500">*</span>
+                        {isGoogleUser ? "New Password" : "New Password"} <span className="text-red-500">*</span>
                     </label>
                     <Input
                         type="password"
@@ -155,7 +189,7 @@ export default function SecuritySettings({ onSave, primaryColor = "blue-600" }) 
                     )}
                 </div>
                 <Button type="submit" disabled={saving} className="w-full">
-                    {saving ? "Changing Password..." : "Change Password"}
+                    {saving ? (isGoogleUser ? "Setting Password..." : "Changing Password...") : (isGoogleUser ? "Set Password" : "Change Password")}
                 </Button>
             </form>
 

@@ -8,6 +8,7 @@ const { loginValidation, registerValidation, changePasswordValidation } = requir
 router.post("/login", loginValidation, authController.login);
 router.post("/register", registerValidation, authController.registerFaculty);
 router.post("/change-password", auth, changePasswordValidation, authController.changePassword);
+router.post("/set-password", auth, authController.setPassword);
 
 // Google Auth routes
 router.post("/google/check", googleAuthController.checkGoogleUser);

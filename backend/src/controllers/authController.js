@@ -72,8 +72,8 @@ exports.registerFaculty = async (req, res) => {
   const hashedPassword = await bcrypt.hash(password, 10);
 
   await pool.query(
-    `INSERT INTO users (name, email, password, role, department)
-     VALUES ($1, $2, $3, 'FACULTY', $4)`,
+    `INSERT INTO users (name, email, password, role, department, has_set_password)
+     VALUES ($1, $2, $3, 'FACULTY', $4, true)`,
     [name, email, hashedPassword, department]
   );
 
@@ -125,5 +125,57 @@ exports.changePassword = async (req, res) => {
   } catch (error) {
     console.error("Change password error:", error);
     res.status(500).json({ message: "Failed to change password" });
+  }
+};
+
+// SET PASSWORD (for Google users who don't have a password)
+exports.setPassword = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { newPassword, confirmPassword } = req.body;
+
+    // Validate input
+    if (!newPassword || !confirmPassword) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ message: "Passwords do not match" });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters" });
+    }
+
+    // Get user details
+    const result = await pool.query(
+      "SELECT id, google_id FROM users WHERE id = $1",
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const user = result.rows[0];
+
+    // Check if user signed up with Google
+    if (!user.google_id) {
+      return res.status(400).json({ message: "This feature is only for Google sign-up users" });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password and set has_set_password flag
+    await pool.query(
+      "UPDATE users SET password = $1, has_set_password = true WHERE id = $2",
+      [hashedPassword, userId]
+    );
+
+    res.json({ message: "Password set successfully. You can now login with email and password." });
+  } catch (error) {
+    console.error("Set password error:", error);
+    res.status(500).json({ message: "Failed to set password" });
   }
 };

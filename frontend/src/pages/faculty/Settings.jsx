@@ -23,6 +23,9 @@ export default function Settings() {
         name: res.data.name || "",
         email: res.data.email || user.email || "",
         department: res.data.department || "",
+        prn: res.data.prn || "",
+        google_id: res.data.google_id || null,
+        has_set_password: res.data.has_set_password || false,
       });
 
       if (res.data.bank) {
@@ -78,6 +81,24 @@ export default function Settings() {
     }
   };
 
+  const handleSetPassword = async (passwordData) => {
+    try {
+      await api.post("/auth/set-password", {
+        newPassword: passwordData.newPassword,
+        confirmPassword: passwordData.confirmPassword
+      });
+
+      setMessage({ type: "success", text: "Password set successfully! You can now login with email and password." });
+      setTimeout(() => setMessage({ type: "", text: "" }), 5000);
+
+      // Refresh profile to update has_set_password flag
+      await fetchProfileAndBank();
+    } catch (error) {
+      setMessage({ type: "error", text: error.response?.data?.message || "Failed to set password" });
+      throw error;
+    }
+  };
+
   const handleSaveBankDetails = async (data) => {
     try {
       await api.put("/faculty/profile", { bank: data });
@@ -115,6 +136,12 @@ export default function Settings() {
       hint: "Email cannot be changed"
     },
     {
+      name: "prn",
+      label: "PRN",
+      type: "text",
+      placeholder: "Enter your PRN"
+    },
+    {
       name: "department",
       label: "Department",
       type: "text",
@@ -145,6 +172,8 @@ export default function Settings() {
         {/* Security Settings */}
         <SecuritySettings
           onSave={handleChangePassword}
+          onSetPassword={handleSetPassword}
+          isGoogleUser={profileData?.google_id && !profileData?.has_set_password}
           primaryColor="blue-600"
         />
       </div>
