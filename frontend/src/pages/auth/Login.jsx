@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { GoogleLogin } from '@react-oauth/google';
 import api from "../../services/api";
 import { validateEmail, validatePassword } from "../../utils/validation";
 
@@ -7,6 +8,8 @@ import { validateEmail, validatePassword } from "../../utils/validation";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Card } from "../../components/ui/card";
+import GoogleSignupModal from "../../components/auth/GoogleSignupModal";
+import Toast from "../../components/ui/Toast";
 
 // Icons
 import { LogoIcon, MailIcon, LockIcon } from "../../components/icons/logo";
@@ -20,6 +23,15 @@ export default function Login() {
   const [passwordError, setPasswordError] = useState("");
   const [generalError, setGeneralError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  // Google Auth states
+  const [showSignupModal, setShowSignupModal] = useState(false);
+  const [googleToken, setGoogleToken] = useState("");
+  const [googleUserData, setGoogleUserData] = useState(null);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  // Toast state
+  const [toast, setToast] = useState(null);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -68,6 +80,92 @@ export default function Login() {
     }
   };
 
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setIsGoogleLoading(true);
+    setGeneralError("");
+
+    try {
+      const token = credentialResponse.credential;
+
+      // Check if user exists
+      const res = await api.post("/auth/google/check", { token });
+
+      if (res.data.exists) {
+        // User exists - login directly
+        const { token: authToken, user } = res.data;
+
+        localStorage.setItem("token", authToken);
+        localStorage.setItem("user", JSON.stringify(user));
+
+        // Role-based redirect
+        if (user.role === "ADMIN") navigate("/admin");
+        else if (user.role === "ACCOUNTANT") navigate("/accountant");
+        else navigate("/faculty");
+      } else {
+        // New user - show signup modal
+        setGoogleToken(token);
+        setGoogleUserData({
+          email: res.data.email,
+          name: res.data.name
+        });
+        setShowSignupModal(true);
+      }
+    } catch (err) {
+      console.error("Google auth error:", err);
+      if (err.response?.status === 403) {
+        setGeneralError("Only @pccoepune.org email addresses are allowed");
+      } else {
+        setGeneralError("Google authentication failed. Please try again.");
+      }
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    setGeneralError("Google Sign-In was cancelled or failed");
+  };
+
+  const handleSignupSubmit = async ({ prn, department }) => {
+    setIsGoogleLoading(true);
+
+    try {
+      const res = await api.post("/auth/google/register", {
+        token: googleToken,
+        prn,
+        department
+      });
+
+      const { token: authToken, user, needsBankDetails } = res.data;
+
+      localStorage.setItem("token", authToken);
+      localStorage.setItem("user", JSON.stringify(user));
+
+      setShowSignupModal(false);
+
+      // Set flag for dashboard to show bank details notification
+      if (needsBankDetails) {
+        localStorage.setItem("showBankDetailsNotification", "true");
+      }
+
+      // Redirect immediately
+      if (user.role === "ADMIN") navigate("/admin");
+      else if (user.role === "ACCOUNTANT") navigate("/accountant");
+      else navigate("/faculty");
+
+    } catch (err) {
+      console.error("Google registration error:", err);
+      if (err.response?.status === 409) {
+        setGeneralError(err.response.data.message || "User or PRN already exists");
+      } else {
+        setGeneralError("Registration failed. Please try again.");
+      }
+      setShowSignupModal(false);
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4">
       <div className="w-full max-w-md">
@@ -97,6 +195,31 @@ export default function Login() {
                 {generalError}
               </div>
             )}
+
+            {/* Google Sign-In Button */}
+            <div className="space-y-3">
+              <div className="flex justify-center">
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={handleGoogleError}
+                  useOneTap
+                  text="signin_with"
+                  shape="rectangular"
+                  size="large"
+                  width="100%"
+                />
+              </div>
+
+              {/* Divider */}
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">Or continue with email</span>
+                </div>
+              </div>
+            </div>
 
             {/* Form */}
             <form onSubmit={handleLogin} className="space-y-5">
@@ -156,7 +279,7 @@ export default function Login() {
               <Button
                 type="submit"
                 className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-semibold text-base shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
-                disabled={isLoading}
+                disabled={isLoading || isGoogleLoading}
               >
                 {isLoading ? (
                   <span className="flex items-center justify-center gap-2">
@@ -185,6 +308,27 @@ export default function Login() {
           </div>
         </Card>
       </div>
+
+      {/* Google Signup Modal */}
+      {showSignupModal && googleUserData && (
+        <GoogleSignupModal
+          isOpen={showSignupModal}
+          onClose={() => setShowSignupModal(false)}
+          email={googleUserData.email}
+          name={googleUserData.name}
+          onSubmit={handleSignupSubmit}
+          isLoading={isGoogleLoading}
+        />
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }

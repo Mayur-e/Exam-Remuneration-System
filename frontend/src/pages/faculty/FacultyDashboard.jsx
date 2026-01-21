@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
+import Toast from "../../components/ui/Toast";
 
 // Icons
 import {
@@ -23,9 +24,18 @@ export default function FacultyDashboard() {
     total_amount: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [showBankNotification, setShowBankNotification] = useState(false);
 
   useEffect(() => {
     fetchStats();
+
+    // Check if we should show bank details notification
+    const shouldShowNotification = localStorage.getItem("showBankDetailsNotification");
+    if (shouldShowNotification === "true") {
+      setShowBankNotification(true);
+      // Remove the flag so it doesn't show again
+      localStorage.removeItem("showBankDetailsNotification");
+    }
   }, []);
 
   const fetchStats = async () => {
@@ -167,6 +177,16 @@ export default function FacultyDashboard() {
           </Button>
         </div>
       </Card>
+
+      {/* Bank Details Notification Toast */}
+      {showBankNotification && (
+        <Toast
+          message="Please complete your bank account details in the Settings tab"
+          type="warning"
+          duration={10000}
+          onClose={() => setShowBankNotification(false)}
+        />
+      )}
     </div>
   );
 }
