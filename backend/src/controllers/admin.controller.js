@@ -7,13 +7,12 @@ exports.getDashboardStats = async (req, res) => {
     try {
         const { rows } = await pool.query(`
       SELECT
-        COUNT(*) AS total_claims,
+        COUNT(*) FILTER (WHERE status != 'draft') AS total_claims,
         COUNT(*) FILTER (WHERE status = 'submitted') AS submitted_claims,
         COUNT(*) FILTER (WHERE status = 'approved') AS approved_claims,
         COUNT(*) FILTER (WHERE status = 'paid') AS paid_claims,
         COUNT(*) FILTER (WHERE status = 'rejected') AS rejected_claims,
-        COUNT(*) FILTER (WHERE claim_form_type = 'TEACHING_EXTERNAL') AS external_claims,
-        COUNT(*) FILTER (WHERE status = 'draft') AS draft_claims
+        COUNT(*) FILTER (WHERE claim_form_type = 'TEACHING_EXTERNAL' AND status != 'draft') AS external_claims
       FROM exams
     `);
 
@@ -87,7 +86,9 @@ exports.getAllClaims = async (req, res) => {
             params.push(claim_form_type);
         }
 
-        const whereClause = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
+        // Always exclude draft claims from admin view
+        where.push("e.status != 'draft'");
+        const whereClause = `WHERE ${where.join(' AND ')}`;
 
         const { rows } = await pool.query(
             `
@@ -338,7 +339,7 @@ exports.getFacultyProfile = async (req, res) => {
         rc.net_amount
       FROM exams e
       LEFT JOIN remuneration_calculations rc ON rc.exam_id = e.id
-      WHERE e.faculty_id = $1
+      WHERE e.faculty_id = $1 AND e.status != 'draft'
       ORDER BY e.created_at DESC`,
             [facultyId]
         );
@@ -539,7 +540,7 @@ exports.getExternalExaminers = async (req, res) => {
       JOIN exams e ON e.external_examiner_id = ee.id
       JOIN users u ON u.id = e.faculty_id
       LEFT JOIN external_exam_links eel ON eel.exam_id = e.id
-      WHERE e.claim_form_type = 'TEACHING_EXTERNAL'
+      WHERE e.claim_form_type = 'TEACHING_EXTERNAL' AND e.status != 'draft'
       ORDER BY ee.id DESC
     `);
 
@@ -640,7 +641,7 @@ exports.listAllFaculty = async (req, res) => {
         u.email, 
         u.department,
         u.created_at,
-        COUNT(e.id) AS total_claims,
+        COUNT(e.id) FILTER (WHERE e.status != 'draft') AS total_claims,
         COUNT(e.id) FILTER (WHERE e.status = 'submitted') AS pending_claims,
         COUNT(e.id) FILTER (WHERE e.status = 'rejected') AS rejected_claims
       FROM users u

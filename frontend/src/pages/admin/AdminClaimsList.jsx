@@ -70,7 +70,6 @@ export default function AdminClaimsList() {
 
     const getStatusBadge = (status) => {
         const badges = {
-            'draft': { label: 'Draft', color: 'bg-gray-100 text-gray-700 border-gray-200' },
             'submitted': { label: 'Submitted', color: 'bg-orange-100 text-orange-700 border-orange-200' },
             'approved': { label: 'Approved', color: 'bg-blue-100 text-blue-700 border-blue-200' },
             'paid': { label: 'Paid', color: 'bg-green-100 text-green-700 border-green-200' },
@@ -106,14 +105,6 @@ export default function AdminClaimsList() {
                             className={!status ? "bg-purple-600 hover:bg-purple-700" : ""}
                         >
                             All Claims
-                        </Button>
-                        <Button
-                            onClick={() => setSearchParams({ status: "draft" })}
-                            variant={status === "draft" ? "default" : "outline"}
-                            size="sm"
-                            className={status === "draft" ? "bg-gray-600 hover:bg-gray-700" : ""}
-                        >
-                            Draft
                         </Button>
                         <Button
                             onClick={() => setSearchParams({ status: "submitted" })}

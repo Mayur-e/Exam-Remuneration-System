@@ -21,6 +21,7 @@ export default function AdminFacultyProfile() {
     const navigate = useNavigate();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState("overview");
 
     useEffect(() => {
         fetchProfile();
@@ -57,204 +58,307 @@ export default function AdminFacultyProfile() {
 
     const { faculty, bank, claims, rejectionHistory, externalLinks } = data;
 
+    const tabs = [
+        { id: "overview", label: "Overview", icon: UserIcon },
+        { id: "claims", label: "Claims History", icon: FileTextIcon, count: claims?.length || 0 },
+        { id: "rejections", label: "Rejections", icon: XCircleIcon, count: rejectionHistory?.length || 0 },
+        { id: "external", label: "External Links", icon: FileTextIcon, count: externalLinks?.length || 0 }
+    ];
+
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center gap-4">
-                <Button variant="ghost" onClick={() => navigate(-1)}>
-                    <ArrowLeftIcon className="w-5 h-5 mr-2" />
-                    Back
-                </Button>
-                <div>
-                    <h1 className="text-2xl font-bold">Faculty Profile</h1>
-                    <p className="text-sm text-gray-500">Complete overview and claim history</p>
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <Button variant="ghost" onClick={() => navigate(-1)}>
+                        <ArrowLeftIcon className="w-5 h-5 mr-2" />
+                        Back
+                    </Button>
+                    <div>
+                        <h1 className="text-2xl font-bold">{faculty.name}</h1>
+                        <p className="text-sm text-gray-500">{faculty.email} • {faculty.department}</p>
+                    </div>
+                </div>
+                <div className={`px-3 py-1 rounded-full text-sm font-medium ${faculty.is_active
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-red-100 text-red-700'
+                    }`}>
+                    {faculty.is_active ? 'Active' : 'Inactive'}
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left Column - Profile Info */}
-                <div className="lg:col-span-1 space-y-6">
-                    {/* Personal Info */}
-                    <Card className="p-6">
-                        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                            <UserIcon className="w-5 h-5 text-purple-600" />
-                            Personal Information
-                        </h3>
-                        <div className="space-y-3 text-sm">
-                            <InfoRow label="Name" value={faculty.name} />
-                            <InfoRow label="Email" value={faculty.email} />
-                            <InfoRow label="Department" value={faculty.department || 'N/A'} />
-                            <InfoRow label="Role" value={faculty.role} />
-                            <InfoRow label="Status" value={faculty.is_active ? 'Active' : 'Inactive'} />
-                            <InfoRow label="Joined" value={new Date(faculty.created_at).toLocaleDateString()} />
-                        </div>
-                    </Card>
+            {/* Tabs */}
+            <div className="border-b border-gray-200">
+                <nav className="flex space-x-8">
+                    {tabs.map((tab) => {
+                        const Icon = tab.icon;
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id
+                                        ? 'border-purple-600 text-purple-600'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    }`}
+                            >
+                                <Icon className="w-5 h-5" />
+                                {tab.label}
+                                {tab.count !== undefined && (
+                                    <span className={`px-2 py-0.5 rounded-full text-xs ${activeTab === tab.id
+                                            ? 'bg-purple-100 text-purple-700'
+                                            : 'bg-gray-100 text-gray-600'
+                                        }`}>
+                                        {tab.count}
+                                    </span>
+                                )}
+                            </button>
+                        );
+                    })}
+                </nav>
+            </div>
 
-                    {/* Bank Details (Read-Only) */}
-                    <Card className="p-6">
-                        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                            <BuildingOfficeIcon className="w-5 h-5 text-purple-600" />
-                            Bank Details (Read-Only)
-                        </h3>
-                        {bank ? (
-                            <div className="space-y-3 text-sm">
-                                <InfoRow label="Account Holder" value={bank.account_holder_name} />
-                                <InfoRow label="Bank Name" value={bank.bank_name} />
-                                <InfoRow label="Branch" value={bank.branch_name} />
-                                <InfoRow label="Account Number" value={bank.account_number} />
-                                <InfoRow label="IFSC Code" value={bank.ifsc_code} />
-                                <InfoRow label="Account Type" value={bank.account_type} />
-                            </div>
-                        ) : (
-                            <p className="text-sm text-gray-500">No bank details provided</p>
-                        )}
-                    </Card>
-
-                    {/* Statistics */}
-                    <Card className="p-6 bg-purple-50 border-purple-200">
-                        <h3 className="text-lg font-semibold mb-4">Statistics</h3>
-                        <div className="space-y-3">
-                            <div className="flex justify-between items-center">
-                                <span className="text-sm text-gray-600">Total Claims</span>
-                                <span className="text-lg font-bold text-purple-600">{claims?.length || 0}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-sm text-gray-600">Rejected Claims</span>
-                                <span className="text-lg font-bold text-red-600">{rejectionHistory?.length || 0}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-sm text-gray-600">External Links</span>
-                                <span className="text-lg font-bold text-green-600">{externalLinks?.length || 0}</span>
-                            </div>
-                        </div>
-                    </Card>
-                </div>
-
-                {/* Right Column - Claims History */}
-                <div className="lg:col-span-2 space-y-6">
-                    {/* Claims History */}
-                    <Card className="p-6">
-                        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                            <FileTextIcon className="w-5 h-5 text-purple-600" />
-                            Claims History
-                        </h3>
-                        {claims && claims.length > 0 ? (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            <th className="px-4 py-2 text-left">ID</th>
-                                            <th className="px-4 py-2 text-left">Subject</th>
-                                            <th className="px-4 py-2 text-left">Type</th>
-                                            <th className="px-4 py-2 text-left">Status</th>
-                                            <th className="px-4 py-2 text-right">Amount</th>
-                                            <th className="px-4 py-2 text-left">Date</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y">
-                                        {claims.map((claim) => (
-                                            <tr key={claim.id} className="hover:bg-gray-50">
-                                                <td className="px-4 py-2">#{claim.id}</td>
-                                                <td className="px-4 py-2">{claim.subject_name || 'N/A'}</td>
-                                                <td className="px-4 py-2">
-                                                    <span className="text-xs px-2 py-1 rounded bg-gray-100">
-                                                        {claim.exam_type}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-2">
-                                                    <span className={`text-xs px-2 py-1 rounded-full ${claim.status === 'paid' ? 'bg-green-100 text-green-700' :
-                                                            claim.status === 'approved' ? 'bg-blue-100 text-blue-700' :
-                                                                claim.status === 'submitted' ? 'bg-orange-100 text-orange-700' :
-                                                                    claim.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                                                                        'bg-gray-100 text-gray-700'
-                                                        }`}>
-                                                        {claim.status}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-2 text-right font-medium">
-                                                    ₹{Number(claim.total_amount || 0).toLocaleString('en-IN')}
-                                                </td>
-                                                <td className="px-4 py-2 text-gray-500">
-                                                    {new Date(claim.created_at).toLocaleDateString()}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        ) : (
-                            <p className="text-sm text-gray-500 text-center py-8">No claims found</p>
-                        )}
-                    </Card>
-
-                    {/* Rejection History */}
-                    {rejectionHistory && rejectionHistory.length > 0 && (
-                        <Card className="p-6 bg-red-50 border-red-200">
-                            <h3 className="text-lg font-semibold mb-4 text-red-900 flex items-center gap-2">
-                                <XCircleIcon className="w-5 h-5" />
-                                Rejection History
-                            </h3>
-                            <div className="space-y-3">
-                                {rejectionHistory.map((rejection, idx) => (
-                                    <div key={idx} className="bg-white p-4 rounded-lg border border-red-200">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <span className="font-medium text-gray-900">
-                                                Claim #{rejection.id} - {rejection.subject_name}
-                                            </span>
-                                            <span className="text-sm text-gray-500">
-                                                {new Date(rejection.action_at).toLocaleDateString()}
-                                            </span>
-                                        </div>
-                                        <p className="text-sm text-gray-700">{rejection.comment}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </Card>
-                    )}
-
-                    {/* External Links Generated */}
-                    {externalLinks && externalLinks.length > 0 && (
-                        <Card className="p-6">
-                            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                                <FileTextIcon className="w-5 h-5 text-purple-600" />
-                                External Links Generated
-                            </h3>
-                            <div className="space-y-3">
-                                {externalLinks.map((link, idx) => (
-                                    <div key={idx} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div>
-                                                <span className="font-medium text-gray-900">
-                                                    {link.subject_name || 'N/A'}
-                                                </span>
-                                                <div className="text-xs text-gray-500 mt-1">
-                                                    Created: {new Date(link.created_at).toLocaleDateString()}
-                                                </div>
-                                            </div>
-                                            <span className={`text-xs px-2 py-1 rounded-full ${link.used ? 'bg-green-100 text-green-700' :
-                                                    new Date(link.expires_at) < new Date() ? 'bg-red-100 text-red-700' :
-                                                        'bg-blue-100 text-blue-700'
-                                                }`}>
-                                                {link.used ? 'Used' : new Date(link.expires_at) < new Date() ? 'Expired' : 'Active'}
-                                            </span>
-                                        </div>
-                                        <div className="text-xs text-gray-600">
-                                            Expires: {new Date(link.expires_at).toLocaleDateString()}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </Card>
-                    )}
-                </div>
+            {/* Tab Content */}
+            <div className="mt-6">
+                {activeTab === "overview" && (
+                    <OverviewTab faculty={faculty} bank={bank} claims={claims} rejectionHistory={rejectionHistory} externalLinks={externalLinks} />
+                )}
+                {activeTab === "claims" && (
+                    <ClaimsTab claims={claims} />
+                )}
+                {activeTab === "rejections" && (
+                    <RejectionsTab rejectionHistory={rejectionHistory} />
+                )}
+                {activeTab === "external" && (
+                    <ExternalLinksTab externalLinks={externalLinks} />
+                )}
             </div>
         </div>
     );
 }
 
+// Overview Tab Component
+function OverviewTab({ faculty, bank, claims, rejectionHistory, externalLinks }) {
+    return (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Personal Info */}
+            <Card className="p-6">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <UserIcon className="w-5 h-5 text-purple-600" />
+                    Personal Information
+                </h3>
+                <div className="space-y-3 text-sm">
+                    <InfoRow label="Name" value={faculty.name} />
+                    <InfoRow label="Email" value={faculty.email} />
+                    <InfoRow label="Department" value={faculty.department || 'N/A'} />
+                    <InfoRow label="Role" value={faculty.role} />
+                    <InfoRow label="Status" value={faculty.is_active ? 'Active' : 'Inactive'} />
+                    <InfoRow label="Joined" value={new Date(faculty.created_at).toLocaleDateString()} />
+                </div>
+            </Card>
+
+            {/* Bank Details */}
+            <Card className="p-6">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <BuildingOfficeIcon className="w-5 h-5 text-purple-600" />
+                    Bank Details
+                </h3>
+                {bank ? (
+                    <div className="space-y-3 text-sm">
+                        <InfoRow label="Account Holder" value={bank.account_holder_name} />
+                        <InfoRow label="Bank Name" value={bank.bank_name} />
+                        <InfoRow label="Branch" value={bank.branch_name} />
+                        <InfoRow label="Account Number" value={bank.account_number} />
+                        <InfoRow label="IFSC Code" value={bank.ifsc_code} />
+                        <InfoRow label="Account Type" value={bank.account_type} />
+                    </div>
+                ) : (
+                    <p className="text-sm text-gray-500">No bank details provided</p>
+                )}
+            </Card>
+
+            {/* Statistics */}
+            <Card className="p-6 bg-purple-50 border-purple-200">
+                <h3 className="text-lg font-semibold mb-4">Statistics</h3>
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Total Claims</span>
+                        <span className="text-2xl font-bold text-purple-600">{claims?.length || 0}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Rejected Claims</span>
+                        <span className="text-2xl font-bold text-red-600">{rejectionHistory?.length || 0}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">External Links</span>
+                        <span className="text-2xl font-bold text-green-600">{externalLinks?.length || 0}</span>
+                    </div>
+                    <div className="pt-4 border-t border-purple-200">
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Total Earnings</span>
+                            <span className="text-xl font-bold text-purple-700">
+                                ₹{claims?.reduce((sum, claim) => sum + Number(claim.total_amount || 0), 0).toLocaleString('en-IN') || 0}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </Card>
+        </div>
+    );
+}
+
+// Claims Tab Component
+function ClaimsTab({ claims }) {
+    return (
+        <Card className="p-6">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <FileTextIcon className="w-5 h-5 text-purple-600" />
+                All Claims ({claims?.length || 0})
+            </h3>
+            {claims && claims.length > 0 ? (
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th className="px-4 py-3 text-left font-semibold">ID</th>
+                                <th className="px-4 py-3 text-left font-semibold">Subject</th>
+                                <th className="px-4 py-3 text-left font-semibold">Type</th>
+                                <th className="px-4 py-3 text-left font-semibold">Status</th>
+                                <th className="px-4 py-3 text-right font-semibold">Amount</th>
+                                <th className="px-4 py-3 text-left font-semibold">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                            {claims.map((claim) => (
+                                <tr key={claim.id} className="hover:bg-gray-50 transition-colors">
+                                    <td className="px-4 py-3 font-medium">#{claim.id}</td>
+                                    <td className="px-4 py-3">{claim.subject_name || 'N/A'}</td>
+                                    <td className="px-4 py-3">
+                                        <span className="text-xs px-2 py-1 rounded bg-gray-100 font-medium">
+                                            {claim.exam_type}
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${claim.status === 'paid' ? 'bg-green-100 text-green-700' :
+                                                claim.status === 'approved' ? 'bg-blue-100 text-blue-700' :
+                                                    claim.status === 'submitted' ? 'bg-orange-100 text-orange-700' :
+                                                        claim.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                                                            'bg-gray-100 text-gray-700'
+                                            }`}>
+                                            {claim.status}
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-right font-semibold">
+                                        ₹{Number(claim.total_amount || 0).toLocaleString('en-IN')}
+                                    </td>
+                                    <td className="px-4 py-3 text-gray-500">
+                                        {new Date(claim.created_at).toLocaleDateString()}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            ) : (
+                <div className="text-center py-12">
+                    <FileTextIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-sm text-gray-500">No claims found</p>
+                </div>
+            )}
+        </Card>
+    );
+}
+
+// Rejections Tab Component
+function RejectionsTab({ rejectionHistory }) {
+    return (
+        <Card className="p-6">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <XCircleIcon className="w-5 h-5 text-red-600" />
+                Rejection History ({rejectionHistory?.length || 0})
+            </h3>
+            {rejectionHistory && rejectionHistory.length > 0 ? (
+                <div className="space-y-3">
+                    {rejectionHistory.map((rejection, idx) => (
+                        <div key={idx} className="bg-red-50 p-4 rounded-lg border border-red-200 hover:shadow-md transition-shadow">
+                            <div className="flex justify-between items-start mb-2">
+                                <div>
+                                    <span className="font-semibold text-gray-900">
+                                        Claim #{rejection.id}
+                                    </span>
+                                    <span className="text-gray-600 ml-2">
+                                        {rejection.subject_name}
+                                    </span>
+                                </div>
+                                <span className="text-sm text-gray-500">
+                                    {new Date(rejection.action_at).toLocaleDateString()}
+                                </span>
+                            </div>
+                            <div className="bg-white p-3 rounded border border-red-100 mt-2">
+                                <p className="text-sm font-medium text-gray-500 mb-1">Rejection Reason:</p>
+                                <p className="text-sm text-gray-700">{rejection.comment}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div className="text-center py-12">
+                    <CheckCircleIcon className="w-12 h-12 text-green-300 mx-auto mb-3" />
+                    <p className="text-sm text-gray-500">No rejections - All claims approved!</p>
+                </div>
+            )}
+        </Card>
+    );
+}
+
+// External Links Tab Component
+function ExternalLinksTab({ externalLinks }) {
+    return (
+        <Card className="p-6">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <FileTextIcon className="w-5 h-5 text-purple-600" />
+                External Links Generated ({externalLinks?.length || 0})
+            </h3>
+            {externalLinks && externalLinks.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {externalLinks.map((link, idx) => (
+                        <div key={idx} className="bg-gray-50 p-4 rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
+                            <div className="flex justify-between items-start mb-3">
+                                <div className="flex-1">
+                                    <h4 className="font-semibold text-gray-900">
+                                        {link.subject_name || 'N/A'}
+                                    </h4>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Created: {new Date(link.created_at).toLocaleDateString()}
+                                    </p>
+                                </div>
+                                <span className={`text-xs px-2 py-1 rounded-full font-medium ${link.used ? 'bg-green-100 text-green-700' :
+                                        new Date(link.expires_at) < new Date() ? 'bg-red-100 text-red-700' :
+                                            'bg-blue-100 text-blue-700'
+                                    }`}>
+                                    {link.used ? 'Used' : new Date(link.expires_at) < new Date() ? 'Expired' : 'Active'}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-gray-600">
+                                <ClockIcon className="w-4 h-4" />
+                                Expires: {new Date(link.expires_at).toLocaleDateString()}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div className="text-center py-12">
+                    <FileTextIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-sm text-gray-500">No external links generated</p>
+                </div>
+            )}
+        </Card>
+    );
+}
+
+// Helper Component
 function InfoRow({ label, value }) {
     return (
-        <div className="flex justify-between py-1 border-b border-gray-100 last:border-0">
+        <div className="flex justify-between py-2 border-b border-gray-100 last:border-0">
             <span className="text-gray-500">{label}</span>
             <span className="font-medium text-gray-900">{value}</span>
         </div>

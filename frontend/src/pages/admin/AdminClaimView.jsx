@@ -72,13 +72,13 @@ export default function AdminClaimView() {
             setProcessing(false);
         }
     };
-    
+
     if (loading) return <div className="p-8 text-center">Loading details...</div>;
     if (!data) return <div className="p-8 text-center text-red-500">Claim not found</div>;
 
     const { exam, staff, auditLogs } = data;
     const isExternal = exam.claim_form_type === 'TEACHING_EXTERNAL';
-    const canTakeAction = exam.status === 'submitted' || exam.status === 'approved' || exam.status === 'draft';
+    const canTakeAction = exam.status === 'submitted' || exam.status === 'approved';
 
     // Determine which info to show
     const examinerName = isExternal ? exam.external_examiner_name : exam.faculty_name;

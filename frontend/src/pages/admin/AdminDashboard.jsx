@@ -127,16 +127,6 @@ export default function AdminDashboard() {
           borderColor="border-purple-200"
           textColor="text-purple-600"
         />
-
-        <StatCard
-          title="Draft Claims"
-          value={stats.draft_claims || 0}
-          subtitle="Not submitted"
-          icon={<FileTextIcon className="w-6 h-6 text-gray-600" />}
-          bgColor="bg-gray-50"
-          borderColor="border-gray-200"
-          textColor="text-gray-600"
-        />
       </div>
 
       {/* Alerts Section */}
