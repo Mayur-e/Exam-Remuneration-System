@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useToast } from "../../hooks/useToast";
 import api from "../../services/api";
 import { useLocation } from "react-router-dom";
 
@@ -17,6 +18,7 @@ export default function NonTeachingBillForm() {
 
     const [examId, setExamId] = useState(examIdFromUrl);
     const [status, setStatus] = useState(examIdFromUrl ? null : "draft");
+    const { showToast } = useToast();
     const [loading, setLoading] = useState(false);
     const [exam, setExam] = useState(null);
     const [refreshKey, setRefreshKey] = useState(0);
@@ -45,9 +47,9 @@ export default function NonTeachingBillForm() {
             await api.post(`/faculty/exams/${examId}/submit`, {});
             setStatus("submitted");
             setRefreshKey((k) => k + 1);
-            alert("Non-Teaching claim submitted successfully!");
+            showToast("Non-Teaching claim submitted successfully!", "success");
         } catch (err) {
-            alert(err.response?.data?.message || "Submit failed");
+            showToast(err.response?.data?.message || "Submit failed", "error");
         } finally {
             setLoading(false);
         }
@@ -173,10 +175,10 @@ export default function NonTeachingBillForm() {
                                             try {
                                                 setLoading(true);
                                                 await api.post(`/faculty/exams/${examId}/resubmit`);
-                                                alert("Claim resubmitted successfully!");
+                                                showToast("Claim resubmitted successfully!", "success");
                                                 fetchExam();
                                             } catch (err) {
-                                                alert(err.response?.data?.message || "Failed to resubmit claim");
+                                                showToast(err.response?.data?.message || "Failed to resubmit claim", "error");
                                             } finally {
                                                 setLoading(false);
                                             }

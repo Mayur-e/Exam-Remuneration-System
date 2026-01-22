@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useToast } from "../../hooks/useToast";
 import api from "../../services/api";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
@@ -23,6 +24,7 @@ const STAFF_ROLES = [
 export default function StaffClaimsSection({ examId, disabled }) {
     const [staffList, setStaffList] = useState([]);
     const [loading, setLoading] = useState(false);
+    const { showToast } = useToast();
 
     const addStaffRow = () => {
         setStaffList([
@@ -50,7 +52,7 @@ export default function StaffClaimsSection({ examId, disabled }) {
 
     const saveStaff = async (staffRow) => {
         if (!staffRow.staff_role || !staffRow.staff_name) {
-            alert("Please fill in Staff Name and Role");
+            showToast("Please fill in Staff Name and Role", "error");
             return;
         }
 
@@ -63,11 +65,11 @@ export default function StaffClaimsSection({ examId, disabled }) {
                 examination_days: Number(staffRow.examination_days) || 0,
                 cleaning_days: Number(staffRow.cleaning_days) || 0
             });
-            alert("Staff member added successfully!");
+            showToast("Staff member added successfully!", "success");
             // Remove the saved row from the list
             removeStaffRow(staffRow.id);
         } catch (err) {
-            alert(err.response?.data?.message || "Failed to add staff member");
+            showToast(err.response?.data?.message || "Failed to add staff member", "error");
         } finally {
             setLoading(false);
         }

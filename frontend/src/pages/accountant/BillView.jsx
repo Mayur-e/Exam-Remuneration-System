@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useToast } from "../../hooks/useToast";
 import api from "../../services/api";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
@@ -6,6 +7,7 @@ import { Card } from "../../components/ui/card";
 import BillSummary from "../faculty/BillSummary";
 import PaymentModal from "./PaymentModal";
 import RejectModal from "./RejectModal";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
 // Icons
 import {
@@ -24,7 +26,9 @@ export default function BillView() {
   const [loading, setLoading] = useState(true);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showApproveConfirm, setShowApproveConfirm] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const { showToast } = useToast();
 
   useEffect(() => {
     fetchDetails();
@@ -45,27 +49,27 @@ export default function BillView() {
     setProcessing(true);
     try {
       await api.post(`/accountant/claims/${id}/pay`, paymentData);
-      alert("Payment processed successfully!");
+      showToast("Payment processed successfully!", "success");
       setShowPaymentModal(false);
       fetchDetails(); // Refresh
     } catch (err) {
-      alert(err.response?.data?.message || "Payment failed");
+      showToast(err.response?.data?.message || "Payment failed", "error");
     } finally {
       setProcessing(false);
     }
   };
 
   const handleApprove = async () => {
-    if (!confirm("Are you sure you want to approve this claim? This will mark it as ready for payment.")) {
-      return;
-    }
-
+    setProcessing(true);
     try {
       await api.post(`/accountant/claims/${id}/approve`);
-      alert("Claim approved successfully!");
+      showToast("Claim approved successfully!", "success");
+      setShowApproveConfirm(false);
       fetchDetails(); // Refresh
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to approve claim");
+      showToast(err.response?.data?.message || "Failed to approve claim", "error");
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -73,11 +77,11 @@ export default function BillView() {
     setProcessing(true);
     try {
       await api.post(`/accountant/claims/${id}/reject`, { reason });
-      alert("Claim rejected successfully!");
+      showToast("Claim rejected successfully!", "success");
       setShowRejectModal(false);
       fetchDetails(); // Refresh
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to reject claim");
+      showToast(err.response?.data?.message || "Failed to reject claim", "error");
     } finally {
       setProcessing(false);
     }
@@ -129,7 +133,7 @@ export default function BillView() {
           {/* Approve button for submitted claims */}
           {exam.status === 'submitted' && (
             <Button
-              onClick={handleApprove}
+              onClick={() => setShowApproveConfirm(true)}
               className="bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all"
             >
               <CheckCircleIcon className="w-5 h-5 mr-2" />
@@ -375,6 +379,24 @@ export default function BillView() {
         onClose={() => setShowRejectModal(false)}
         onReject={handleReject}
         processing={processing}
+      />
+
+      {/* Approve Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showApproveConfirm}
+        onClose={() => setShowApproveConfirm(false)}
+        onConfirm={handleApprove}
+        title="Approve Claim"
+        message="Are you sure you want to approve this claim? This will mark it as ready for payment processing."
+        confirmText="Yes, Approve"
+        cancelText="Cancel"
+        confirmColor="blue"
+        loading={processing}
+        icon={
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        }
       />
     </div>
   );

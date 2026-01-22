@@ -9,7 +9,7 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Card } from "../../components/ui/card";
 import GoogleSignupModal from "../../components/auth/GoogleSignupModal";
-import Toast from "../../components/ui/Toast";
+import { useToast } from "../../hooks/useToast";
 
 // Icons
 import { MailIcon, LockIcon, UserIcon, BuildingOfficeIcon } from "../../components/icons/logo";
@@ -35,8 +35,8 @@ export default function Register() {
   const [googleUserData, setGoogleUserData] = useState(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
-  // Toast state
-  const [toast, setToast] = useState(null);
+  // Toast hook
+  const { showToast } = useToast();
 
   const validateForm = () => {
     const newErrors = {};
@@ -85,6 +85,7 @@ export default function Register() {
     try {
       await api.post("/auth/register", form);
 
+      showToast("Registered successfully! Redirecting to login...", "success");
       setSuccessMessage("Registered successfully! Redirecting to login...");
 
       // Redirect to login after 2 seconds
@@ -126,6 +127,7 @@ export default function Register() {
 
       if (res.data.exists) {
         // User exists - login directly
+        showToast("Google login successful!", "success");
         const { token: authToken, user } = res.data;
 
         localStorage.setItem("token", authToken);
@@ -172,6 +174,8 @@ export default function Register() {
 
       const { token: authToken, user, needsBankDetails } = res.data;
 
+      showToast("Registration successful! Welcome.", "success");
+
       localStorage.setItem("token", authToken);
       localStorage.setItem("user", JSON.stringify(user));
 
@@ -193,7 +197,9 @@ export default function Register() {
         setErrors({ general: err.response.data.message || "User or PRN already exists" });
       } else {
         setErrors({ general: "Registration failed. Please try again." });
+        setErrors({ general: "Registration failed. Please try again." });
       }
+      showToast("Registration failed", "error");
       setShowSignupModal(false);
     } finally {
       setIsGoogleLoading(false);
@@ -425,14 +431,7 @@ export default function Register() {
         />
       )}
 
-      {/* Toast Notification */}
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
+
     </div>
   );
 }

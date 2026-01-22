@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { useToast } from "../../hooks/useToast";
 import api from "../../services/api";
 
 import { Card } from "../../components/ui/card";
@@ -127,6 +128,7 @@ function DraftList({ onEdit }) {
   const [drafts, setDrafts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const { showToast } = useToast();
 
   useEffect(() => {
     api
@@ -142,8 +144,9 @@ function DraftList({ onEdit }) {
     try {
       await api.delete(`/faculty/drafts/${id}`);
       setDrafts((prev) => prev.filter((d) => d.id !== id));
+      showToast("Draft deleted successfully", "success");
     } catch {
-      alert("Failed to delete draft. Please try again.");
+      showToast("Failed to delete draft. Please try again.", "error");
     }
   };
 

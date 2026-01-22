@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useToast } from "../../hooks/useToast";
 import api from "../../services/api";
 import ProfileSettings from "../../components/settings/ProfileSettings";
 import SecuritySettings from "../../components/settings/SecuritySettings";
@@ -9,7 +10,7 @@ export default function Settings() {
   const [user, setUser] = useState(JSON.parse(localStorage.getItem("user")) || {});
   const [profileData, setProfileData] = useState(null);
   const [bankData, setBankData] = useState(null);
-  const [message, setMessage] = useState({ type: "", text: "" });
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -47,10 +48,9 @@ export default function Settings() {
       localStorage.setItem("user", JSON.stringify(updatedUser));
       setUser(updatedUser);
 
-      setMessage({ type: "success", text: "Profile updated successfully!" });
-      setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+      showToast("Profile updated successfully!", "success");
     } catch (error) {
-      setMessage({ type: "error", text: error.response?.data?.message || "Failed to update profile" });
+      showToast(error.response?.data?.message || "Failed to update profile", "error");
       throw error;
     }
   };
@@ -73,10 +73,9 @@ export default function Settings() {
         newPassword: passwordData.newPassword
       });
 
-      setMessage({ type: "success", text: "Password changed successfully!" });
-      setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+      showToast("Password changed successfully!", "success");
     } catch (error) {
-      setMessage({ type: "error", text: error.response?.data?.message || "Failed to change password" });
+      showToast(error.response?.data?.message || "Failed to change password", "error");
       throw error;
     }
   };
@@ -88,13 +87,12 @@ export default function Settings() {
         confirmPassword: passwordData.confirmPassword
       });
 
-      setMessage({ type: "success", text: "Password set successfully! You can now login with email and password." });
-      setTimeout(() => setMessage({ type: "", text: "" }), 5000);
+      showToast("Password set successfully! You can now login with email and password.", "success");
 
       // Refresh profile to update has_set_password flag
       await fetchProfileAndBank();
     } catch (error) {
-      setMessage({ type: "error", text: error.response?.data?.message || "Failed to set password" });
+      showToast(error.response?.data?.message || "Failed to set password", "error");
       throw error;
     }
   };
@@ -102,10 +100,9 @@ export default function Settings() {
   const handleSaveBankDetails = async (data) => {
     try {
       await api.put("/faculty/profile", { bank: data });
-      setMessage({ type: "success", text: "Bank details updated successfully!" });
-      setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+      showToast("Bank details updated successfully!", "success");
     } catch (error) {
-      setMessage({ type: "error", text: error.response?.data?.message || "Failed to update bank details" });
+      showToast(error.response?.data?.message || "Failed to update bank details", "error");
       throw error;
     }
   };
@@ -153,12 +150,7 @@ export default function Settings() {
     <div className="space-y-6">
       <h1 className="text-3xl font-bold text-gray-800">Settings</h1>
 
-      {/* Message Display */}
-      {message.text && (
-        <div className={`p-4 rounded-lg ${message.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
-          {message.text}
-        </div>
-      )}
+
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Profile Settings */}

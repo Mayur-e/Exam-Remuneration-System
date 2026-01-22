@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useToast } from "../../hooks/useToast";
 import api from "../../services/api";
 import { useLocation } from "react-router-dom";
 
@@ -23,6 +24,7 @@ export default function TeachingBillForm() {
 
   const [examId, setExamId] = useState(examIdFromUrl);
   const [status, setStatus] = useState(examIdFromUrl ? null : "draft");
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [exam, setExam] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -71,8 +73,9 @@ export default function TeachingBillForm() {
       });
       setStatus("submitted");
       setRefreshKey(k => k + 1); // Refresh summary
+      showToast("Claim submitted successfully!", "success");
     } catch (err) {
-      alert(err.response?.data?.message || "Submit failed");
+      showToast(err.response?.data?.message || "Submit failed", "error");
     } finally {
       setLoading(false);
     }
@@ -140,7 +143,7 @@ export default function TeachingBillForm() {
                   );
                   setExternalLink(res.data.link);
                 } catch {
-                  alert("Failed to generate external link");
+                  showToast("Failed to generate external link", "error");
                 }
               }}
             >
@@ -168,7 +171,7 @@ export default function TeachingBillForm() {
                         // Focus the window first to ensure clipboard access
                         window.focus();
                         await navigator.clipboard.writeText(externalLink);
-                        alert("Link copied to clipboard");
+                        showToast("Link copied to clipboard", "success");
                       } catch (err) {
                         console.error("Clipboard error:", err);
                         // Fallback: Select the text
@@ -177,9 +180,9 @@ export default function TeachingBillForm() {
                           input.select();
                           try {
                             document.execCommand('copy');
-                            alert("Link copied to clipboard");
+                            showToast("Link copied to clipboard", "success");
                           } catch (e) {
-                            alert("Failed to copy. Please manually copy the link.");
+                            showToast("Failed to copy. Please manually copy the link.", "error");
                           }
                         }
                       }
@@ -279,10 +282,10 @@ export default function TeachingBillForm() {
                       try {
                         setLoading(true);
                         await api.post(`/faculty/exams/${examId}/resubmit`);
-                        alert("Claim resubmitted successfully!");
+                        showToast("Claim resubmitted successfully!", "success");
                         fetchExam(); // Refresh to show new status
                       } catch (err) {
-                        alert(err.response?.data?.message || "Failed to resubmit claim");
+                        showToast(err.response?.data?.message || "Failed to resubmit claim", "error");
                       } finally {
                         setLoading(false);
                       }

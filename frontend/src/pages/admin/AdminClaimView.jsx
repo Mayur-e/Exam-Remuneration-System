@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useToast } from "../../hooks/useToast";
 import api from "../../services/api";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
@@ -26,6 +27,7 @@ export default function AdminClaimView() {
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [showSendBackModal, setShowSendBackModal] = useState(false);
     const [processing, setProcessing] = useState(false);
+    const { showToast } = useToast();
 
     useEffect(() => {
         fetchDetails();
@@ -49,11 +51,11 @@ export default function AdminClaimView() {
                 reason,
                 policy_reference: policyReference
             });
-            alert("Claim rejected successfully!");
+            showToast("Claim rejected successfully!", "success");
             setShowRejectModal(false);
             fetchDetails();
         } catch (err) {
-            alert(err.response?.data?.message || "Failed to reject claim");
+            showToast(err.response?.data?.message || "Failed to reject claim", "error");
         } finally {
             setProcessing(false);
         }
@@ -63,11 +65,11 @@ export default function AdminClaimView() {
         setProcessing(true);
         try {
             await api.post(`/admin/claims/${id}/send-back`, { instructions });
-            alert("Claim sent back for correction!");
+            showToast("Claim sent back for correction!", "success");
             setShowSendBackModal(false);
             fetchDetails();
         } catch (err) {
-            alert(err.response?.data?.message || "Failed to send back claim");
+            showToast(err.response?.data?.message || "Failed to send back claim", "error");
         } finally {
             setProcessing(false);
         }
@@ -337,11 +339,12 @@ function InfoRow({ label, value }) {
 function RejectModal({ isOpen, onClose, onReject, processing }) {
     const [reason, setReason] = useState("");
     const [policyReference, setPolicyReference] = useState("");
+    const { showToast } = useToast();
 
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!reason.trim()) {
-            alert("Rejection reason is required");
+            showToast("Rejection reason is required", "error");
             return;
         }
         onReject(reason, policyReference);
@@ -395,11 +398,12 @@ function RejectModal({ isOpen, onClose, onReject, processing }) {
 
 function SendBackModal({ isOpen, onClose, onSendBack, processing }) {
     const [instructions, setInstructions] = useState("");
+    const { showToast } = useToast();
 
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!instructions.trim()) {
-            alert("Correction instructions are required");
+            showToast("Correction instructions are required", "error");
             return;
         }
         onSendBack(instructions);

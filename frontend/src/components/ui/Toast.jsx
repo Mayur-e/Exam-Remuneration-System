@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-export default function Toast({ message, type = 'info', duration = 10000, onClose }) {
+export default function Toast({ message, type = 'info', duration = 10000, onClose, isStacked = true }) {
     useEffect(() => {
         if (duration > 0) {
             const timer = setTimeout(() => {
@@ -42,7 +42,7 @@ export default function Toast({ message, type = 'info', duration = 10000, onClos
     }[type];
 
     return (
-        <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
+        <div className={`${!isStacked ? 'fixed top-4 right-4' : ''} z-50 animate-slide-in-right`}>
             <div className={`${bgColor} text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 max-w-md`}>
                 <div className="flex-shrink-0">
                     {icon}

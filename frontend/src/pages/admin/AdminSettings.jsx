@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useToast } from "../../hooks/useToast";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import ProfileSettings from "../../components/settings/ProfileSettings";
@@ -8,7 +9,7 @@ import { MailIcon } from "../../components/icons/logo";
 
 export default function AdminSettings() {
     const [activeTab, setActiveTab] = useState("profile");
-    const [message, setMessage] = useState(null);
+    const { showToast } = useToast();
     const user = JSON.parse(localStorage.getItem("user")) || {};
 
     // Profile data
@@ -20,11 +21,11 @@ export default function AdminSettings() {
     const handleSaveProfile = async (data) => {
         try {
             // API call would go here
+            // API call would go here
             await new Promise(resolve => setTimeout(resolve, 1000)); // Simulated delay
-            setMessage({ type: "success", text: "Profile updated successfully!" });
-            setTimeout(() => setMessage(null), 3000);
+            showToast("Profile updated successfully!", "success");
         } catch (err) {
-            setMessage({ type: "error", text: "Failed to update profile" });
+            showToast("Failed to update profile", "error");
             throw err;
         }
     };
@@ -32,17 +33,17 @@ export default function AdminSettings() {
     const handleChangePassword = async (passwordData) => {
         // Validation
         if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
-            setMessage({ type: "error", text: "All password fields are required" });
+            showToast("All password fields are required", "error");
             throw new Error("All fields required");
         }
 
         if (passwordData.newPassword.length < 6) {
-            setMessage({ type: "error", text: "New password must be at least 6 characters" });
+            showToast("New password must be at least 6 characters", "error");
             throw new Error("Password too short");
         }
 
         if (passwordData.newPassword !== passwordData.confirmPassword) {
-            setMessage({ type: "error", text: "New passwords do not match" });
+            showToast("New passwords do not match", "error");
             throw new Error("Passwords do not match");
         }
 
@@ -66,10 +67,9 @@ export default function AdminSettings() {
                 throw new Error(data.message || "Failed to change password");
             }
 
-            setMessage({ type: "success", text: "Password changed successfully!" });
-            setTimeout(() => setMessage(null), 3000);
+            showToast("Password changed successfully!", "success");
         } catch (err) {
-            setMessage({ type: "error", text: err.message || "Failed to change password" });
+            showToast(err.message || "Failed to change password", "error");
             throw err;
         }
     };
@@ -132,22 +132,7 @@ export default function AdminSettings() {
                 </nav>
             </div>
 
-            {/* Message Display */}
-            {message && (
-                <div className={`p-4 rounded-lg border ${message.type === "success"
-                    ? "bg-green-50 border-green-200 text-green-800"
-                    : "bg-red-50 border-red-200 text-red-800"
-                    }`}>
-                    <div className="flex items-center gap-2">
-                        {message.type === "success" ? (
-                            <CheckCircleIcon className="w-5 h-5" />
-                        ) : (
-                            <AlertCircleIcon className="w-5 h-5" />
-                        )}
-                        <p className="font-medium">{message.text}</p>
-                    </div>
-                </div>
-            )}
+
 
             {/* Tab Content */}
             {activeTab === "profile" && (

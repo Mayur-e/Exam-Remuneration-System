@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useToast } from "../../hooks/useToast";
 import api from "../../services/api";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
@@ -23,6 +24,7 @@ export default function MyClaims() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   useEffect(() => {
     fetchClaims();
@@ -77,13 +79,13 @@ export default function MyClaims() {
       if (claim.external_link_token) {
         const link = `${window.location.origin}/external/claim/${claim.external_link_token}`;
         await navigator.clipboard.writeText(link);
-        alert("External examiner link copied to clipboard!\n\nShare this link with the external examiner to resubmit the claim.");
+        showToast("External examiner link copied to clipboard! Share this link with the external examiner to resubmit the claim.", "success");
       } else {
-        alert("External link not found (Token missing). Please contact support.");
+        showToast("External link not found (Token missing). Please contact support.", "error");
       }
     } catch (err) {
       console.error("Failed to copy link:", err);
-      alert("Failed to copy link");
+      showToast("Failed to copy link", "error");
     }
   };
 

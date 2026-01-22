@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useToast } from "../../hooks/useToast";
 import api from "../../services/api";
 
 import { Input } from "../../components/ui/input";
@@ -6,13 +7,13 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 
 // Icons
-import { 
+import {
   CalendarIcon,
   UsersIcon,
   BookOpenIcon,
   GraduationCapIcon,
   ClockIcon,
-  AlertCircleIcon 
+  AlertCircleIcon
 } from "../../components/icons/logo";
 
 const EXAM_TYPES = [
@@ -51,6 +52,7 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const { showToast } = useToast();
 
   /** Load exam if editing existing draft */
   useEffect(() => {
@@ -95,7 +97,7 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
 
   const save = async () => {
     const validationErrors = validateForm();
-    
+
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
@@ -117,11 +119,11 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
       } else {
         // UPDATE
         await api.put(`/faculty/exams/${examId}`, payload);
-        alert("Details updated successfully!");
+        showToast("Details updated successfully!", "success");
         onUpdated?.();
       }
     } catch (err) {
-      alert(err?.response?.data?.message || "Failed to save exam details");
+      showToast(err?.response?.data?.message || "Failed to save exam details", "error");
     } finally {
       setLoading(false);
     }

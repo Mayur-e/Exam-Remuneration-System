@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useToast } from "../../hooks/useToast";
 import api from "../../services/api";
 import ProfileSettings from "../../components/settings/ProfileSettings";
 import SecuritySettings from "../../components/settings/SecuritySettings";
@@ -6,7 +7,7 @@ import { MailIcon } from "../../components/icons/logo";
 
 export default function Settings() {
     const [profileData, setProfileData] = useState(null);
-    const [message, setMessage] = useState({ type: "", text: "" });
+    const { showToast } = useToast();
 
     useEffect(() => {
         // Fetch profile
@@ -32,22 +33,16 @@ export default function Settings() {
             const updatedUser = { ...user, name: data.name };
             localStorage.setItem("user", JSON.stringify(updatedUser));
 
-            setMessage({ type: "success", text: "Profile updated successfully" });
-            setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+            showToast("Profile updated successfully", "success");
         } catch (err) {
-            setMessage({
-                type: "error",
-                text: err.response?.data?.message || "Failed to update profile"
-            });
+            showToast(err.response?.data?.message || "Failed to update profile", "error");
             throw err;
         }
     };
 
     const handleChangePassword = async (passwordData) => {
-        setMessage({ type: "", text: "" });
-
         if (passwordData.newPassword !== passwordData.confirmPassword) {
-            setMessage({ type: "error", text: "New passwords do not match" });
+            showToast("New passwords do not match", "error");
             throw new Error("Passwords do not match");
         }
 
@@ -56,13 +51,9 @@ export default function Settings() {
                 currentPassword: passwordData.currentPassword,
                 newPassword: passwordData.newPassword
             });
-            setMessage({ type: "success", text: "Password updated successfully" });
-            setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+            showToast("Password updated successfully", "success");
         } catch (err) {
-            setMessage({
-                type: "error",
-                text: err.response?.data?.message || "Failed to update password"
-            });
+            showToast(err.response?.data?.message || "Failed to update password", "error");
             throw err;
         }
     };
@@ -95,12 +86,7 @@ export default function Settings() {
                 <p className="text-gray-600">Manage your profile and security</p>
             </div>
 
-            {/* Message Display */}
-            {message.text && (
-                <div className={`p-3 rounded text-sm ${message.type === 'error' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
-                    {message.text}
-                </div>
-            )}
+
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Profile Settings */}
