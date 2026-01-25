@@ -5,7 +5,6 @@ import { useLocation } from "react-router-dom";
 
 import ExamDetails from "./ExamDetails";
 import ClaimsSection from "./ClaimsSection";
-// import DocumentsSection from "./DocumentsSection";
 import BillSummary from "./BillSummary";
 
 import { Button } from "../../components/ui/button";
@@ -64,6 +63,7 @@ export default function TeachingBillForm() {
     fetchExam();
   }, [examId]);
 
+
   const handleSubmit = async () => {
     setLoading(true);
     try {
@@ -80,6 +80,35 @@ export default function TeachingBillForm() {
       setLoading(false);
     }
   };
+
+  const handleDownloadPDF = async () => {
+    if (!examId) return;
+    try {
+      showToast("Generating PDF...", "info");
+
+      const response = await api.get(`/pdf/claim/${examId}/download`, {
+        responseType: 'blob'
+      });
+
+      // Create blob URL and open in new tab
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+
+      // Open in new tab
+      window.open(url, '_blank');
+
+      // Clean up the URL after a delay to allow the browser to load it
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+      }, 100);
+
+      showToast("PDF opened in new tab!", "success");
+    } catch (err) {
+      console.error("Failed to generate PDF:", err);
+      showToast("Failed to generate PDF", "error");
+    }
+  };
+
 
 
   return (
@@ -246,6 +275,17 @@ export default function TeachingBillForm() {
           <div className="text-center space-y-2 mb-4">
             <h3 className="text-lg font-bold text-green-700">Claim Submitted Successfully</h3>
             <p className="text-green-600">Your claim has been submitted for approval.</p>
+            <div className="pt-2">
+              <Button
+                onClick={handleDownloadPDF}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Download PDF
+              </Button>
+            </div>
           </div>
           <BillSummary examId={examId} refreshKey={refreshKey} />
         </Card>

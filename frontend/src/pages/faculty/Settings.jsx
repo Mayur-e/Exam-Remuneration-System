@@ -25,6 +25,8 @@ export default function Settings() {
         email: res.data.email || user.email || "",
         department: res.data.department || "",
         prn: res.data.prn || "",
+        mobile: res.data.mobile || "",
+        pan_card: res.data.pan_card || "",
         google_id: res.data.google_id || null,
         has_set_password: res.data.has_set_password || false,
       });
@@ -143,6 +145,18 @@ export default function Settings() {
       label: "Department",
       type: "text",
       placeholder: "Department"
+    },
+    {
+      name: "mobile",
+      label: "Mobile Number",
+      type: "tel",
+      placeholder: "Enter your mobile number (e.g., 9876543210)"
+    },
+    {
+      name: "pan_card",
+      label: "PAN Card Number",
+      type: "text",
+      placeholder: "Enter your PAN card number (e.g., ABCDE1234F)"
     }
   ];
 

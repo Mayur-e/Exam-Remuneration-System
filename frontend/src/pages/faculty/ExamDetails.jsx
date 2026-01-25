@@ -47,7 +47,8 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
     semester: "",
     academic_year: "",
     exam_date: "",
-    is_backlog: false
+    is_backlog: false,
+    second_examiner: ""
   });
 
   const [loading, setLoading] = useState(false);
@@ -63,6 +64,10 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
       setForm({
         ...data,
         exam_date: data.exam_date ? data.exam_date.split("T")[0] : "",
+        second_examiner: data.second_examiner || "", // Ensure not null
+        students_count: data.students_count || "",
+        subject_code: data.subject_code || "",
+        subject_name: data.subject_name || "",
       });
     }).catch(err => {
       console.error("Failed to load exam:", err);
@@ -283,6 +288,22 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
               </p>
             )}
           </div>
+        </div>
+
+        {/* Row 3.5: Second Examiner (Optional) */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-gray-700">
+            Second Examiner Name (if any)
+          </label>
+          <Input
+            disabled={disabled}
+            placeholder="Enter name of second examiner (optional)"
+            value={form.second_examiner}
+            onChange={(e) => update("second_examiner", e.target.value)}
+          />
+          <p className="text-xs text-gray-500">
+            Leave blank if there is no second examiner
+          </p>
         </div>
 
         {/* Row 4: Semester & Academic Year */}

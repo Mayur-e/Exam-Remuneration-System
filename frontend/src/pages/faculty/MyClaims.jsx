@@ -89,6 +89,33 @@ export default function MyClaims() {
     }
   };
 
+  const handleDownloadPDF = async (examId) => {
+    try {
+      showToast("Generating PDF...", "info");
+
+      const response = await api.get(`/pdf/claim/${examId}/download`, {
+        responseType: 'blob'
+      });
+
+      // Create blob URL and open in new tab
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+
+      // Open in new tab
+      window.open(url, '_blank');
+
+      // Clean up the URL after a delay to allow the browser to load it
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+      }, 100);
+
+      showToast("PDF opened in new tab!", "success");
+    } catch (err) {
+      console.error("Failed to generate PDF:", err);
+      showToast("Failed to generate PDF", "error");
+    }
+  };
+
   const getStatusBadge = (status) => {
     const config = {
       draft: {
@@ -289,6 +316,19 @@ export default function MyClaims() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                         </svg>
                         Copy Link
+                      </Button>
+                    )}
+                    {(c.status === 'submitted' || c.status === 'approved') && (
+                      <Button
+                        size="sm"
+                        onClick={() => handleDownloadPDF(c.id)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                        title="Download PDF"
+                      >
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        PDF
                       </Button>
                     )}
                     <Button
