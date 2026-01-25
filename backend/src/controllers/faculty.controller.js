@@ -16,7 +16,8 @@ exports.createExam = async (req, res) => {
     semester,
     academic_year,
     exam_date,
-    is_backlog
+    is_backlog,
+    second_examiner
   } = req.body;
 
   if (
@@ -53,8 +54,8 @@ exports.createExam = async (req, res) => {
     `
     INSERT INTO exams
     (faculty_id, claim_form_type, exam_type, program, level, students_count,
-     subject_name, subject_code, semester, academic_year, exam_date, is_backlog)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+     subject_name, subject_code, semester, academic_year, exam_date, is_backlog, second_examiner)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, $13)
     RETURNING id
     `,
     [
@@ -69,7 +70,8 @@ exports.createExam = async (req, res) => {
       semester || null,
       academic_year || null,
       exam_date || null,
-      Boolean(is_backlog) || false
+      Boolean(is_backlog) || false,
+      second_examiner || null
     ]
   );
 
@@ -533,7 +535,8 @@ exports.updateExam = async (req, res) => {
     semester,
     academic_year,
     exam_date,
-    is_backlog
+    is_backlog,
+    second_examiner
   } = req.body;
 
   // only draft or rejected allowed
@@ -561,8 +564,9 @@ exports.updateExam = async (req, res) => {
       academic_year=$8,
       exam_date=$9,
       is_backlog=$10,
+      second_examiner=$11,
       updated_at=NOW()
-    WHERE id=$11
+    WHERE id=$12
     `,
     [
       exam_type,
@@ -575,6 +579,7 @@ exports.updateExam = async (req, res) => {
       academic_year,
       exam_date,
       is_backlog,
+      second_examiner || null,
       examId
     ]
   );
@@ -676,7 +681,7 @@ exports.getProfile = async (req, res) => {
   const facultyId = req.user.id;
 
   const user = await pool.query(
-    `SELECT id, name, email, department, prn, google_id, has_set_password, created_at FROM users WHERE id=$1`,
+    `SELECT id, name, email, department, prn, mobile, pan_card, google_id, has_set_password, created_at FROM users WHERE id=$1`,
     [facultyId]
   );
 
@@ -697,11 +702,11 @@ exports.getProfile = async (req, res) => {
 ================================ */
 exports.updateProfile = async (req, res) => {
   const facultyId = req.user.id;
-  const { name, department, prn, bank } = req.body;
+  const { name, department, prn, mobile, pan_card, bank } = req.body;
 
   try {
     // Update user profile
-    if (name || department || prn) {
+    if (name || department || prn || mobile || pan_card) {
       const updates = [];
       const params = [];
       let paramIndex = 1;
@@ -727,6 +732,14 @@ exports.updateProfile = async (req, res) => {
 
         updates.push(`prn = $${paramIndex++}`);
         params.push(prn);
+      }
+      if (mobile) {
+        updates.push(`mobile = $${paramIndex++}`);
+        params.push(mobile);
+      }
+      if (pan_card) {
+        updates.push(`pan_card = $${paramIndex++}`);
+        params.push(pan_card);
       }
 
       if (updates.length > 0) {
