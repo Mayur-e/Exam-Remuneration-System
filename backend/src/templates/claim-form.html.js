@@ -23,50 +23,56 @@ body {
   border: 2px solid #000;
   padding: 6px;
   min-height: 280mm;
+  box-sizing: border-box;
 }
 
 /* ===== HEADER WITH LOGO ===== */
 .header-table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 
 .header-table td {
   border: 1px solid #000;
   vertical-align: middle;
+  padding: 3px;
 }
 
 .logo-box {
-  width: 110px;
+  width: 105px;
   text-align: center;
-  padding: 4px;
+  padding: 2px;
 }
 
 .logo-box img {
-  max-height: 80px;
-  max-width: 100px;
+  max-height: 75px;
+  max-width: 95px;
 }
 
 .header-text {
   text-align: center;
-  padding: 4px;
+  padding: 3px;
 }
 
 .header-text .top {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
+  margin-bottom: 2px;
 }
 
 .header-text .name {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
-  margin: 2px 0;
+  margin: 1px 0;
+  line-height: 1.1;
 }
 
 .header-text .addr {
-  font-size: 10px;
-  line-height: 1.2;
+  font-size: 9px;
+  line-height: 1.1;
+  margin: 1px 0;
 }
 
 /* ===== GREY TITLE STRIP ===== */
@@ -75,47 +81,51 @@ body {
   background: #d9d9d9;
   text-align: center;
   font-weight: 700;
-  padding: 4px;
+  padding: 3px;
   margin-top: 2px;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 /* ===== FIELDS ===== */
 .row {
-  margin: 3px 0;
-  line-height: 1.4;
+  margin: 2px 0;
+  line-height: 1.3;
+  font-size: 10px;
 }
 
 .line {
   border-bottom: 1px dotted #000;
   display: inline-block;
-  min-width: 140px;
-  padding: 0 4px;
+  min-width: 100px;
+  padding: 0 3px;
+  font-size: 10px;
 }
 
 .label {
   font-weight: 700;
+  font-size: 10px;
 }
 
 /* ===== TABLE ===== */
 table.main {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 6px;
+  margin-top: 5px;
   table-layout: fixed;
+  font-size: 10px;
 }
 
 table.main th,
 table.main td {
   border: 1px solid #000;
-  padding: 4px;
-  font-size: 11px;
+  padding: 3px;
 }
 
 table.main th {
   text-align: center;
   font-weight: 700;
   background-color: #f0f0f0;
+  padding: 4px 2px;
 }
 
 .center { text-align:center; }
@@ -125,38 +135,51 @@ table.main th {
 .sign-table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 6px;
+  margin-top: 5px;
+  font-size: 10px;
 }
 
 .sign-table td {
   border: 1px solid #000;
-  height: 42px;
+  height: 35px;
   text-align: center;
   vertical-align: bottom;
   font-weight: 700;
-  font-size: 10px;
-  padding-bottom: 4px;
+  padding-bottom: 3px;
 }
 
 /* ===== BOTTOM OFFICE SECTION ===== */
 .office {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 6px;
+  margin-top: 5px;
+  font-size: 9px;
 }
 
 .office td {
   border: 1px solid #000;
-  height: 110px;
+  height: 95px;
   vertical-align: top;
-  padding: 6px;
+  padding: 4px;
+}
+
+.small { font-size: 9px; }
+.bold { font-weight: 700; }
+.mt-1 { margin-top: 1px; }
+.mt-2 { margin-top: 2px; }
+.mb-1 { margin-bottom: 1px; }
+
+/* ===== COMPACT ADJUSTMENTS ===== */
+.compact-line {
+  border-bottom: 1px dotted #000;
+  display: inline-block;
+  padding: 0 3px;
   font-size: 10px;
 }
 
-.small { font-size: 10px; }
-.bold { font-weight: 700; }
-.mt-2 { margin-top: 2px; }
-.mt-4 { margin-top: 4px; }
+.details-section {
+  margin: 4px 0;
+}
 </style>
 </head>
 
@@ -182,69 +205,71 @@ table.main th {
 Remuneration Claim Form - PR / OR / TW / Project / Seminar
 </div>
 
-<div class="center small mt-2">
+<div class="center small mt-1">
 (Individual Claim to be filled in by the Course Chairman Internal / External Examiner)
 </div>
 
 <!-- ================= DETAILS ================= -->
+<div class="details-section">
 <div class="row">
-<span class="label">Year:</span> <span class="line">${data.year || ''}</span>
-&nbsp;&nbsp; <span class="label">Program:</span> <span class="line">${data.program || ''}</span>
+<span class="label">Year:</span> <span class="line" style="min-width:60px">${data.year || ''}</span>
+&nbsp;&nbsp; <span class="label">Program:</span> <span class="line" style="min-width:80px">${data.program || ''}</span>
 </div>
 
 <div class="row">
 <span class="label">Name of Examiner:</span>
-<span class="line" style="width:72%">${data.examinerName || ''}</span>
+<span class="line" style="width:65%">${data.examinerName || ''}</span>
 </div>
 
 <div class="row">
 <span class="label">Name of College:</span>
-<span class="line" style="width:74%">${data.collegeName || ''}</span>
+<span class="line" style="width:67%">${data.collegeName || ''}</span>
 </div>
 
 <div class="row">
-<span class="label">Mob No:</span> <span class="line">${data.mobile || ''}</span>
-&nbsp;&nbsp; <span class="label">PAN:</span> <span class="line">${data.pan || ''}</span>
-&nbsp;&nbsp; <span class="label">Email ID:</span> <span class="line">${data.email || ''}</span>
+<span class="label">Mob No:</span> <span class="line" style="min-width:80px">${data.mobile || ''}</span>
+&nbsp; <span class="label">PAN:</span> <span class="line" style="min-width:90px">${data.pan || ''}</span>
+&nbsp; <span class="label">Email ID:</span> <span class="line" style="min-width:110px">${data.email || ''}</span>
 </div>
 
 <div class="row">
 <span class="label">Claim for (Name of Examination</span>
-<span class="line">${data.examName || ''}</span>
+<span class="line" style="min-width:100px">${data.examName || ''}</span>
 <span class="label">) at (Dept/Branch)</span>
-<span class="line">${data.department || ''}</span>
+<span class="line" style="min-width:90px">${data.department || ''}</span>
 </div>
 
 <div class="row">
 along with (Name of second Examiner)
-<span class="line" style="width:70%">${data.secondExaminer || ''}</span>
+<span class="line" style="width:62%">${data.secondExaminer || ''}</span>
 </div>
 
 <div class="row">
 <span class="label">For Subject:</span>
-<span class="line">${data.subject || ''}</span>
+<span class="line" style="min-width:120px">${data.subject || ''}</span>
 <span class="label">Subject Code:</span>
-<span class="line">${data.subjectCode || ''}</span>
+<span class="line" style="min-width:70px">${data.subjectCode || ''}</span>
 </div>
 
 <div class="row">
-<span class="label">Date of Exam:</span> <span class="line">${data.examDate || ''}</span>
-<span class="label">Acad. Year:</span> <span class="line">${data.academicYear || ''}</span>
-<span class="label">Semester:</span> <span class="line">${data.semester || ''}</span>
+<span class="label">Date of Exam:</span> <span class="line" style="min-width:70px">${data.examDate || ''}</span>
+<span class="label">Acad. Year:</span> <span class="line" style="min-width:80px">${data.academicYear || ''}</span>
+<span class="label">Semester:</span> <span class="line" style="min-width:40px">${data.semester || ''}</span>
 </div>
 
-<div class="row mt-2">
+<div class="row mt-1">
 at the Pimpri Chinchwad College of Engineering, Pune.
+</div>
 </div>
 
 <!-- ================= TABLE ================= -->
 <table class="main">
 <tr>
-<th style="width:6%">Sr No</th>
-<th style="width:34%">Examination Type</th>
-<th style="width:16%">No. of Students</th>
-<th style="width:18%">Rate per Student in Rs.</th>
-<th style="width:20%">Amount in Rs</th>
+<th style="width:5%">Sr No</th>
+<th style="width:35%">Examination Type</th>
+<th style="width:15%">No. of Students</th>
+<th style="width:17%">Rate per Student in Rs.</th>
+<th style="width:18%">Amount in Rs</th>
 </tr>
 
 ${[
@@ -258,7 +283,7 @@ ${[
 ].map((r,i)=>`
 <tr>
 <td class="center">${i+1}</td>
-<td>${r[0]}</td>
+<td style="font-size:10px; padding:3px;">${r[0]}</td>
 <td class="center">${data[r[1]]||''}</td>
 <td class="center">${data[r[2]]||''}</td>
 <td class="right">${data[r[3]]||''}</td>
@@ -283,20 +308,36 @@ ${[
 <!-- ================= OFFICE SECTION ================= -->
 <table class="office">
 <tr>
-<td>
-<b>To be Receipted in Advance</b><br><br>
-Rem. to Exam <span class="line" style="width:80%">${data.remToExamLine1 || ''}</span><br>
-<span class="line" style="width:80%">${data.remToExamLine2 || ''}</span><br><br>
+<td style="width:50%">
+<div class="bold">To be Receipted in Advance</div>
+<div class="mt-1">
+Rem. to Exam <span class="compact-line" style="width:75%">${data.remToExamLine1 || ''}</span>
+</div>
+<div class="mt-1">
+<span class="compact-line" style="width:75%">${data.remToExamLine2 || ''}</span>
+</div>
+<div class="mt-1">
 Signature across the revenue stamp is needed
+</div>
 </td>
 
-<td>
-<b>Amount Section (Exam Cell)</b><br><br>
-Passed for Rs <span class="line">${data.passedAmount || ''}</span><br>
-(In words) <span class="line" style="width:70%">${data.passedAmountInWords || ''}</span><br><br>
-<span class="line" style="width:90%">${data.passedAmountRemark || ''}</span><br><br>
-Date: <span class="line">${data.passedDate || ''}</span><br><br>
+<td style="width:50%">
+<div class="bold">Amount Section (Exam Cell)</div>
+<div class="mt-1">
+Passed for Rs <span class="compact-line" style="min-width:80px">${data.passedAmount || ''}</span>
+</div>
+<div class="mt-1">
+(In words) <span class="compact-line" style="width:65%">${data.passedAmountInWords || ''}</span>
+</div>
+<div class="mt-1">
+<span class="compact-line" style="width:85%">${data.passedAmountRemark || ''}</span>
+</div>
+<div class="mt-1">
+Date: <span class="compact-line" style="min-width:70px">${data.passedDate || ''}</span>
+</div>
+<div class="mt-1">
 Account Section &nbsp;&nbsp; Register/Exam cell in charge
+</div>
 </td>
 </tr>
 </table>

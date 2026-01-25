@@ -94,22 +94,32 @@ export default function MyClaims() {
       showToast("Generating PDF...", "info");
 
       const response = await api.get(`/pdf/claim/${examId}/download`, {
-        responseType: 'blob'
+        responseType: 'blob',
+        validateStatus: (status) => status < 500,
       });
 
-      // Create blob URL and open in new tab
+      if (response.status !== 200) {
+        throw new Error("Failed to generate PDF");
+      }
+
+      // Create blob URL
       const blob = new Blob([response.data], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
 
       // Open in new tab
-      window.open(url, '_blank');
+      const newTab = window.open(url, '_blank');
 
-      // Clean up the URL after a delay to allow the browser to load it
+      if (!newTab) {
+        showToast("Please allow popups to view the PDF", "warning");
+      } else {
+        showToast("PDF opened in new tab!", "success");
+      }
+
+      // Clean up the URL after a significant delay (1 minute) to allow the new tab to load
       setTimeout(() => {
         window.URL.revokeObjectURL(url);
-      }, 100);
+      }, 60000);
 
-      showToast("PDF opened in new tab!", "success");
     } catch (err) {
       console.error("Failed to generate PDF:", err);
       showToast("Failed to generate PDF", "error");

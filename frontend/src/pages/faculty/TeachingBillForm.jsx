@@ -87,25 +87,35 @@ export default function TeachingBillForm() {
       showToast("Generating PDF...", "info");
 
       const response = await api.get(`/pdf/claim/${examId}/download`, {
-        responseType: 'blob'
+        responseType: 'blob',
+        validateStatus: (status) => status < 500, // Resolve only if the status code is less than 500
       });
 
-      // Create blob URL and open in new tab
+      if (response.status !== 200) {
+        throw new Error("Failed to generate PDF");
+      }
+
+      // Create a URL for the blob
       const blob = new Blob([response.data], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
 
       // Open in new tab
-      window.open(url, '_blank');
+      const newTab = window.open(url, '_blank');
 
-      // Clean up the URL after a delay to allow the browser to load it
+      if (!newTab) {
+        showToast("Please allow popups to view the PDF", "warning");
+      } else {
+        showToast("PDF opened in new tab!", "success");
+      }
+
+      // Clean up the URL after a significant delay (1 minute) to allow the new tab to load
       setTimeout(() => {
         window.URL.revokeObjectURL(url);
-      }, 100);
+      }, 60000);
 
-      showToast("PDF opened in new tab!", "success");
     } catch (err) {
       console.error("Failed to generate PDF:", err);
-      showToast("Failed to generate PDF", "error");
+      showToast("Failed to generate PDF. Please try again.", "error");
     }
   };
 
@@ -270,11 +280,17 @@ export default function TeachingBillForm() {
       )}
 
       {/* STEP 4 */}
-      {examId && status === "submitted" && (
+      {examId && (status === "submitted" || status === "approved") && (
         <Card className="p-6 bg-green-50 border-green-200">
           <div className="text-center space-y-2 mb-4">
-            <h3 className="text-lg font-bold text-green-700">Claim Submitted Successfully</h3>
-            <p className="text-green-600">Your claim has been submitted for approval.</p>
+            <h3 className="text-lg font-bold text-green-700">
+              {status === "approved" ? "Claim Approved" : "Claim Submitted Successfully"}
+            </h3>
+            <p className="text-green-600">
+              {status === "approved"
+                ? "Your claim has been approved."
+                : "Your claim has been submitted for approval."}
+            </p>
             <div className="pt-2">
               <Button
                 onClick={handleDownloadPDF}
