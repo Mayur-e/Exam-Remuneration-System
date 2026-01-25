@@ -194,6 +194,9 @@ export default function AdminClaimView() {
                             <InfoRow label="Academic Year" value={exam.academic_year || 'N/A'} />
                             <InfoRow label="Exam Date" value={exam.exam_date ? new Date(exam.exam_date).toLocaleDateString() : 'N/A'} />
                             <InfoRow label="Is Backlog" value={exam.is_backlog ? 'Yes' : 'No'} />
+                            {exam.second_examiner && (
+                                <InfoRow label="Second Examiner" value={exam.second_examiner} />
+                            )}
                         </div>
                     </Card>
 
@@ -206,6 +209,7 @@ export default function AdminClaimView() {
                         <div className="space-y-3 text-sm mb-4">
                             <InfoRow label="Name" value={examinerName} />
                             <InfoRow label="Email" value={examinerEmail} />
+                            <InfoRow label="Mobile" value={isExternal ? (exam.external_examiner_mobile || 'N/A') : (exam.faculty_mobile || 'N/A')} />
                             {isExternal && exam.parent_institute && (
                                 <InfoRow label="Institute" value={exam.parent_institute} />
                             )}
@@ -223,7 +227,7 @@ export default function AdminClaimView() {
                                 <InfoRow label="Bank Name" value={bankName || 'Not provided'} />
                                 <InfoRow label="Account Number" value={accNumber || 'Not provided'} />
                                 <InfoRow label="IFSC Code" value={ifsc || 'Not provided'} />
-                                <InfoRow label="PAN Number" value={pan || 'Not provided'} />
+                                <InfoRow label="PAN Number" value={isExternal ? (exam.external_pan_number || 'Not provided') : (exam.faculty_pan_card || exam.faculty_pan_number || 'Not provided')} />
                             </div>
                         </div>
                     </Card>

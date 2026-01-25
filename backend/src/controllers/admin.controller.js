@@ -155,7 +155,10 @@ exports.getClaimDetails = async (req, res) => {
         ee.branch_name AS external_branch_name,
         ee.account_number AS external_account_number,
         ee.ifsc_code AS external_ifsc_code,
-        ee.pan_number AS external_pan_number
+        ee.pan_number AS external_pan_number,
+        u.mobile AS faculty_mobile,
+        u.pan_card AS faculty_pan_card,
+        e.second_examiner
       FROM exams e
       JOIN users u ON u.id = e.faculty_id
       LEFT JOIN faculty_bank_accounts fb ON u.id = fb.faculty_id
