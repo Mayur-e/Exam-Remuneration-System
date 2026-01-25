@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict FxI6V1Uqmecyx57eefYMwfkGjpw2DvdLV9JfMgvtqyuLTDdS9zjZSndqHVxvaML
+\restrict 3gQYyuGECJxAy3KlA8LlvBJysTnr04ZcXmOTCgNfZ7r3XTFv3epb2DEgTJeSJNG
 
 -- Dumped from database version 18.1
 -- Dumped by pg_dump version 18.1
@@ -454,12 +454,20 @@ CREATE TABLE public.exams (
     claim_form_type character varying(30),
     external_examiner_id integer,
     conveyance_amount numeric(10,2) DEFAULT 0,
+    second_examiner character varying(200),
     CONSTRAINT exams_claim_form_type_check CHECK (((claim_form_type)::text = ANY ((ARRAY['TEACHING_INTERNAL'::character varying, 'TEACHING_EXTERNAL'::character varying, 'NON_TEACHING'::character varying])::text[]))),
     CONSTRAINT exams_students_count_check CHECK ((students_count >= 0))
 );
 
 
 ALTER TABLE public.exams OWNER TO postgres;
+
+--
+-- Name: COLUMN exams.second_examiner; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.exams.second_examiner IS 'Name of the second examiner (if any)';
+
 
 --
 -- Name: exams_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -840,13 +848,50 @@ CREATE TABLE public.users (
     is_active boolean DEFAULT true,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     prn character varying(50),
-    google_id character varying(255),
+    google_id character varying(255) DEFAULT NULL::character varying,
     has_set_password boolean DEFAULT false,
+    mobile character varying(15),
+    pan_card character varying(20),
     CONSTRAINT users_role_check CHECK (((role)::text = ANY ((ARRAY['FACULTY'::character varying, 'ACCOUNTANT'::character varying, 'ADMIN'::character varying])::text[])))
 );
 
 
 ALTER TABLE public.users OWNER TO postgres;
+
+--
+-- Name: COLUMN users.prn; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.users.prn IS 'Permanent Registration Number - required for faculty members';
+
+
+--
+-- Name: COLUMN users.google_id; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.users.google_id IS 'Google user ID for users who signed up with Google OAuth';
+
+
+--
+-- Name: COLUMN users.has_set_password; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.users.has_set_password IS 'Indicates if user has set their own password (true for regular users, becomes true for Google users after they set password)';
+
+
+--
+-- Name: COLUMN users.mobile; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.users.mobile IS 'Mobile number of the user';
+
+
+--
+-- Name: COLUMN users.pan_card; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.users.pan_card IS 'PAN card number of the user';
+
 
 --
 -- Name: users_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -1224,10 +1269,24 @@ CREATE INDEX idx_payments_payment_date ON public.payments USING btree (payment_d
 
 
 --
+-- Name: idx_users_google_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_users_google_id ON public.users USING btree (google_id);
+
+
+--
 -- Name: idx_users_role; Type: INDEX; Schema: public; Owner: postgres
 --
 
 CREATE INDEX idx_users_role ON public.users USING btree (role);
+
+
+--
+-- Name: users_prn_unique; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX users_prn_unique ON public.users USING btree (prn) WHERE (prn IS NOT NULL);
 
 
 --
@@ -1346,5 +1405,5 @@ ALTER TABLE ONLY public.remuneration_calculations
 -- PostgreSQL database dump complete
 --
 
-\unrestrict FxI6V1Uqmecyx57eefYMwfkGjpw2DvdLV9JfMgvtqyuLTDdS9zjZSndqHVxvaML
+\unrestrict 3gQYyuGECJxAy3KlA8LlvBJysTnr04ZcXmOTCgNfZ7r3XTFv3epb2DEgTJeSJNG
 
