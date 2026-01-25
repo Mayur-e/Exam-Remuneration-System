@@ -202,6 +202,12 @@ export default function BillView() {
                 <p className="text-gray-500">Program</p>
                 <p className="font-medium">{exam.program}</p>
               </div>
+              {exam.second_examiner && (
+                <div className="col-span-2 mt-2 pt-2 border-t border-gray-100">
+                  <p className="text-gray-500">Second Examiner</p>
+                  <p className="font-medium text-gray-800">{exam.second_examiner}</p>
+                </div>
+              )}
             </div>
           </Card>
 
@@ -220,6 +226,12 @@ export default function BillView() {
               <div>
                 <p className="text-gray-500">Email</p>
                 <p className="font-medium">{examinerEmail}</p>
+              </div>
+              <div>
+                <p className="text-gray-500">Mobile</p>
+                <p className="font-medium">
+                  {isExternal ? (exam.external_examiner_mobile || 'N/A') : (exam.faculty_mobile || 'N/A')}
+                </p>
               </div>
               {isExternal && (
                 <div>
@@ -249,7 +261,11 @@ export default function BillView() {
                 </div>
                 <div>
                   <p className="text-gray-500">PAN Number</p>
-                  <p className="font-medium">{pan || 'Not provided'}</p>
+                  <p className="font-medium">
+                    {isExternal
+                      ? (exam.external_pan_number || 'Not provided')
+                      : (exam.faculty_pan_card || exam.faculty_pan_number || 'Not provided')}
+                  </p>
                 </div>
               </div>
 

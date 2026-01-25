@@ -127,7 +127,10 @@ exports.getClaimDetails = async (req, res) => {
         ee.travel_proof_url,
         ee.is_local,
         ee.journey_days,
-        ee.travel_allowance
+        ee.travel_allowance,
+        u.mobile AS faculty_mobile,
+        u.pan_card AS faculty_pan_card,
+        e.second_examiner
       FROM exams e
       JOIN users u ON u.id = e.faculty_id
       LEFT JOIN faculty_bank_accounts fb ON u.id = fb.faculty_id
