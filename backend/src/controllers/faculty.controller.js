@@ -1,4 +1,4 @@
-const pool = require("../config/db");
+﻿const pool = require("../config/db");
 const crypto = require("crypto");
 
 /**
@@ -17,7 +17,11 @@ exports.createExam = async (req, res) => {
     academic_year,
     exam_date,
     is_backlog,
-    second_examiner
+    second_examiner,
+    prep_dates,
+    exam_dates,
+    cleaning_dates,
+    students_per_batch
   } = req.body;
 
   if (
@@ -28,7 +32,7 @@ exports.createExam = async (req, res) => {
       message: "Invalid claim form type",
     });
   }
-  // 🔒 HARD VALIDATION
+  // ðŸ”’ HARD VALIDATION
   if (
     !exam_type ||
     !program ||
@@ -49,13 +53,14 @@ exports.createExam = async (req, res) => {
     });
   }
 
-  // ✅ Now safe to insert
+  // âœ… Now safe to insert
   const result = await pool.query(
     `
     INSERT INTO exams
     (faculty_id, claim_form_type, exam_type, program, level, students_count,
-     subject_name, subject_code, semester, academic_year, exam_date, is_backlog, second_examiner)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, $13)
+     subject_name, subject_code, semester, academic_year, exam_date, is_backlog, second_examiner,
+     prep_dates, exam_dates, cleaning_dates, students_per_batch)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
     RETURNING id
     `,
     [
@@ -71,7 +76,11 @@ exports.createExam = async (req, res) => {
       academic_year || null,
       exam_date || null,
       Boolean(is_backlog) || false,
-      second_examiner || null
+      second_examiner || null,
+      prep_dates || null,
+      exam_dates || null,
+      cleaning_dates || null,
+      students_per_batch ? Number(students_per_batch) : null
     ]
   );
 
@@ -86,7 +95,7 @@ exports.createExam = async (req, res) => {
  */
 exports.addExamStaff = async (req, res) => {
   const examId = req.params.id;
-  const { staff_name, staff_role, preparation_days, examination_days, cleaning_days } = req.body;
+  const { staff_name, staff_role, rate, preparation_days, examination_days, cleaning_days } = req.body;
 
   // Validation
   if (!staff_name || !staff_role) {
@@ -204,16 +213,18 @@ exports.addExamStaff = async (req, res) => {
       exam_id,
       staff_name,
       staff_role,
+      rate,
       preparation_days,
       examination_days,
       cleaning_days
     )
-    VALUES ($1,$2,$3,$4,$5,$6)
+    VALUES ($1,$2,$3,$4,$5,$6,$7)
     `,
     [
       examId,
       staff_name,
       staff_role,
+      rate ? Number(rate) : 0,
       prepDays,
       examination_days || 0,
       cleanDays
@@ -273,7 +284,7 @@ exports.submitExam = async (req, res) => {
     [examId, chairman_allowance || 0, conveyance_amount || 0]
   );
 
-  // 🔥 TRIGGER CALCULATION
+  // ðŸ”¥ TRIGGER CALCULATION
   await pool.query(`SELECT calculate_exam($1)`, [examId]);
 
   return res.json({ message: "Claim submitted and calculated" });
@@ -281,7 +292,7 @@ exports.submitExam = async (req, res) => {
 
 
 /**
- * List Faculty’s Own Exams
+ * List Facultyâ€™s Own Exams
  */
 exports.listMyExams = async (req, res) => {
   try {
@@ -536,7 +547,11 @@ exports.updateExam = async (req, res) => {
     academic_year,
     exam_date,
     is_backlog,
-    second_examiner
+    second_examiner,
+    prep_dates,
+    exam_dates,
+    cleaning_dates,
+    students_per_batch
   } = req.body;
 
   // only draft or rejected allowed
@@ -565,8 +580,12 @@ exports.updateExam = async (req, res) => {
       exam_date=$9,
       is_backlog=$10,
       second_examiner=$11,
+      prep_dates=$12,
+      exam_dates=$13,
+      cleaning_dates=$14,
+      students_per_batch=$15,
       updated_at=NOW()
-    WHERE id=$12
+    WHERE id=$16
     `,
     [
       exam_type,
@@ -580,6 +599,10 @@ exports.updateExam = async (req, res) => {
       exam_date,
       is_backlog,
       second_examiner || null,
+      prep_dates || null,
+      exam_dates || null,
+      cleaning_dates || null,
+      students_per_batch ? Number(students_per_batch) : null,
       examId
     ]
   );
@@ -821,3 +844,163 @@ exports.resubmitClaim = async (req, res) => {
     res.status(500).json({ message: "Failed to resubmit claim" });
   }
 };
+
+/**
+ * Get Exam Staff Members
+ */
+exports.getExamStaff = async (req, res) => {
+  const examId = req.params.id;
+
+  // Verify exam belongs to faculty
+  const exam = await pool.query(
+    `SELECT id FROM exams WHERE id=$1 AND faculty_id=$2`,
+    [examId, req.user.id]
+  );
+
+  if (exam.rows.length === 0) {
+    return res.status(404).json({ message: "Exam not found" });
+  }
+
+  // Get staff members
+  const staff = await pool.query(
+    `SELECT * FROM exam_staff_members WHERE exam_id=$1 ORDER BY id`,
+    [examId]
+  );
+
+  return res.json(staff.rows);
+};
+
+/**
+ * Update Exam Staff Member
+ */
+exports.updateExamStaff = async (req, res) => {
+  const { examId, staffId } = req.params;
+  const { staff_name, staff_role, rate, preparation_days, examination_days, cleaning_days } = req.body;
+
+  // Verify exam belongs to faculty and is editable
+  const exam = await pool.query(
+    `SELECT id, status FROM exams WHERE id=$1 AND faculty_id=$2`,
+    [examId, req.user.id]
+  );
+
+  if (exam.rows.length === 0) {
+    return res.status(404).json({ message: "Exam not found" });
+  }
+
+  if (exam.rows[0].status !== "draft" && exam.rows[0].status !== "rejected") {
+    return res.status(400).json({ message: "Cannot modify submitted claim" });
+  }
+
+  // Update staff member
+  await pool.query(
+    `UPDATE exam_staff_members SET
+      staff_name=$1,
+      staff_role=$2,
+      rate=$3,
+      preparation_days=$4,
+      examination_days=$5,
+      cleaning_days=$6
+    WHERE id=$7 AND exam_id=$8`,
+    [
+      staff_name,
+      staff_role,
+      rate ? Number(rate) : 0,
+      preparation_days || 0,
+      examination_days || 0,
+      cleaning_days || 0,
+      staffId,
+      examId
+    ]
+  );
+
+  return res.json({ message: "Staff member updated successfully" });
+};
+
+/**
+ * Delete Exam Staff Member
+ */
+exports.deleteExamStaff = async (req, res) => {
+  const { examId, staffId } = req.params;
+
+  // Verify exam belongs to faculty and is editable
+  const exam = await pool.query(
+    `SELECT id, status FROM exams WHERE id=$1 AND faculty_id=$2`,
+    [examId, req.user.id]
+  );
+
+  if (exam.rows.length === 0) {
+    return res.status(404).json({ message: "Exam not found" });
+  }
+
+  if (exam.rows[0].status !== "draft" && exam.rows[0].status !== "rejected") {
+    return res.status(400).json({ message: "Cannot modify submitted claim" });
+  }
+
+  // Delete staff member
+  await pool.query(
+    `DELETE FROM exam_staff_members WHERE id=$1 AND exam_id=$2`,
+    [staffId, examId]
+  );
+
+  return res.json({ message: "Staff member deleted successfully" });
+};
+
+/**
+ * Get Batch Size for Exam
+ */
+exports.getBatchSize = async (req, res) => {
+  const examId = req.params.id;
+
+  // Verify exam belongs to faculty
+  const exam = await pool.query(
+    `SELECT exam_type, program FROM exams WHERE id=$1 AND faculty_id=$2`,
+    [examId, req.user.id]
+  );
+
+  if (exam.rows.length === 0) {
+    return res.status(404).json({ message: "Exam not found" });
+  }
+
+  const { exam_type, program } = exam.rows[0];
+
+  // Get batch size from database
+  const batchQuery = await pool.query(
+    `SELECT 
+      CASE 
+        WHEN $1 = 'PR' THEN practical_size
+        WHEN $1 = 'OR' THEN oral_size
+        WHEN $1 = 'TW' THEN termwork_size
+        ELSE project_oral_size
+      END as batch_size
+    FROM batch_sizes 
+    WHERE program = $2`,
+    [exam_type, program]
+  );
+
+  if (batchQuery.rows.length === 0) {
+    return res.json({ batch_size: 1 }); // Default to 1 if not found
+  }
+
+  return res.json({ batch_size: batchQuery.rows[0].batch_size || 1 });
+};
+
+/**
+ * Get Staff Role Rates
+ */
+exports.getStaffRates = async (req, res) => {
+  try {
+    const rates = await pool.query(
+      `SELECT staff_role, preparation_rate, per_batch_rate, cleaning_rate 
+       FROM staff_role_rates 
+       ORDER BY staff_role`
+    );
+
+    return res.json(rates.rows);
+  } catch (err) {
+    console.error("Failed to fetch staff rates:", err);
+    return res.status(500).json({ message: "Failed to fetch staff rates" });
+  }
+};
+
+
+

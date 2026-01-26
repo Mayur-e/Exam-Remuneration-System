@@ -11,7 +11,7 @@ import {
     PlusIcon,
     TrashIcon,
     AlertCircleIcon,
-    CheckCircleIcon
+    EditIcon
 } from "../../components/icons/logo";
 
 const STAFF_ROLES = [
@@ -22,36 +22,144 @@ const STAFF_ROLES = [
 ];
 
 export default function StaffClaimsSection({ examId, disabled }) {
-    const [staffList, setStaffList] = useState([]);
+    const [savedStaff, setSavedStaff] = useState([]);
+    const [editingStaff, setEditingStaff] = useState(null);
+    const [newStaff, setNewStaff] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [batchInfo, setBatchInfo] = useState({ batches: 0 });
+    const [staffRates, setStaffRates] = useState({});
     const { showToast } = useToast();
 
-    const addStaffRow = () => {
-        setStaffList([
-            ...staffList,
-            {
-                id: Date.now(),
-                staff_name: "",
-                staff_role: "",
-                preparation_days: "",
-                examination_days: "",
-                cleaning_days: ""
-            }
-        ]);
+    // Fetch saved staff and batch info
+    useEffect(() => {
+        if (!examId) return;
+        fetchStaff();
+        fetchBatchInfo();
+        fetchStaffRates();
+    }, [examId]);
+
+    const fetchStaff = async () => {
+        try {
+            const res = await api.get(`/faculty/exams/${examId}/staff`);
+            setSavedStaff(res.data || []);
+        } catch (err) {
+            console.error("Failed to fetch staff:", err);
+        }
     };
 
-    const removeStaffRow = (id) => {
-        setStaffList(staffList.filter((s) => s.id !== id));
+    const fetchBatchInfo = async () => {
+        try {
+            const res = await api.get(`/faculty/exams/${examId}`);
+            const totalStudents = res.data.students_count || 0;
+
+            // Fetch batch size from database based on exam type and program
+            const batchRes = await api.get(`/faculty/exams/${examId}/batch-size`);
+            const batchSize = batchRes.data.batch_size || 1;
+            const batches = batchSize ? Math.ceil(totalStudents / batchSize) : 0;
+
+            // Count dates from comma-separated strings
+            const countDates = (dateStr) => {
+                if (!dateStr) return 0;
+                return dateStr.split(',').map(d => d.trim()).filter(Boolean).length;
+            };
+
+            const prepDays = countDates(res.data.prep_dates);
+            const examDays = countDates(res.data.exam_dates);
+            const cleanDays = countDates(res.data.cleaning_dates);
+
+            setBatchInfo({
+                batches,
+                prepDays,
+                examDays,
+                cleanDays
+            });
+        } catch (err) {
+            console.error("Failed to fetch batch info:", err);
+        }
     };
 
-    const updateStaffRow = (id, field, value) => {
-        setStaffList(
-            staffList.map((s) => (s.id === id ? { ...s, [field]: value } : s))
+    const fetchStaffRates = async () => {
+        try {
+            const res = await api.get(`/faculty/staff-rates`);
+            // Convert array to object for easy lookup
+            const ratesMap = {};
+            res.data.forEach(rate => {
+                ratesMap[rate.staff_role] = {
+                    preparation_rate: Number(rate.preparation_rate) || 0,
+                    per_batch_rate: Number(rate.per_batch_rate) || 0,
+                    cleaning_rate: Number(rate.cleaning_rate) || 0
+                };
+            });
+            setStaffRates(ratesMap);
+        } catch (err) {
+            console.error("Failed to fetch staff rates:", err);
+        }
+    };
+
+    const calculateAmounts = (staff) => {
+        const staffRole = staff.staff_role;
+        const rates = staffRates[staffRole] || { preparation_rate: 0, per_batch_rate: 0, cleaning_rate: 0 };
+
+        // Use auto-calculated day counts from batchInfo (based on dates entered in NonTeachingInfo)
+        const prepDays = batchInfo.prepDays || 0;
+        const cleanDays = batchInfo.cleanDays || 0;
+        const examDays = batchInfo.examDays || 0;
+
+        // Expert Assistants don't get prep & clean remuneration
+        const isExpertAssistant = staffRole === "Expert Assistant";
+
+        // Prep & Clean Amount = (prep_rate × prep_days) + (clean_rate × clean_days)
+        const prepCleanAmount = isExpertAssistant ? null : (
+            (rates.preparation_rate * prepDays) + (rates.cleaning_rate * cleanDays)
         );
+
+        // Batch Amount Calculation
+        // Expert Assistant: Rate × Total Batches
+        // Others: Rate × Total Batches × Examination Days
+        let batchAmount = 0;
+        if (isExpertAssistant) {
+            batchAmount = rates.per_batch_rate * batchInfo.batches;
+        } else {
+            // For others, it's per day per batch
+            batchAmount = rates.per_batch_rate * batchInfo.batches * examDays;
+        }
+
+        // Total = prep&clean + batch (or just batch for Expert Assistant)
+        const totalAmount = (prepCleanAmount !== null ? prepCleanAmount : 0) + batchAmount;
+
+        return { prepCleanAmount, batchAmount, totalAmount };
     };
 
-    const saveStaff = async (staffRow) => {
-        if (!staffRow.staff_role || !staffRow.staff_name) {
+    const addNewStaffRow = () => {
+        setNewStaff({
+            id: Date.now(),
+            staff_name: "",
+            staff_role: "",
+            rate: "",
+            preparation_days: 0,
+            examination_days: 0,
+            cleaning_days: 0
+        });
+    };
+
+    const updateNewStaff = (field, value) => {
+        setNewStaff(prev => {
+            const updated = { ...prev, [field]: value };
+            // Auto-set rate when role is selected based on database rates
+            if (field === "staff_role" && staffRates[value]) {
+                // Use per_batch_rate as the default rate for display
+                updated.rate = staffRates[value].per_batch_rate;
+            }
+            return updated;
+        });
+    };
+
+    const updateEditingStaff = (field, value) => {
+        setEditingStaff(prev => ({ ...prev, [field]: value }));
+    };
+
+    const saveNewStaff = async () => {
+        if (!newStaff.staff_name || !newStaff.staff_role) {
             showToast("Please fill in Staff Name and Role", "error");
             return;
         }
@@ -59,20 +167,65 @@ export default function StaffClaimsSection({ examId, disabled }) {
         setLoading(true);
         try {
             await api.post(`/faculty/exams/${examId}/staff`, {
-                staff_name: staffRow.staff_name,
-                staff_role: staffRow.staff_role,
-                preparation_days: Number(staffRow.preparation_days) || 0,
-                examination_days: Number(staffRow.examination_days) || 0,
-                cleaning_days: Number(staffRow.cleaning_days) || 0
+                staff_name: newStaff.staff_name,
+                staff_role: newStaff.staff_role,
+                rate: Number(newStaff.rate) || (staffRates[newStaff.staff_role]?.per_batch_rate) || 0,
+                // Day counts are auto-calculated from dates, so we send 0
+                preparation_days: 0,
+                examination_days: 0,
+                cleaning_days: 0
             });
             showToast("Staff member added successfully!", "success");
-            // Remove the saved row from the list
-            removeStaffRow(staffRow.id);
+            setNewStaff(null);
+            fetchStaff();
         } catch (err) {
             showToast(err.response?.data?.message || "Failed to add staff member", "error");
         } finally {
             setLoading(false);
         }
+    };
+
+    const saveEditedStaff = async () => {
+        setLoading(true);
+        try {
+            await api.put(`/faculty/exams/${examId}/staff/${editingStaff.id}`, {
+                staff_name: editingStaff.staff_name,
+                staff_role: editingStaff.staff_role,
+                rate: Number(editingStaff.rate) || 0,
+                preparation_days: Number(editingStaff.preparation_days) || 0,
+                examination_days: Number(editingStaff.examination_days) || 0,
+                cleaning_days: Number(editingStaff.cleaning_days) || 0
+            });
+            showToast("Staff member updated successfully!", "success");
+            setEditingStaff(null);
+            fetchStaff();
+        } catch (err) {
+            showToast(err.response?.data?.message || "Failed to update staff member", "error");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const deleteStaff = async (staffId) => {
+        if (!confirm("Are you sure you want to remove this staff member?")) return;
+
+        setLoading(true);
+        try {
+            await api.delete(`/faculty/exams/${examId}/staff/${staffId}`);
+            showToast("Staff member removed successfully!", "success");
+            fetchStaff();
+        } catch (err) {
+            showToast(err.response?.data?.message || "Failed to remove staff member", "error");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const calculateGrandTotal = () => {
+        return savedStaff.reduce((sum, staff) => {
+            const { totalAmount } = calculateAmounts(staff);
+            return sum + totalAmount;
+        }, 0);
     };
 
     if (!examId) {
@@ -97,16 +250,16 @@ export default function StaffClaimsSection({ examId, disabled }) {
                     </div>
                     <div>
                         <h3 className="text-xl font-semibold text-gray-800">
-                            Staff Details
+                            Staff Table
                         </h3>
                         <p className="text-sm text-gray-600">
-                            Add supporting staff for this examination
+                            Manage supporting staff and their remuneration
                         </p>
                     </div>
                 </div>
-                {!disabled && (
+                {!disabled && !newStaff && (
                     <Button
-                        onClick={addStaffRow}
+                        onClick={addNewStaffRow}
                         variant="secondary"
                         className="flex items-center gap-2"
                     >
@@ -116,145 +269,272 @@ export default function StaffClaimsSection({ examId, disabled }) {
                 )}
             </div>
 
-            {staffList.length === 0 ? (
-                <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                    <UsersIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-gray-600 mb-2">No staff added yet</p>
-                    <p className="text-sm text-gray-500">
-                        Click "Add Staff" to add supporting staff for this exam
-                    </p>
-                </div>
-            ) : (
-                <div className="space-y-4">
-                    {staffList.map((staff) => (
-                        <div
-                            key={staff.id}
-                            className="p-4 border border-gray-200 rounded-lg bg-gray-50"
-                        >
-                            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-                                {/* Staff Name */}
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">
-                                        Staff Name *
-                                    </label>
-                                    <Input
-                                        type="text"
-                                        disabled={disabled}
-                                        placeholder="Enter name"
-                                        value={staff.staff_name}
-                                        onChange={(e) =>
-                                            updateStaffRow(staff.id, "staff_name", e.target.value)
-                                        }
-                                    />
-                                </div>
+            {/* Staff Table */}
+            <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                    <thead>
+                        <tr className="bg-gray-100 border-b-2 border-gray-300">
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Designation</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Rate (₹)</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Prep & Clean Rs</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Batch Rs</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Total Amount</th>
+                            {!disabled && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {/* Saved Staff Rows */}
+                        {savedStaff.map((staff) => {
+                            const isEditing = editingStaff?.id === staff.id;
+                            const currentStaff = isEditing ? editingStaff : staff;
+                            const { prepCleanAmount, batchAmount, totalAmount } = calculateAmounts(currentStaff);
 
-                                {/* Staff Role */}
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">
-                                        Staff Role *
-                                    </label>
+                            return (
+                                <tr key={staff.id} className="border-b border-gray-200 hover:bg-gray-50">
+                                    <td className="px-4 py-3">
+                                        {isEditing ? (
+                                            <Input
+                                                value={editingStaff.staff_name}
+                                                onChange={(e) => updateEditingStaff("staff_name", e.target.value)}
+                                                className="w-full"
+                                            />
+                                        ) : (
+                                            <span className="text-sm text-gray-800">{staff.staff_name}</span>
+                                        )}
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        {isEditing ? (
+                                            <select
+                                                value={editingStaff.staff_role}
+                                                onChange={(e) => updateEditingStaff("staff_role", e.target.value)}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                            >
+                                                <option value="">Select</option>
+                                                {STAFF_ROLES.map(role => (
+                                                    <option key={role} value={role}>{role}</option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <span className="text-sm text-gray-800">{staff.staff_role}</span>
+                                        )}
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        {isEditing ? (
+                                            <Input
+                                                type="number"
+                                                value={editingStaff.rate}
+                                                onChange={(e) => updateEditingStaff("rate", e.target.value)}
+                                                className="w-24"
+                                            />
+                                        ) : (
+                                            <span className="text-sm text-gray-800">₹{staff.rate || 0}</span>
+                                        )}
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <div className="space-y-1">
+                                            {currentStaff.staff_role === "Expert Assistant" ? (
+                                                <>
+                                                    <span className="text-xs text-gray-500 italic">
+                                                        Not applicable
+                                                    </span>
+                                                    <div className="text-sm font-semibold text-gray-400">
+                                                        N/A
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <span className="text-xs text-gray-600">
+                                                        {batchInfo.prepDays || 0} + {batchInfo.cleanDays || 0} days
+                                                    </span>
+                                                    <div className="text-sm font-semibold text-green-700">
+                                                        ₹{prepCleanAmount.toFixed(2)}
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <div className="space-y-1">
+                                            {currentStaff.staff_role === "Expert Assistant" ? (
+                                                <span className="text-xs text-gray-600">
+                                                    {batchInfo.batches} batches
+                                                </span>
+                                            ) : (
+                                                <span className="text-xs text-gray-600">
+                                                    {batchInfo.examDays || 0} days × {batchInfo.batches} batches
+                                                </span>
+                                            )}
+                                            <div className="text-sm font-semibold text-blue-700">
+                                                ₹{batchAmount.toFixed(2)}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <span className="text-sm font-bold text-purple-700">
+                                            ₹{totalAmount.toFixed(2)}
+                                        </span>
+                                    </td>
+                                    {!disabled && (
+                                        <td className="px-4 py-3">
+                                            <div className="flex gap-2">
+                                                {isEditing ? (
+                                                    <>
+                                                        <Button
+                                                            onClick={saveEditedStaff}
+                                                            disabled={loading}
+                                                            size="sm"
+                                                            className="text-xs"
+                                                        >
+                                                            Save
+                                                        </Button>
+                                                        <Button
+                                                            onClick={() => setEditingStaff(null)}
+                                                            variant="secondary"
+                                                            size="sm"
+                                                            className="text-xs"
+                                                        >
+                                                            Cancel
+                                                        </Button>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Button
+                                                            onClick={() => setEditingStaff({ ...staff })}
+                                                            variant="secondary"
+                                                            size="sm"
+                                                            className="text-xs"
+                                                        >
+                                                            <EditIcon className="w-3 h-3" />
+                                                        </Button>
+                                                        <Button
+                                                            onClick={() => deleteStaff(staff.id)}
+                                                            variant="destructive"
+                                                            size="sm"
+                                                            className="text-xs"
+                                                        >
+                                                            <TrashIcon className="w-3 h-3" />
+                                                        </Button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </td>
+                                    )}
+                                </tr>
+                            );
+                        })}
+
+                        {/* New Staff Row */}
+                        {newStaff && (
+                            <tr className="border-b-2 border-purple-300 bg-purple-50">
+                                <td className="px-4 py-3">
+                                    <Input
+                                        placeholder="Enter name"
+                                        value={newStaff.staff_name}
+                                        onChange={(e) => updateNewStaff("staff_name", e.target.value)}
+                                    />
+                                </td>
+                                <td className="px-4 py-3">
                                     <select
-                                        disabled={disabled}
-                                        value={staff.staff_role}
-                                        onChange={(e) =>
-                                            updateStaffRow(staff.id, "staff_role", e.target.value)
-                                        }
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100"
+                                        value={newStaff.staff_role}
+                                        onChange={(e) => updateNewStaff("staff_role", e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                                     >
                                         <option value="">Select Role</option>
-                                        {STAFF_ROLES.map((role) => (
-                                            <option key={role} value={role}>
-                                                {role}
-                                            </option>
+                                        {STAFF_ROLES.map(role => (
+                                            <option key={role} value={role}>{role}</option>
                                         ))}
                                     </select>
-                                </div>
-
-                                {/* Preparation Days */}
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">
-                                        Prep Days
-                                    </label>
+                                </td>
+                                <td className="px-4 py-3">
                                     <Input
                                         type="number"
-                                        min="0"
-                                        disabled={disabled}
-                                        placeholder="0"
-                                        value={staff.preparation_days}
-                                        onChange={(e) =>
-                                            updateStaffRow(
-                                                staff.id,
-                                                "preparation_days",
-                                                e.target.value
-                                            )
-                                        }
+                                        placeholder="Rate"
+                                        value={newStaff.rate}
+                                        onChange={(e) => updateNewStaff("rate", e.target.value)}
+                                        className="w-24"
                                     />
-                                </div>
-
-                                {/* Examination Days */}
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">
-                                        Exam Days
-                                    </label>
-                                    <Input
-                                        type="number"
-                                        min="0"
-                                        disabled={disabled}
-                                        placeholder="0"
-                                        value={staff.examination_days}
-                                        onChange={(e) =>
-                                            updateStaffRow(staff.id, "examination_days", e.target.value)
-                                        }
-                                    />
-                                </div>
-
-                                {/* Cleaning Days */}
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">
-                                        Clean Days
-                                    </label>
-                                    <Input
-                                        type="number"
-                                        min="0"
-                                        disabled={disabled}
-                                        placeholder="0"
-                                        value={staff.cleaning_days}
-                                        onChange={(e) =>
-                                            updateStaffRow(staff.id, "cleaning_days", e.target.value)
-                                        }
-                                    />
-                                </div>
-
-                                {/* Actions */}
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">
-                                        Actions
-                                    </label>
+                                </td>
+                                <td className="px-4 py-3">
+                                    {newStaff.staff_role === "Expert Assistant" ? (
+                                        <div className="text-xs text-gray-500 italic">N/A</div>
+                                    ) : (
+                                        <div className="text-xs text-gray-600">
+                                            {batchInfo.prepDays || 0} + {batchInfo.cleanDays || 0} days
+                                        </div>
+                                    )}
+                                </td>
+                                <td className="px-4 py-3">
+                                    {newStaff.staff_role === "Expert Assistant" ? (
+                                        <div className="text-xs text-gray-600">
+                                            {batchInfo.batches} batches
+                                        </div>
+                                    ) : (
+                                        <div className="text-xs text-gray-600">
+                                            {batchInfo.examDays || 0} days × {batchInfo.batches} batches
+                                        </div>
+                                    )}
+                                </td>
+                                <td className="px-4 py-3">
+                                    <span className="text-sm font-bold text-purple-700">
+                                        ₹{calculateAmounts(newStaff).totalAmount.toFixed(2)}
+                                    </span>
+                                </td>
+                                <td className="px-4 py-3">
                                     <div className="flex gap-2">
                                         <Button
-                                            onClick={() => saveStaff(staff)}
-                                            disabled={disabled || loading}
-                                            className="flex-1"
+                                            onClick={saveNewStaff}
+                                            disabled={loading}
                                             size="sm"
+                                            className="text-xs"
                                         >
                                             Save
                                         </Button>
-                                        {!disabled && (
-                                            <Button
-                                                onClick={() => removeStaffRow(staff.id)}
-                                                variant="destructive"
-                                                size="sm"
-                                            >
-                                                <TrashIcon className="w-4 h-4" />
-                                            </Button>
-                                        )}
+                                        <Button
+                                            onClick={() => setNewStaff(null)}
+                                            variant="secondary"
+                                            size="sm"
+                                            className="text-xs"
+                                        >
+                                            Cancel
+                                        </Button>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
+                                </td>
+                            </tr>
+                        )}
+
+                        {/* Empty State */}
+                        {savedStaff.length === 0 && !newStaff && (
+                            <tr>
+                                <td colSpan="7" className="px-4 py-8 text-center">
+                                    <UsersIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                                    <p className="text-gray-600 mb-2">No staff added yet</p>
+                                    <p className="text-sm text-gray-500">
+                                        Click "Add Staff" to add supporting staff
+                                    </p>
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+
+                    {/* Grand Total Row */}
+                    {savedStaff.length > 0 && (
+                        <tfoot>
+                            <tr className="bg-gradient-to-r from-purple-100 to-blue-100 border-t-2 border-purple-300">
+                                <td colSpan="5" className="px-4 py-4 text-right font-bold text-gray-800">
+                                    Grand Total:
+                                </td>
+                                <td className="px-4 py-4">
+                                    <span className="text-lg font-bold text-purple-800">
+                                        ₹{calculateGrandTotal().toFixed(2)}
+                                    </span>
+                                </td>
+                                {!disabled && <td></td>}
+                            </tr>
+                        </tfoot>
+                    )}
+                </table>
+            </div>
 
             {/* Information Box */}
             <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
@@ -263,10 +543,11 @@ export default function StaffClaimsSection({ examId, disabled }) {
                     <div>
                         <h4 className="font-medium text-blue-800 mb-1">Important Notes</h4>
                         <ul className="text-sm text-blue-700 space-y-1">
-                            <li>• Save each staff entry individually before submission</li>
-                            <li>• Batch count will be calculated automatically by the system</li>
-                            <li>• Remuneration rates are applied as per institutional norms</li>
-                            <li>• Final calculation will be done upon claim submission</li>
+                            <li>• Prep & Clean Rs = (Prep Rate × Prep Days) + (Clean Rate × Clean Days)</li>
+                            <li>• Batch Rs (Expert): Rate × Total Batches</li>
+                            <li>• Batch Rs (Others): Rate × Total Batches × Exam Days</li>
+                            <li>• Total Amount = Prep & Clean Rs + Batch Rs</li>
+                            <li>• Rates are auto-filled from database configuration</li>
                         </ul>
                     </div>
                 </div>

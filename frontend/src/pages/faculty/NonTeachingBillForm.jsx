@@ -4,6 +4,7 @@ import api from "../../services/api";
 import { useLocation } from "react-router-dom";
 
 import ExamDetails from "./ExamDetails";
+import NonTeachingInfo from "./NonTeachingInfo";
 import StaffClaimsSection from "./StaffClaimsSection";
 import BillSummary from "./BillSummary";
 
@@ -103,7 +104,16 @@ export default function NonTeachingBillForm() {
                 />
             </Card>
 
-            {/* STEP 2: Staff Details */}
+            {/* STEP 2: Dates & Student Info */}
+            {examId && (
+                <NonTeachingInfo
+                    examId={examId}
+                    disabled={status !== "draft" && status !== "rejected"}
+                    onUpdated={fetchExam}
+                />
+            )}
+
+            {/* STEP 3: Staff Details */}
             {examId && (
                 <StaffClaimsSection
                     examId={examId}
@@ -111,7 +121,7 @@ export default function NonTeachingBillForm() {
                 />
             )}
 
-            {/* STEP 3: Bill Summary (After Submission) */}
+            {/* STEP 4: Bill Summary (After Submission) */}
             {examId && status === "submitted" && (
                 <Card className="p-6 bg-green-50 border-green-200">
                     <div className="text-center space-y-2 mb-4">

@@ -28,6 +28,11 @@ router.put("/exams/:id", idParamValidation, createExamValidation, ctrl.updateExa
 router.post("/exams/:id/submit", idParamValidation, submitClaimValidation, ctrl.submitExam);
 router.post("/exams/:id/resubmit", idParamValidation, ctrl.resubmitClaim);
 router.post("/exams/:id/staff", idParamValidation, ctrl.addExamStaff);
+router.get("/exams/:id/staff", idParamValidation, ctrl.getExamStaff);
+router.get("/exams/:id/batch-size", idParamValidation, ctrl.getBatchSize);
+router.get("/staff-rates", ctrl.getStaffRates);
+router.put("/exams/:examId/staff/:staffId", ctrl.updateExamStaff);
+router.delete("/exams/:examId/staff/:staffId", ctrl.deleteExamStaff);
 router.get("/exams/:id/bill", idParamValidation, ctrl.getBillSummary);
 router.get("/drafts", ctrl.listDraftClaims);
 router.delete("/drafts/:id", idParamValidation, ctrl.deleteDraft);

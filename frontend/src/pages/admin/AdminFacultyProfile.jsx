@@ -80,8 +80,8 @@ export default function AdminFacultyProfile() {
                     </div>
                 </div>
                 <div className={`px-3 py-1 rounded-full text-sm font-medium ${faculty.is_active
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-red-100 text-red-700'
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-red-100 text-red-700'
                     }`}>
                     {faculty.is_active ? 'Active' : 'Inactive'}
                 </div>
@@ -97,16 +97,16 @@ export default function AdminFacultyProfile() {
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id
-                                        ? 'border-purple-600 text-purple-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    ? 'border-purple-600 text-purple-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                     }`}
                             >
                                 <Icon className="w-5 h-5" />
                                 {tab.label}
                                 {tab.count !== undefined && (
                                     <span className={`px-2 py-0.5 rounded-full text-xs ${activeTab === tab.id
-                                            ? 'bg-purple-100 text-purple-700'
-                                            : 'bg-gray-100 text-gray-600'
+                                        ? 'bg-purple-100 text-purple-700'
+                                        : 'bg-gray-100 text-gray-600'
                                         }`}>
                                         {tab.count}
                                     </span>
@@ -149,6 +149,8 @@ function OverviewTab({ faculty, bank, claims, rejectionHistory, externalLinks })
                 <div className="space-y-3 text-sm">
                     <InfoRow label="Name" value={faculty.name} />
                     <InfoRow label="Email" value={faculty.email} />
+                    <InfoRow label="Mobile" value={faculty.mobile || 'N/A'} />
+                    <InfoRow label="PAN Card" value={faculty.pan_card || 'N/A'} />
                     <InfoRow label="Department" value={faculty.department || 'N/A'} />
                     <InfoRow label="Role" value={faculty.role} />
                     <InfoRow label="Status" value={faculty.is_active ? 'Active' : 'Inactive'} />
@@ -239,10 +241,10 @@ function ClaimsTab({ claims }) {
                                     </td>
                                     <td className="px-4 py-3">
                                         <span className={`text-xs px-2 py-1 rounded-full font-medium ${claim.status === 'paid' ? 'bg-green-100 text-green-700' :
-                                                claim.status === 'approved' ? 'bg-blue-100 text-blue-700' :
-                                                    claim.status === 'submitted' ? 'bg-orange-100 text-orange-700' :
-                                                        claim.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                                                            'bg-gray-100 text-gray-700'
+                                            claim.status === 'approved' ? 'bg-blue-100 text-blue-700' :
+                                                claim.status === 'submitted' ? 'bg-orange-100 text-orange-700' :
+                                                    claim.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                                                        'bg-gray-100 text-gray-700'
                                             }`}>
                                             {claim.status}
                                         </span>
@@ -332,8 +334,8 @@ function ExternalLinksTab({ externalLinks }) {
                                     </p>
                                 </div>
                                 <span className={`text-xs px-2 py-1 rounded-full font-medium ${link.used ? 'bg-green-100 text-green-700' :
-                                        new Date(link.expires_at) < new Date() ? 'bg-red-100 text-red-700' :
-                                            'bg-blue-100 text-blue-700'
+                                    new Date(link.expires_at) < new Date() ? 'bg-red-100 text-red-700' :
+                                        'bg-blue-100 text-blue-700'
                                     }`}>
                                     {link.used ? 'Used' : new Date(link.expires_at) < new Date() ? 'Expired' : 'Active'}
                                 </span>

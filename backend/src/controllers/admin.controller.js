@@ -24,7 +24,7 @@ exports.getDashboardStats = async (req, res) => {
           AND created_at < NOW() - INTERVAL '7 days'
         ) AS pending_beyond_limit,
         COUNT(DISTINCT exam_id) FILTER (
-          WHERE action_type = 'REJECTED'
+          WHERE action_type = 'REJECTED' AND e.status = 'submitted'
         ) AS repeated_rejections,
         COUNT(*) FILTER (
           WHERE claim_form_type = 'TEACHING_EXTERNAL'
@@ -55,7 +55,7 @@ exports.getDashboardStats = async (req, res) => {
 ================================ */
 exports.getAllClaims = async (req, res) => {
     try {
-        const { status, department, exam_type, academic_year, claim_form_type } = req.query;
+        const { status, department, exam_type, academic_year, claim_form_type, rejection_history } = req.query;
 
         let where = [];
         let params = [];
@@ -64,6 +64,10 @@ exports.getAllClaims = async (req, res) => {
         if (status) {
             where.push(`e.status = $${paramIndex++}`);
             params.push(status);
+        }
+
+        if (rejection_history === 'true') {
+            where.push(`EXISTS (SELECT 1 FROM claim_actions ca WHERE ca.exam_id = e.id AND ca.action_type = 'REJECTED')`);
         }
 
         if (department) {
@@ -316,7 +320,7 @@ exports.getFacultyProfile = async (req, res) => {
 
     try {
         const user = await pool.query(
-            `SELECT id, name, email, department, role, created_at, is_active 
+            `SELECT id, name, email, department, role, created_at, is_active, mobile, pan_card 
        FROM users WHERE id=$1 AND role='FACULTY'`,
             [facultyId]
         );

@@ -290,21 +290,23 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
           </div>
         </div>
 
-        {/* Row 3.5: Second Examiner (Optional) */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700">
-            Second Examiner Name (if any)
-          </label>
-          <Input
-            disabled={disabled}
-            placeholder="Enter name of second examiner (optional)"
-            value={form.second_examiner}
-            onChange={(e) => update("second_examiner", e.target.value)}
-          />
-          <p className="text-xs text-gray-500">
-            Leave blank if there is no second examiner
-          </p>
-        </div>
+        {/* Row 3.5: Second Examiner (Optional) - Only for Teaching claims */}
+        {claimFormType !== "NON_TEACHING" && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">
+              Second Examiner Name (if any)
+            </label>
+            <Input
+              disabled={disabled}
+              placeholder="Enter name of second examiner (optional)"
+              value={form.second_examiner}
+              onChange={(e) => update("second_examiner", e.target.value)}
+            />
+            <p className="text-xs text-gray-500">
+              Leave blank if there is no second examiner
+            </p>
+          </div>
+        )}
 
         {/* Row 4: Semester & Academic Year */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

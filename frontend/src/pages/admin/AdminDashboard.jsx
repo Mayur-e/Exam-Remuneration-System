@@ -149,8 +149,8 @@ export default function AdminDashboard() {
             {alerts.repeated_rejections > 0 && (
               <AlertItem
                 type="error"
-                message={`${alerts.repeated_rejections} claim(s) with repeated rejections`}
-                action={() => navigate("/admin/claims?status=rejected")}
+                message={`${alerts.repeated_rejections} claim(s) with previous rejections (Resubmitted)`}
+                action={() => navigate("/admin/claims?status=submitted&rejection_history=true")}
                 actionLabel="Review"
               />
             )}
