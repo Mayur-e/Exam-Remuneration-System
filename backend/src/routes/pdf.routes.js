@@ -9,4 +9,11 @@ router.get('/claim/:examId/download', authMiddleware, pdfController.downloadClai
 // Preview HTML (for development)
 router.get('/claim/:examId/preview', authMiddleware, pdfController.previewClaimHTML);
 
+// Download Non-Teaching PDF
+router.get('/non-teaching/:examId/download', authMiddleware, pdfController.downloadNonTeachingPDF);
+
+// Preview Non-Teaching HTML (for development)
+router.get('/non-teaching/:examId/preview', authMiddleware, pdfController.previewNonTeachingHTML);
+
 module.exports = router;
+

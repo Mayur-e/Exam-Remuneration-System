@@ -89,11 +89,16 @@ export default function MyClaims() {
     }
   };
 
-  const handleDownloadPDF = async (examId) => {
+  const handleDownloadPDF = async (claim) => {
     try {
       showToast("Generating PDF...", "info");
 
-      const response = await api.get(`/pdf/claim/${examId}/download`, {
+      // Determine the correct endpoint based on claim type
+      const endpoint = claim.claim_form_type === 'NON_TEACHING'
+        ? `/pdf/non-teaching/${claim.id}/download`
+        : `/pdf/claim/${claim.id}/download`;
+
+      const response = await api.get(endpoint, {
         responseType: 'blob',
         validateStatus: (status) => status < 500,
       });
@@ -331,7 +336,7 @@ export default function MyClaims() {
                     {(c.status === 'submitted' || c.status === 'approved') && (
                       <Button
                         size="sm"
-                        onClick={() => handleDownloadPDF(c.id)}
+                        onClick={() => handleDownloadPDF(c)}
                         className="bg-blue-600 hover:bg-blue-700 text-white"
                         title="Download PDF"
                       >

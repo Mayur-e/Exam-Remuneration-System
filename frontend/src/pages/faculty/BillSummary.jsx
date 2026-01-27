@@ -78,36 +78,40 @@ export default function BillSummary({ examId, refreshKey, billData }) {
         </div>
       </div>
 
-      {/* Examiner Amount */}
+      {/* Examiner Amount - Only show for teaching claims */}
       <div className="space-y-2">
         <h4 className="font-medium flex items-center gap-2">
           <CurrencyRupeeIcon className="w-4 h-4" />
           Amount Breakdown
         </h4>
 
-        <div className="flex justify-between">
-          <span className="text-gray-600">Calculated Examiner Amount</span>
-          <span className="font-medium">
-            ₹{Number(examiner_amount_calculated).toFixed(2)}
-          </span>
-        </div>
+        {examiner_amount_calculated > 0 && (
+          <>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Calculated Examiner Amount</span>
+              <span className="font-medium">
+                ₹{Number(examiner_amount_calculated).toFixed(2)}
+              </span>
+            </div>
 
-        {min_applied && (
-          <div className="flex items-center gap-2 text-blue-700 text-sm bg-blue-50 p-2 rounded">
-            <CheckCircleIcon className="w-4 h-4" />
-            Minimum payable applied (₹500)
-          </div>
+            {min_applied && (
+              <div className="flex items-center gap-2 text-blue-700 text-sm bg-blue-50 p-2 rounded">
+                <CheckCircleIcon className="w-4 h-4" />
+                Minimum payable applied (₹500)
+              </div>
+            )}
+
+            <div className="flex justify-between pt-2 border-t">
+              <span className="text-gray-600">Final Examiner Amount</span>
+              <span className="font-medium">
+                ₹{Number(examiner_amount).toFixed(2)}
+              </span>
+            </div>
+          </>
         )}
 
-        <div className="flex justify-between pt-2 border-t">
-          <span className="text-gray-600">Final Examiner Amount</span>
-          <span className="font-medium">
-            ₹{Number(examiner_amount).toFixed(2)}
-          </span>
-        </div>
-
         {staff_amount > 0 && (
-          <div className="flex justify-between">
+          <div className={`flex justify-between ${examiner_amount_calculated > 0 ? '' : 'pt-2 border-t'}`}>
             <span className="text-gray-600">Staff Allowance</span>
             <span>₹{Number(staff_amount).toFixed(2)}</span>
           </div>

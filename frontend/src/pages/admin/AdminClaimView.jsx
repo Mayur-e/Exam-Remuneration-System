@@ -232,31 +232,53 @@ export default function AdminClaimView() {
                         </div>
                     </Card>
 
-                    {/* Staff Info for Non-Teaching */}
-                    {staff && staff.length > 0 && (
+                    {/* Staff Table for Non-Teaching Claims */}
+                    {exam.claim_form_type === 'NON_TEACHING' && staff && staff.length > 0 && (
                         <Card className="p-6 lg:col-span-2">
-                            <h3 className="font-semibold mb-3">Staff Allocation</h3>
+                            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                                Supporting Staff Details
+                            </h3>
                             <div className="overflow-x-auto">
-                                <table className="w-full text-sm">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            <th className="px-4 py-2 text-left">Name</th>
-                                            <th className="px-4 py-2 text-left">Role</th>
-                                            <th className="px-4 py-2 text-right">Prep Days</th>
-                                            <th className="px-4 py-2 text-right">Exam Days</th>
-                                            <th className="px-4 py-2 text-right">Clean Days</th>
+                                <table className="w-full text-sm border-collapse">
+                                    <thead>
+                                        <tr className="bg-purple-50 border-b-2 border-purple-200">
+                                            <th className="px-4 py-3 text-left font-semibold text-gray-700">Name</th>
+                                            <th className="px-4 py-3 text-left font-semibold text-gray-700">Designation</th>
+                                            <th className="px-4 py-3 text-right font-semibold text-gray-700">Rate (₹)</th>
+                                            <th className="px-4 py-3 text-right font-semibold text-gray-700">Prep & Clean Rs</th>
+                                            <th className="px-4 py-3 text-right font-semibold text-gray-700">Batch Rs</th>
+                                            <th className="px-4 py-3 text-right font-semibold text-gray-700">Total Amount</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y">
-                                        {staff.map((s, idx) => (
-                                            <tr key={idx}>
-                                                <td className="px-4 py-2">{s.staff_name}</td>
-                                                <td className="px-4 py-2">{s.staff_role}</td>
-                                                <td className="px-4 py-2 text-right">{s.preparation_days || 0}</td>
-                                                <td className="px-4 py-2 text-right">{s.examination_days || 0}</td>
-                                                <td className="px-4 py-2 text-right">{s.cleaning_days || 0}</td>
-                                            </tr>
-                                        ))}
+                                    <tbody className="divide-y divide-gray-200">
+                                        {staff.map((s, idx) => {
+                                            const prepClean = Number(s.prep_clean_amount || 0);
+                                            const batch = Number(s.batch_amount || 0);
+                                            const total = Number(s.total_amount || 0);
+                                            const rate = Number(s.rate || 0);
+
+                                            return (
+                                                <tr key={idx} className="hover:bg-gray-50">
+                                                    <td className="px-4 py-3 font-medium text-gray-900">{s.staff_name}</td>
+                                                    <td className="px-4 py-3 text-gray-600">{s.staff_role}</td>
+                                                    <td className="px-4 py-3 text-right text-gray-700">₹{rate.toFixed(2)}</td>
+                                                    <td className="px-4 py-3 text-right text-green-600 font-medium">
+                                                        {prepClean > 0 ? `₹${prepClean.toFixed(2)}` : 'N/A'}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right text-blue-600 font-medium">₹{batch.toFixed(2)}</td>
+                                                    <td className="px-4 py-3 text-right text-purple-600 font-bold">₹{total.toFixed(2)}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                        <tr className="bg-purple-50 border-t-2 border-purple-200 font-bold">
+                                            <td colSpan="5" className="px-4 py-3 text-right text-gray-900">Grand Total:</td>
+                                            <td className="px-4 py-3 text-right text-purple-700 text-lg">
+                                                ₹{staff.reduce((sum, s) => sum + Number(s.total_amount || 0), 0).toFixed(2)}
+                                            </td>
+                                        </tr>
                                     </tbody>
                                 </table>
                             </div>

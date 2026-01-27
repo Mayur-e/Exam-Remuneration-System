@@ -175,11 +175,58 @@ exports.getClaimDetails = async (req, res) => {
             return res.status(404).json({ message: "Claim not found" });
         }
 
-        // Get staff members
-        const staff = await pool.query(
-            `SELECT * FROM exam_staff_members WHERE exam_id = $1 ORDER BY id`,
-            [examId]
-        );
+        const examData = exam.rows[0];
+
+        // Get staff members with calculated amounts
+        let staffData = [];
+        if (examData.claim_form_type === 'NON_TEACHING') {
+            const staff = await pool.query(
+                `SELECT esm.*, srr.preparation_rate, srr.per_batch_rate, srr.cleaning_rate
+                 FROM exam_staff_members esm
+                 LEFT JOIN staff_role_rates srr ON esm.staff_role = srr.staff_role
+                 WHERE esm.exam_id = $1 
+                 ORDER BY esm.id`,
+                [examId]
+            );
+
+            // Calculate amounts for each staff member
+            const countDates = (dateStr) => {
+                if (!dateStr) return 0;
+                return dateStr.split(',').map(d => d.trim()).filter(Boolean).length;
+            };
+
+            const prepDays = countDates(examData.prep_dates);
+            const examDays = countDates(examData.exam_dates);
+            const cleanDays = countDates(examData.cleaning_dates);
+            const batchSize = parseInt(examData.batch_size) || 12;
+            const totalBatches = Math.ceil(parseInt(examData.students_count) / batchSize);
+
+            staffData = staff.rows.map(s => {
+                const prepRate = parseFloat(s.preparation_rate) || 0;
+                const batchRate = parseFloat(s.per_batch_rate) || 0;
+                const cleanRate = parseFloat(s.cleaning_rate) || 0;
+                const isExpert = s.staff_role.toLowerCase().includes('expert');
+
+                const prepCleanAmount = isExpert ? 0 : ((prepRate * prepDays) + (cleanRate * cleanDays));
+                const batchAmount = isExpert ? (batchRate * totalBatches) : (batchRate * totalBatches * examDays);
+                const totalAmount = prepCleanAmount + batchAmount;
+
+                return {
+                    ...s,
+                    rate: batchRate,
+                    prep_clean_amount: prepCleanAmount,
+                    batch_amount: batchAmount,
+                    total_amount: totalAmount
+                };
+            });
+        } else {
+            // For teaching claims, just get basic staff info
+            const staff = await pool.query(
+                `SELECT * FROM exam_staff_members WHERE exam_id = $1 ORDER BY id`,
+                [examId]
+            );
+            staffData = staff.rows;
+        }
 
         // Get calculation details
         const calc = await pool.query(
@@ -211,8 +258,8 @@ exports.getClaimDetails = async (req, res) => {
         );
 
         res.json({
-            exam: exam.rows[0],
-            staff: staff.rows,
+            exam: examData,
+            staff: staffData,
             calculation: calc.rows[0] || null,
             auditLogs: auditLogs.rows
         });

@@ -469,7 +469,9 @@ exports.getBillSummary = async (req, res) => {
   const result = await pool.query(
     `
     SELECT
+      e.claim_form_type,
       CASE
+        WHEN e.claim_form_type = 'NON_TEACHING' THEN 0
         WHEN e.program IN ('BTECH','BVOC') AND e.level IN ('FY','SY')
           THEN e.students_count * rr.fy_sy_rate
         WHEN e.program IN ('BTECH','BVOC')
@@ -478,7 +480,11 @@ exports.getBillSummary = async (req, res) => {
           e.students_count * rr.mtech_mca_rate
       END AS examiner_amount_calculated,
 
-      r.examiner_amount,
+      CASE
+        WHEN e.claim_form_type = 'NON_TEACHING' THEN 0
+        ELSE r.examiner_amount
+      END AS examiner_amount,
+      
       r.staff_amount,
       r.chairman_allowance,
       r.conveyance_amount,
@@ -489,7 +495,7 @@ exports.getBillSummary = async (req, res) => {
 
     FROM remuneration_calculations r
     JOIN exams e ON e.id = r.exam_id
-    JOIN remuneration_rates rr ON rr.exam_type = e.exam_type
+    LEFT JOIN remuneration_rates rr ON rr.exam_type = e.exam_type
     WHERE e.id = $1
       AND e.faculty_id = $2
     `,

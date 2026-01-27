@@ -239,6 +239,228 @@ class PDFService {
 
         return result.trim() + ' Rupees Only';
     }
+
+    /**
+     * Fetch non-teaching claim data
+     */
+    async fetchNonTeachingData(examId) {
+        try {
+            // Get exam details
+            const examResult = await pool.query(
+                `SELECT 
+          e.*,
+          u.name as faculty_name,
+          u.email as faculty_email,
+          u.department,
+          u.prn,
+          u.mobile,
+          u.pan_card
+        FROM exams e
+        JOIN users u ON e.faculty_id = u.id
+        WHERE e.id = $1`,
+                [examId]
+            );
+
+            if (examResult.rows.length === 0) {
+                throw new Error('Exam not found');
+            }
+
+            const exam = examResult.rows[0];
+
+            // Get batch size
+            const batchSizeResult = await pool.query(
+                `SELECT 
+                    CASE 
+                        WHEN $1 = 'PR' THEN practical_size
+                        WHEN $1 = 'OR' THEN oral_size
+                        WHEN $1 = 'TW' THEN termwork_size
+                        ELSE project_oral_size
+                    END as batch_size
+                 FROM batch_sizes 
+                 WHERE program = $2`,
+                [exam.exam_type, exam.program]
+            );
+            const batchSize = batchSizeResult.rows[0]?.batch_size || 1;
+            const totalBatches = Math.ceil((exam.students_count || 0) / batchSize);
+
+            // Get staff members
+            const staffResult = await pool.query(
+                `SELECT * FROM exam_staff_members WHERE exam_id = $1 ORDER BY id`,
+                [examId]
+            );
+
+
+
+            // Get staff rates
+            const ratesResult = await pool.query(
+                `SELECT * FROM staff_role_rates`
+            );
+            const ratesMap = {};
+            ratesResult.rows.forEach(rate => {
+                ratesMap[rate.staff_role] = {
+                    preparation_rate: parseFloat(rate.preparation_rate) || 0,
+                    per_batch_rate: parseFloat(rate.per_batch_rate) || 0,
+                    cleaning_rate: parseFloat(rate.cleaning_rate) || 0
+                };
+            });
+
+            // Count dates
+            const countDates = (dateStr) => {
+                if (!dateStr) return 0;
+                return dateStr.split(',').map(d => d.trim()).filter(Boolean).length;
+            };
+
+            const prepDays = countDates(exam.prep_dates);
+            const examDays = countDates(exam.exam_dates);
+            const cleanDays = countDates(exam.cleaning_dates);
+
+            // Calculate staff amounts and organize by role
+            let grandTotal = 0;
+            const expertStaff = [];
+            const labStaff = [];
+            const peonStaff = [];
+
+            staffResult.rows.forEach(staff => {
+                const rates = ratesMap[staff.staff_role] || { preparation_rate: 0, per_batch_rate: 0, cleaning_rate: 0 };
+                const isExpertAssistant = staff.staff_role === "Expert Assistant";
+
+                // Prep & Clean Amount
+                const prepCleanAmount = isExpertAssistant ? 0 : (
+                    (rates.preparation_rate * prepDays) + (rates.cleaning_rate * cleanDays)
+                );
+
+                // Batch Amount
+                let batchAmount = 0;
+                if (isExpertAssistant) {
+                    batchAmount = rates.per_batch_rate * totalBatches;
+                } else {
+                    batchAmount = rates.per_batch_rate * totalBatches * examDays;
+                }
+
+                const totalAmount = prepCleanAmount + batchAmount;
+                grandTotal += totalAmount;
+
+
+                const staffData = {
+                    name: staff.staff_name,
+                    prep: prepCleanAmount > 0 ? prepCleanAmount.toFixed(2) : 'NA',
+                    batch: batchAmount.toFixed(2),
+                    total: totalAmount.toFixed(2)
+                };
+
+                // Categorize by role (flexible matching)
+                const roleLower = staff.staff_role.toLowerCase();
+                if (roleLower.includes('expert')) {
+                    expertStaff.push(staffData);
+                } else if (roleLower.includes('lab') || roleLower.includes('technical')) {
+                    labStaff.push(staffData);
+                } else if (roleLower.includes('peon')) {
+                    peonStaff.push(staffData);
+                }
+            });
+
+            // Prepare data object for template
+            const templateData = {
+                logo: logoBase64,
+                year: exam.level || '',
+                program: exam.program || '',
+                examName: exam.exam_type || '',
+                subject: exam.subject_name || '',
+                subjectCode: exam.subject_code || '',
+                department: exam.department || '',
+                academicYear: exam.academic_year || '',
+                semester: exam.semester || '',
+                prepDates: exam.prep_dates || '',
+                examDates: exam.exam_dates || '',
+                cleaningDates: exam.cleaning_dates || '',
+                totalStudents: exam.students_count || 0,
+                studentsPerBatch: batchSize,
+                totalBatches: totalBatches,
+                totalDays: prepDays + cleanDays,
+                grandTotal: grandTotal.toFixed(2),
+                passedAmount: grandTotal.toFixed(2),
+                passedAmountInWords: this.convertToWords(grandTotal),
+                passedDate: ''
+            };
+
+            // Map Expert Assistants (up to 4)
+            for (let i = 0; i < 4; i++) {
+                if (expertStaff[i]) {
+                    templateData[`expertStaff${i + 1}Name`] = expertStaff[i].name;
+                    templateData[`expertStaff${i + 1}Prep`] = expertStaff[i].prep;
+                    templateData[`expertStaff${i + 1}Batch`] = expertStaff[i].batch;
+                    templateData[`expertStaff${i + 1}Total`] = expertStaff[i].total;
+                }
+            }
+
+            // Map Lab Assistants (up to 2)
+            for (let i = 0; i < 2; i++) {
+                if (labStaff[i]) {
+                    templateData[`labStaff${i + 1}Name`] = labStaff[i].name;
+                    templateData[`labStaff${i + 1}Prep`] = labStaff[i].prep;
+                    templateData[`labStaff${i + 1}Batch`] = labStaff[i].batch;
+                    templateData[`labStaff${i + 1}Total`] = labStaff[i].total;
+                }
+            }
+
+            // Map Peons (up to 2)
+            for (let i = 0; i < 2; i++) {
+                if (peonStaff[i]) {
+                    templateData[`peonStaff${i + 1}Name`] = peonStaff[i].name;
+                    templateData[`peonStaff${i + 1}Prep`] = peonStaff[i].prep;
+                    templateData[`peonStaff${i + 1}Batch`] = peonStaff[i].batch;
+                    templateData[`peonStaff${i + 1}Total`] = peonStaff[i].total;
+                }
+            }
+
+            return templateData;
+        } catch (error) {
+            console.error('Error fetching non-teaching data:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Generate non-teaching PDF
+     */
+    async generateNonTeachingForm(claimData) {
+        let browser;
+        try {
+            const { getNonTeachingFormHTML } = require('../templates/non-teaching-form.html');
+
+            browser = await puppeteer.launch({
+                headless: 'new',
+                args: ['--no-sandbox', '--disable-setuid-sandbox']
+            });
+
+            const page = await browser.newPage();
+            const htmlContent = getNonTeachingFormHTML(claimData);
+
+            await page.setContent(htmlContent, {
+                waitUntil: 'networkidle0'
+            });
+
+            const pdfBuffer = await page.pdf({
+                format: 'A4',
+                printBackground: true,
+                margin: {
+                    top: '10mm',
+                    right: '10mm',
+                    bottom: '10mm',
+                    left: '10mm'
+                }
+            });
+
+            await browser.close();
+            return pdfBuffer;
+        } catch (error) {
+            if (browser) {
+                await browser.close();
+            }
+            console.error('Error generating non-teaching PDF:', error);
+            throw error;
+        }
+    }
 }
 
 module.exports = new PDFService();
