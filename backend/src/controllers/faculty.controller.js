@@ -53,7 +53,22 @@ exports.createExam = async (req, res) => {
     });
   }
 
-  // âœ… Now safe to insert
+
+  // VALIDATION: Subject must exist in subjects table if provided
+  if (subject_code || subject_name) {
+    const subjectCheck = await pool.query(
+      `SELECT 1 FROM subjects WHERE code = $1 OR name = $2 LIMIT 1`,
+      [subject_code || '', subject_name || '']
+    );
+
+    if (subjectCheck.rows.length === 0) {
+      return res.status(400).json({
+        message: `Subject "${subject_code || subject_name}" not found in master subjects list. Please select a valid subject from the dropdown.`
+      });
+    }
+  }
+
+  // ✅ Now safe to insert
   const result = await pool.query(
     `
     INSERT INTO exams
@@ -88,6 +103,142 @@ exports.createExam = async (req, res) => {
 
   return res.status(201).json({ id });
 
+};
+
+/**
+ * Update Exam
+ */
+exports.updateExam = async (req, res) => {
+  const examId = req.params.id;
+  const {
+    claim_form_type,
+    exam_type,
+    program,
+    level,
+    students_count,
+    subject_name,
+    subject_code,
+    semester,
+    academic_year,
+    exam_date,
+    is_backlog,
+    second_examiner,
+    prep_dates,
+    exam_dates,
+    cleaning_dates,
+    students_per_batch
+  } = req.body;
+
+  try {
+    // Verify exam exists and belongs to faculty
+    const examCheck = await pool.query(
+      `SELECT id, status FROM exams WHERE id=$1 AND faculty_id=$2`,
+      [examId, req.user.id]
+    );
+
+    if (examCheck.rows.length === 0) {
+      return res.status(404).json({ message: "Exam not found" });
+    }
+
+    const currentExam = examCheck.rows[0];
+    if (currentExam.status !== "draft" && currentExam.status !== "rejected") {
+      return res.status(400).json({ message: "Cannot modify submitted claim" });
+    }
+
+    // VALIDATION: Subject must exist in subjects table if provided
+    if (subject_code || subject_name) {
+      const subjectCheck = await pool.query(
+        `SELECT 1 FROM subjects WHERE code = $1 OR name = $2 LIMIT 1`,
+        [subject_code || '', subject_name || '']
+      );
+
+      if (subjectCheck.rows.length === 0) {
+        return res.status(400).json({
+          message: `Subject "${subject_code || subject_name}" not found in master subjects list. Please select a valid subject from the dropdown.`
+        });
+      }
+    }
+
+    // Date validation for NON_TEACHING claims
+    if (claim_form_type === 'NON_TEACHING' && exam_dates) {
+      const prepDatesArr = prep_dates ? prep_dates.split(",").map(d => d.trim()).filter(Boolean) : [];
+      const examDatesArr = exam_dates.split(",").map(d => d.trim()).filter(Boolean);
+      const cleanDatesArr = cleaning_dates ? cleaning_dates.split(",").map(d => d.trim()).filter(Boolean) : [];
+
+      if (examDatesArr.length === 0) {
+        return res.status(400).json({ message: "At least one examination date is required" });
+      }
+
+      const minExamDate = new Date(Math.min(...examDatesArr.map(d => new Date(d))));
+      const maxExamDate = new Date(Math.max(...examDatesArr.map(d => new Date(d))));
+
+      // Rule 1: Prep dates must be before exam dates
+      for (const prepDate of prepDatesArr) {
+        if (new Date(prepDate) >= minExamDate) {
+          return res.status(400).json({
+            message: `Preparation date ${prepDate} must be before the earliest exam date`
+          });
+        }
+      }
+
+      // Rule 2: Cleaning dates must be on or after exam dates
+      for (const cleanDate of cleanDatesArr) {
+        if (new Date(cleanDate) < maxExamDate) {
+          return res.status(400).json({
+            message: `Cleaning date ${cleanDate} must be on or after the latest exam date`
+          });
+        }
+      }
+    }
+
+    // Update exam
+    await pool.query(
+      `UPDATE exams SET
+        claim_form_type = $1,
+        exam_type = $2,
+        program = $3,
+        level = $4,
+        students_count = $5,
+        subject_name = $6,
+        subject_code = $7,
+        semester = $8,
+        academic_year = $9,
+        exam_date = $10,
+        is_backlog = $11,
+        second_examiner = $12,
+        prep_dates = $13,
+        exam_dates = $14,
+        cleaning_dates = $15,
+        students_per_batch = $16,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $17 AND faculty_id = $18`,
+      [
+        claim_form_type,
+        exam_type,
+        program,
+        level || null,
+        students_count,
+        subject_name || null,
+        subject_code || null,
+        semester || null,
+        academic_year || null,
+        exam_date || null,
+        Boolean(is_backlog) || false,
+        second_examiner || null,
+        prep_dates || null,
+        exam_dates || null,
+        cleaning_dates || null,
+        students_per_batch ? Number(students_per_batch) : null,
+        examId,
+        req.user.id
+      ]
+    );
+
+    return res.json({ message: "Exam updated successfully" });
+  } catch (error) {
+    console.error("Update exam error:", error);
+    return res.status(500).json({ message: "Failed to update exam" });
+  }
 };
 
 /**
@@ -241,50 +392,118 @@ exports.addExamStaff = async (req, res) => {
 exports.submitExam = async (req, res) => {
   const examId = req.params.id;
 
-  // Ensure exam belongs to faculty
-  const exam = await pool.query(
-    `
-    SELECT id, claim_form_type
-    FROM exams
-    WHERE id=$1 AND faculty_id=$2
-    `,
-    [examId, req.user.id]
-  );
+  try {
+    // 1. Fetch exam details with all required fields
+    const examResult = await pool.query(
+      `
+      SELECT e.id, e.claim_form_type, e.subject_code, e.exam_type, e.faculty_id
+      FROM exams e
+      WHERE e.id=$1 AND e.faculty_id=$2
+      `,
+      [examId, req.user.id]
+    );
 
-  if (exam.rows.length === 0) {
-    return res.status(404).json({ message: "Exam not found" });
-  }
+    if (examResult.rows.length === 0) {
+      return res.status(404).json({ message: "Exam not found" });
+    }
 
-  if (exam.rows[0].claim_form_type === 'TEACHING_EXTERNAL') {
-    return res.status(400).json({
-      message: "External claims must be submitted by external examiner"
+    const exam = examResult.rows[0];
+
+    // 2. Block external claims
+    if (exam.claim_form_type === 'TEACHING_EXTERNAL') {
+      return res.status(400).json({
+        message: "External claims must be submitted by external examiner"
+      });
+    }
+
+    // 3. VALIDATION: Subject must exist in subjects table
+    if (exam.subject_code) {
+      const subjectCheck = await pool.query(
+        `SELECT 1 FROM subjects WHERE code = $1 LIMIT 1`,
+        [exam.subject_code]
+      );
+
+      if (subjectCheck.rows.length === 0) {
+        return res.status(400).json({
+          message: `Subject code "${exam.subject_code}" not found in master subjects list. Please select a valid subject.`
+        });
+      }
+    }
+
+    // 4. VALIDATION: For Teaching claims, verify remuneration rates exist
+    if (exam.claim_form_type === 'TEACHING_INTERNAL') {
+      const rateCheck = await pool.query(
+        `SELECT 1 FROM remuneration_rates WHERE exam_type = $1 LIMIT 1`,
+        [exam.exam_type]
+      );
+
+      if (rateCheck.rows.length === 0) {
+        return res.status(400).json({
+          message: `Remuneration rates not configured for exam type "${exam.exam_type}". Please contact administrator.`
+        });
+      }
+    }
+
+    // 5. VALIDATION: For Non-Teaching claims, verify staff members exist
+    if (exam.claim_form_type === 'NON_TEACHING') {
+      const staffCheck = await pool.query(
+        `SELECT COUNT(*) as count FROM exam_staff_members WHERE exam_id = $1`,
+        [examId]
+      );
+
+      const staffCount = parseInt(staffCheck.rows[0].count);
+      if (staffCount === 0) {
+        return res.status(400).json({
+          message: "Please add at least one staff member before submitting non-teaching claim."
+        });
+      }
+    }
+
+    // 6. VALIDATION: Faculty must have bank details
+    const bankCheck = await pool.query(
+      `SELECT bank_name, account_number, ifsc_code 
+       FROM faculty_bank_accounts 
+       WHERE faculty_id = $1`,
+      [req.user.id]
+    );
+
+    if (bankCheck.rows.length === 0) {
+      return res.status(400).json({
+        message: "Please add your bank details in profile settings before submitting a claim."
+      });
+    }
+
+    const bankDetails = bankCheck.rows[0];
+    if (!bankDetails.bank_name || !bankDetails.account_number || !bankDetails.ifsc_code) {
+      return res.status(400).json({
+        message: "Please ensure your bank details (Bank Name, Account Number, IFSC) are complete in profile settings."
+      });
+    }
+
+    // 7. Lock exam as submitted
+    await pool.query(
+      `UPDATE exams SET status='submitted', updated_at=NOW() WHERE id=$1`,
+      [examId]
+    );
+
+    // 8. Initialize remuneration calculations
+    await pool.query(
+      `INSERT INTO remuneration_calculations (exam_id, chairman_allowance, conveyance_amount)
+       VALUES ($1, 0, 0)
+       ON CONFLICT (exam_id) DO NOTHING`,
+      [examId]
+    );
+
+    // 9. Trigger calculation
+    await pool.query(`SELECT calculate_exam($1)`, [examId]);
+
+    return res.json({ message: "Claim submitted and calculated successfully" });
+  } catch (error) {
+    console.error("Submit exam error:", error);
+    return res.status(500).json({
+      message: "Failed to submit claim. Please try again."
     });
   }
-
-
-  if (exam.rows.length === 0) {
-    return res.status(404).json({ message: "Exam not found" });
-  }
-
-  // Lock exam
-  await pool.query(
-    `UPDATE exams SET status='submitted' WHERE id=$1`,
-    [examId]
-  );
-
-  // Save Allowances (Upsert into remuneration_calculations) - Defaults to 0, filled by Billing Incharge
-
-  await pool.query(
-    `INSERT INTO remuneration_calculations (exam_id, chairman_allowance, conveyance_amount)
-     VALUES ($1, 0, 0)
-     ON CONFLICT (exam_id) DO NOTHING`,
-    [examId]
-  );
-
-  // ðŸ”¥ TRIGGER CALCULATION
-  await pool.query(`SELECT calculate_exam($1)`, [examId]);
-
-  return res.json({ message: "Claim submitted and calculated" });
 };
 
 

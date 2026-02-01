@@ -77,6 +77,10 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
         subject_code: data.subject_code || "",
         subject_name: data.subject_name || "",
       });
+      // Mark subject as validated since it came from database
+      if (data.subject_code) {
+        setSubjectValidated(true);
+      }
     }).catch(err => {
       console.error("Failed to load exam:", err);
     });
@@ -101,9 +105,16 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
     }
   };
 
+  const [subjectValidated, setSubjectValidated] = useState(false);
+
   const handleSearch = (query, field) => {
     update(field, query);
     setActiveSearchField(field);
+
+    // Mark subject as not validated when manually typing
+    if (field === 'subject_code' || field === 'subject_name') {
+      setSubjectValidated(false);
+    }
 
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
 
@@ -129,6 +140,7 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
     update("subject_name", subject.name);
     setShowResults(false);
     setSearchResults([]);
+    setSubjectValidated(true); // Mark as validated when selected from dropdown
   };
 
   const validateForm = () => {
@@ -142,7 +154,9 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
     if (!form.academic_year) newErrors.academic_year = "Academic year is required";
     if (!form.exam_date) newErrors.exam_date = "Exam date is required";
     if (!form.subject_name) newErrors.subject_name = "Subject name is required";
+    else if (!subjectValidated) newErrors.subject_name = "Please select a subject from the dropdown";
     if (!form.subject_code) newErrors.subject_code = "Subject code is required";
+    else if (!subjectValidated) newErrors.subject_code = "Please select a subject from the dropdown";
     if (!form.students_count) newErrors.students_count = "Students count is required";
     else if (studentsCount <= 0) newErrors.students_count = "Students count must be greater than 0";
 
@@ -310,6 +324,12 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
                 {errors.subject_code}
               </p>
             )}
+            {!subjectValidated && form.subject_code && !errors.subject_code && (
+              <p className="text-xs text-amber-600 flex items-center gap-1">
+                <AlertCircleIcon className="w-3 h-3" />
+                Please select a subject from the dropdown to ensure it exists in the system
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -339,32 +359,48 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
                 {errors.subject_name}
               </p>
             )}
+            {!subjectValidated && form.subject_name && !errors.subject_name && (
+              <p className="text-xs text-amber-600 flex items-center gap-1">
+                <AlertCircleIcon className="w-3 h-3" />
+                Please select a subject from the dropdown to ensure it exists in the system
+              </p>
+            )}
           </div>
 
           {/* Search Results Dropdown */}
-          {showResults && searchResults.length > 0 && !disabled && (
-            <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto w-full">
-              {searchResults.map((subject, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => selectSubject(subject)}
-                  className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b last:border-0 border-gray-100 group"
-                >
-                  <div className="flex justify-between items-start">
-                    <span className="font-medium text-gray-800 group-hover:text-blue-700">
-                      {subject.name}
-                    </span>
-                    <span className="text-xs font-mono bg-gray-100 text-gray-600 px-2 py-1 rounded ml-2 group-hover:bg-blue-100 group-hover:text-blue-800">
-                      {subject.code}
-                    </span>
-                  </div>
-                  {subject.department && (
-                    <div className="text-xs text-gray-500 mt-1">
-                      {subject.department} • {subject.type}
+          {showResults && !disabled && (
+            <div className="absolute z-50 left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto min-w-full">
+              {searchResults.length > 0 ? (
+                searchResults.map((subject, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => selectSubject(subject)}
+                    className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b last:border-0 border-gray-100 group"
+                  >
+                    <div className="flex justify-between items-start">
+                      <span className="font-medium text-gray-800 group-hover:text-blue-700">
+                        {subject.name}
+                      </span>
+                      <span className="text-xs font-mono bg-gray-100 text-gray-600 px-2 py-1 rounded ml-2 group-hover:bg-blue-100 group-hover:text-blue-800">
+                        {subject.code}
+                      </span>
                     </div>
-                  )}
-                </button>
-              ))}
+                    {subject.department && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        {subject.department} • {subject.type}
+                      </div>
+                    )}
+                  </button>
+                ))
+              ) : (
+                <div className="px-4 py-3 text-center text-gray-500">
+                  <div className="flex items-center justify-center gap-2">
+                    <AlertCircleIcon className="w-4 h-4 text-yellow-500" />
+                    <span className="text-sm">No subjects found matching your search</span>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">Try a different course code or name</p>
+                </div>
+              )}
             </div>
           )}
         </div>

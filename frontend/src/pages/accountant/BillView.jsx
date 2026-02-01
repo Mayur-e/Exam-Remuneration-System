@@ -105,7 +105,13 @@ export default function BillView() {
   const handleUpdateAllowances = async () => {
     setProcessing(true);
     try {
-      await api.put(`/accountant/claims/${id}/allowances`, allowances);
+      // Force chairman allowance to 0 for practical exams
+      const updatedAllowances = {
+        ...allowances,
+        chairman_allowance: ['PR', 'OR', 'TW'].includes(exam.exam_type) ? 0 : allowances.chairman_allowance
+      };
+
+      await api.put(`/accountant/claims/${id}/allowances`, updatedAllowances);
       showToast("Allowances updated successfully!", "success");
       setEditingAllowances(false);
       fetchDetails(); // Refresh to get updated calculations
@@ -449,8 +455,18 @@ export default function BillView() {
               <div className="space-y-4">
                 {/* Chairman Allowance */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
+                  <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                     Chairman Allowance (₹)
+                    {['PR', 'OR', 'TW'].includes(exam.exam_type) && (
+                      <span className="relative group cursor-help">
+                        <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        <span className="absolute left-6 top-0 w-48 bg-gray-900 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
+                          Not applicable for Practical exams
+                        </span>
+                      </span>
+                    )}
                   </label>
                   {editingAllowances ? (
                     <Input
@@ -459,12 +475,16 @@ export default function BillView() {
                       onChange={(e) => setAllowances({ ...allowances, chairman_allowance: e.target.value })}
                       placeholder="0"
                       min="0"
-                      className="bg-white"
+                      className={`bg-white ${['PR', 'OR', 'TW'].includes(exam.exam_type) ? 'border-2 border-red-400 bg-red-50 cursor-not-allowed' : ''}`}
+                      disabled={['PR', 'OR', 'TW'].includes(exam.exam_type)}
                     />
                   ) : (
-                    <div className="p-3 bg-white rounded-lg border border-gray-200">
+                    <div className={`p-3 rounded-lg border ${['PR', 'OR', 'TW'].includes(exam.exam_type) ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200'}`}>
                       <p className="font-semibold text-gray-900">
-                        ₹{Number(allowances.chairman_allowance).toFixed(2)}
+                        {['PR', 'OR', 'TW'].includes(exam.exam_type)
+                          ? 'N/A'
+                          : `₹${Number(allowances.chairman_allowance).toFixed(2)}`
+                        }
                       </p>
                     </div>
                   )}

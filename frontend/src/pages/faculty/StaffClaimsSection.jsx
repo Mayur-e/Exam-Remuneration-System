@@ -270,6 +270,20 @@ export default function StaffClaimsSection({ examId, disabled, refreshKey }) {
                 )}
             </div>
 
+            {/* Important Notice */}
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-start gap-3">
+                    <AlertCircleIcon className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                        <h4 className="text-sm font-semibold text-blue-900 mb-1">Important Information</h4>
+                        <p className="text-xs text-blue-800">
+                            <strong>Expert Assistants</strong> are not entitled to claim preparation and cleaning day remuneration.
+                            They will only receive per-batch remuneration for examination days.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             {/* Staff Table */}
             <div className="overflow-x-auto">
                 <table className="w-full border-collapse">

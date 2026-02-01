@@ -91,6 +91,14 @@ exports.submitExternalClaim = async (req, res) => {
     ifsc_code,
   } = req.body;
 
+  // VALIDATION: Ensure all required fields are provided
+  if (!full_name || !email || !mobile || !parent_institute || !pan_number ||
+    !bank_name || !account_number || !ifsc_code) {
+    return res.status(400).json({
+      message: "All fields are required. Please fill in your complete details including bank information."
+    });
+  }
+
   // Files (multer)
   const panFile = req.files?.pan_document?.[0];
   const chequeFile = req.files?.cancelled_cheque?.[0];
@@ -135,6 +143,49 @@ exports.submitExternalClaim = async (req, res) => {
 
     const examId = linkRes.rows[0].exam_id;
 
+    // VALIDATION: Check if exam has valid subject and rates configured
+    const examValidation = await client.query(
+      `SELECT e.subject_code, e.exam_type 
+       FROM exams e 
+       WHERE e.id = $1`,
+      [examId]
+    );
+
+    if (examValidation.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Exam not found" });
+    }
+
+    const examData = examValidation.rows[0];
+
+    // VALIDATION: Subject must exist
+    if (examData.subject_code) {
+      const subjectCheck = await client.query(
+        `SELECT 1 FROM subjects WHERE code = $1 LIMIT 1`,
+        [examData.subject_code]
+      );
+
+      if (subjectCheck.rows.length === 0) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({
+          message: `Subject code "${examData.subject_code}" not found in master subjects list. Please contact the faculty who created this exam.`
+        });
+      }
+    }
+
+    // VALIDATION: Remuneration rates must be configured
+    const rateCheck = await client.query(
+      `SELECT 1 FROM remuneration_rates WHERE exam_type = $1 LIMIT 1`,
+      [examData.exam_type]
+    );
+
+    if (rateCheck.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        message: `Remuneration rates not configured for exam type "${examData.exam_type}". Please contact administrator.`
+      });
+    }
+
     // Check if this is a resubmission
     const examCheck = await client.query(
       `SELECT external_examiner_id, status FROM exams WHERE id = $1`,
@@ -178,8 +229,8 @@ exports.submitExternalClaim = async (req, res) => {
           ifsc_code,
           pan_document_url,
           cancelled_cheque_url,
-          is_local,
-          journey_days,
+          isLocal,
+          days,
           travel_allowance,
           travel_proof_url,
           examinerId

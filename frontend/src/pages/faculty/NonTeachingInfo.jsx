@@ -138,8 +138,56 @@ export default function NonTeachingInfo({ examId, disabled, onUpdated, refreshKe
         setForm(prev => ({ ...prev, [field]: value }));
     };
 
+    // Validation helper functions
+    const validateDateOrder = () => {
+        const prepDates = form.prep_dates ? form.prep_dates.split(",").map(d => d.trim()).filter(Boolean) : [];
+        const examDates = form.exam_dates ? form.exam_dates.split(",").map(d => d.trim()).filter(Boolean) : [];
+        const cleanDates = form.cleaning_dates ? form.cleaning_dates.split(",").map(d => d.trim()).filter(Boolean) : [];
+
+        const errors = [];
+        const warnings = [];
+
+        if (examDates.length === 0) {
+            errors.push("At least one examination date is required");
+            return { valid: false, errors, warnings };
+        }
+
+        const minExamDate = examDates.length > 0 ? new Date(Math.min(...examDates.map(d => new Date(d)))) : null;
+        const maxExamDate = examDates.length > 0 ? new Date(Math.max(...examDates.map(d => new Date(d)))) : null;
+
+        // Rule 1: Prep dates must be before exam dates
+        prepDates.forEach(prepDate => {
+            if (new Date(prepDate) >= minExamDate) {
+                errors.push(`Preparation date ${prepDate} must be before exam date`);
+            }
+        });
+
+        // Rule 2: Cleaning dates must be on or after exam dates
+        cleanDates.forEach(cleanDate => {
+            if (new Date(cleanDate) < maxExamDate) {
+                errors.push(`Cleaning date ${cleanDate} must be on or after exam date`);
+            }
+        });
+
+        return { valid: errors.length === 0, errors, warnings };
+    };
+
     const save = async () => {
         if (!fullExamData) return;
+
+        // Validate dates
+        const validation = validateDateOrder();
+
+        if (!validation.valid) {
+            showToast(validation.errors[0], "error");
+            return;
+        }
+
+        if (validation.warnings.length > 0) {
+            showToast(validation.warnings[0], "warning");
+            // Continue with save despite warnings
+        }
+
         setLoading(true);
         try {
             await api.put(`/faculty/exams/${examId}`, {
