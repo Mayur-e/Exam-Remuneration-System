@@ -150,19 +150,27 @@ export default function NonTeachingBillForm() {
                             <Button
                                 onClick={async () => {
                                     try {
+                                        showToast('Downloading PDF...', 'info');
                                         const response = await api.get(`/pdf/non-teaching/${examId}/download`, {
                                             responseType: 'blob'
                                         });
+
+                                        // Construct filename
+                                        const code = exam?.subject_code || 'Exam';
+                                        const safeCode = code.replace(/[^a-zA-Z0-9-_]/g, '');
+                                        const filename = `${safeCode}-Non-Teaching.pdf`;
 
                                         // Create blob link to download
                                         const url = window.URL.createObjectURL(new Blob([response.data]));
                                         const link = document.createElement('a');
                                         link.href = url;
-                                        link.setAttribute('download', `non-teaching-claim-${examId}.pdf`);
+                                        link.setAttribute('download', filename);
                                         document.body.appendChild(link);
                                         link.click();
                                         link.parentNode.removeChild(link);
                                         window.URL.revokeObjectURL(url);
+
+                                        showToast('PDF Downloaded!', 'success');
                                     } catch (err) {
                                         showToast('Failed to download PDF', 'error');
                                         console.error('PDF download error:', err);

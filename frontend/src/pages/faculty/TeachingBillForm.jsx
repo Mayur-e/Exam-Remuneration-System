@@ -88,23 +88,29 @@ export default function TeachingBillForm() {
         throw new Error("Failed to generate PDF");
       }
 
+      // Construct filename
+      const code = exam?.subject_code || 'Exam';
+      const safeCode = code.replace(/[^a-zA-Z0-9-_]/g, '');
+      const filename = `${safeCode}-Teaching.pdf`;
+
       // Create a URL for the blob
       const blob = new Blob([response.data], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
 
-      // Open in new tab
-      const newTab = window.open(url, '_blank');
+      // Trigger direct download
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
 
-      if (!newTab) {
-        showToast("Please allow popups to view the PDF", "warning");
-      } else {
-        showToast("PDF opened in new tab!", "success");
-      }
+      showToast("PDF Downloaded!", "success");
 
-      // Clean up the URL after a significant delay (1 minute) to allow the new tab to load
+      // Clean up the URL
       setTimeout(() => {
         window.URL.revokeObjectURL(url);
-      }, 60000);
+      }, 1000);
 
     } catch (err) {
       console.error("Failed to generate PDF:", err);

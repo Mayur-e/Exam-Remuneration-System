@@ -16,8 +16,10 @@ exports.downloadClaimPDF = async (req, res) => {
 
         // Set headers for PDF download
         const filename = `${claimData.subjectCode || 'Exam'}-Teaching.pdf`;
+        const disposition = req.query.view === 'true' ? 'inline' : 'attachment';
+
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.setHeader('Content-Disposition', `${disposition}; filename="${filename}"`);
         res.setHeader('Content-Length', pdfBuffer.length);
 
         // Send PDF
@@ -71,8 +73,10 @@ exports.downloadNonTeachingPDF = async (req, res) => {
 
         // Set headers for PDF download
         const filename = `${claimData.subjectCode || 'Exam'}-Non-Teaching.pdf`;
+        const disposition = req.query.view === 'true' ? 'inline' : 'attachment';
+
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.setHeader('Content-Disposition', `${disposition}; filename="${filename}"`);
         res.setHeader('Content-Length', pdfBuffer.length);
 
         // Send PDF

@@ -89,53 +89,28 @@ export default function MyClaims() {
     }
   };
 
-  const handleDownloadPDF = async (claim) => {
+  const handleDownloadPDF = (claim) => {
     try {
-      showToast("Downloading PDF...", "info");
+      showToast("Opening PDF...", "info");
 
-      // Determine the correct endpoint based on claim type
       const endpoint = claim.claim_form_type === 'NON_TEACHING'
         ? `/pdf/non-teaching/${claim.id}/download`
         : `/pdf/claim/${claim.id}/download`;
 
-      // Construct filename: course_code + type
-      const type = claim.claim_form_type === 'NON_TEACHING' ? 'Non-Teaching' : 'Teaching';
-      const code = claim.subject_code || 'Exam';
-      // Sanitize filename
-      const safeCode = code.replace(/[^a-zA-Z0-9-_]/g, '');
-      const filename = `${safeCode}-${type}.pdf`;
+      // Get token for auth
+      const token = localStorage.getItem("token");
 
-      const response = await api.get(endpoint, {
-        responseType: 'blob',
-        validateStatus: (status) => status < 500,
-      });
+      // Construct full URL with auth token and view mode
+      // This allows the backend to serve Inline (for new tab) but with correct Filename header
+      const baseURL = api.defaults.baseURL || "http://localhost:5000/api";
+      const url = `${baseURL}${endpoint}?token=${token}&view=true`;
 
-      if (response.status !== 200) {
-        throw new Error("Failed to generate PDF");
-      }
-
-      // Create blob URL
-      const blob = new Blob([response.data], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-
-      // Trigger download
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-
-      showToast("PDF Downloaded!", "success");
-
-      // Clean up the URL
-      setTimeout(() => {
-        window.URL.revokeObjectURL(url);
-      }, 1000);
+      // Open in new tab
+      window.open(url, '_blank');
 
     } catch (err) {
-      console.error("Failed to download PDF:", err);
-      showToast("Failed to download PDF", "error");
+      console.error("Failed to open PDF:", err);
+      showToast("Failed to open PDF", "error");
     }
   };
 
