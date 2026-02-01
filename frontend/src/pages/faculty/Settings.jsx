@@ -5,6 +5,7 @@ import ProfileSettings from "../../components/settings/ProfileSettings";
 import SecuritySettings from "../../components/settings/SecuritySettings";
 import BankSettings from "../../components/settings/BankSettings";
 import { MailIcon } from "../../components/icons/logo";
+import { DEPARTMENTS } from "../../constants/departments";
 
 export default function Settings() {
   const [user, setUser] = useState(JSON.parse(localStorage.getItem("user")) || {});
@@ -143,8 +144,8 @@ export default function Settings() {
     {
       name: "department",
       label: "Department",
-      type: "text",
-      placeholder: "Department"
+      type: "select",
+      options: DEPARTMENTS,
     },
     {
       name: "mobile",

@@ -40,4 +40,8 @@ router.get("/exams/:id/summary", idParamValidation, ctrl.getExamSummary);
 
 router.post("/exams/:id/external-link", idParamValidation, ctrl.generateExternalLink);
 
+// Subject Search
+const subjectCtrl = require("../../controllers/subject.controller");
+router.get("/subjects", subjectCtrl.searchSubjects);
+
 module.exports = router;

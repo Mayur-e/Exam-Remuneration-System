@@ -82,7 +82,7 @@ const DateInputSection = ({ label, value, onChange, disabled }) => {
     );
 };
 
-export default function NonTeachingInfo({ examId, disabled, onUpdated }) {
+export default function NonTeachingInfo({ examId, disabled, onUpdated, refreshKey }) {
     const [form, setForm] = useState({
         prep_dates: "",
         exam_dates: "",
@@ -132,7 +132,7 @@ export default function NonTeachingInfo({ examId, disabled, onUpdated }) {
         }).catch(err => {
             console.error("Failed to load non-teaching info:", err);
         });
-    }, [examId]);
+    }, [examId, refreshKey]);
 
     const update = (field, value) => {
         setForm(prev => ({ ...prev, [field]: value }));

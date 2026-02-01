@@ -8,7 +8,7 @@ const EMAIL_DOMAIN = "@pccoepune.org";
 exports.login = async (req, res) => {
   let { email, password } = req.body;
 
-  // 🔒 Normalize input (THIS FIXES 90% CASES)
+
   email = email.trim().toLowerCase();
   password = password.trim();
 

@@ -15,8 +15,9 @@ exports.downloadClaimPDF = async (req, res) => {
         const pdfBuffer = await pdfService.generateClaimForm(claimData);
 
         // Set headers for PDF download
+        const filename = `${claimData.subjectCode || 'Exam'}-Teaching.pdf`;
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename="claim-${examId}.pdf"`);
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
         res.setHeader('Content-Length', pdfBuffer.length);
 
         // Send PDF
@@ -69,8 +70,9 @@ exports.downloadNonTeachingPDF = async (req, res) => {
         const pdfBuffer = await pdfService.generateNonTeachingForm(claimData);
 
         // Set headers for PDF download
+        const filename = `${claimData.subjectCode || 'Exam'}-Non-Teaching.pdf`;
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename="non-teaching-claim-${examId}.pdf"`);
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
         res.setHeader('Content-Length', pdfBuffer.length);
 
         // Send PDF

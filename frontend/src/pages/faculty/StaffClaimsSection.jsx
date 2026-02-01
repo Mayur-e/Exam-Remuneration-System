@@ -21,12 +21,12 @@ const STAFF_ROLES = [
     "Peon"
 ];
 
-export default function StaffClaimsSection({ examId, disabled }) {
+export default function StaffClaimsSection({ examId, disabled, refreshKey }) {
     const [savedStaff, setSavedStaff] = useState([]);
     const [editingStaff, setEditingStaff] = useState(null);
     const [newStaff, setNewStaff] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [batchInfo, setBatchInfo] = useState({ batches: 0 });
+    const [batchInfo, setBatchInfo] = useState({ batches: 0, prepDays: 0, examDays: 0, cleanDays: 0 });
     const [staffRates, setStaffRates] = useState({});
     const { showToast } = useToast();
 
@@ -36,7 +36,7 @@ export default function StaffClaimsSection({ examId, disabled }) {
         fetchStaff();
         fetchBatchInfo();
         fetchStaffRates();
-    }, [examId]);
+    }, [examId, refreshKey]);
 
     const fetchStaff = async () => {
         try {
@@ -170,10 +170,10 @@ export default function StaffClaimsSection({ examId, disabled }) {
                 staff_name: newStaff.staff_name,
                 staff_role: newStaff.staff_role,
                 rate: Number(newStaff.rate) || (staffRates[newStaff.staff_role]?.per_batch_rate) || 0,
-                // Day counts are auto-calculated from dates, so we send 0
-                preparation_days: 0,
-                examination_days: 0,
-                cleaning_days: 0
+                // Send actual day counts from batchInfo (auto-calculated from dates)
+                preparation_days: batchInfo.prepDays || 0,
+                examination_days: batchInfo.examDays || 0,
+                cleaning_days: batchInfo.cleanDays || 0
             });
             showToast("Staff member added successfully!", "success");
             setNewStaff(null);
@@ -192,9 +192,10 @@ export default function StaffClaimsSection({ examId, disabled }) {
                 staff_name: editingStaff.staff_name,
                 staff_role: editingStaff.staff_role,
                 rate: Number(editingStaff.rate) || 0,
-                preparation_days: Number(editingStaff.preparation_days) || 0,
-                examination_days: Number(editingStaff.examination_days) || 0,
-                cleaning_days: Number(editingStaff.cleaning_days) || 0
+                // Use actual day counts from batchInfo (auto-calculated from dates)
+                preparation_days: batchInfo.prepDays || 0,
+                examination_days: batchInfo.examDays || 0,
+                cleaning_days: batchInfo.cleanDays || 0
             });
             showToast("Staff member updated successfully!", "success");
             setEditingStaff(null);

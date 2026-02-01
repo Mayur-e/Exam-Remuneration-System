@@ -32,8 +32,8 @@ export default function AccountantLayout() {
   ];
 
   const branding = {
-    title: "Accountant Panel",
-    subtitle: "Financial Control",
+    title: "Billing Incharge Panel",
+    subtitle: "Department Bills",
     icon: <HomeIcon className="w-5 h-5 text-white" />,
     headerSubtitle: "Manage claims and process payments",
     footerSuffix: ""
@@ -49,7 +49,7 @@ export default function AccountantLayout() {
 
   return (
     <DashboardLayout
-      role="ACCOUNTANT"
+      role="BILLING_INCHARGE"
       navItems={navItems}
       branding={branding}
       theme={theme}

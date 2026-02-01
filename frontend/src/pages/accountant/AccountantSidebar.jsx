@@ -20,8 +20,8 @@ export default function AccountantSidebar() {
     <aside className="w-64 border-r bg-background h-screen flex flex-col">
       {/* Header */}
       <div className="px-6 py-4 border-b">
-        <h2 className="text-lg font-bold">Accountant Panel</h2>
-        <p className="text-xs text-muted-foreground">Financial Control</p>
+        <h2 className="text-lg font-bold">Billing Incharge</h2>
+        <p className="text-xs text-muted-foreground">Department Bills</p>
       </div>
 
       {/* Navigation */}

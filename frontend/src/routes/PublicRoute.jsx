@@ -9,7 +9,7 @@ export default function PublicRoute({ children }) {
     const role = auth.user.role;
 
     if (role === "ADMIN") return <Navigate to="/admin" replace />;
-    if (role === "ACCOUNTANT") return <Navigate to="/accountant" replace />;
+    if (role === "BILLING_INCHARGE") return <Navigate to="/accountant" replace />;
     return <Navigate to="/faculty" replace />;
   }
 

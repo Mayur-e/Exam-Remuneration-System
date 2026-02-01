@@ -66,8 +66,8 @@ export default function AppRoutes() {
         <Route path="settings" element={<AdminSettings />} />
       </Route>
 
-      {/* ================= ACCOUNTANT ================= */}
-      <Route path="/accountant" element={<ProtectedRoute role="ACCOUNTANT">
+      {/* ================= BILLING INCHARGE ================= */}
+      <Route path="/accountant" element={<ProtectedRoute role="BILLING_INCHARGE">
         <AccountantLayout />
       </ProtectedRoute>
       }>

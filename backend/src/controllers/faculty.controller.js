@@ -272,16 +272,13 @@ exports.submitExam = async (req, res) => {
     [examId]
   );
 
-  // Save Allowances (Upsert into remuneration_calculations)
-  const { chairman_allowance, conveyance_amount } = req.body;
+  // Save Allowances (Upsert into remuneration_calculations) - Defaults to 0, filled by Billing Incharge
 
   await pool.query(
     `INSERT INTO remuneration_calculations (exam_id, chairman_allowance, conveyance_amount)
-     VALUES ($1, $2, $3)
-     ON CONFLICT (exam_id) DO UPDATE SET
-       chairman_allowance = EXCLUDED.chairman_allowance,
-       conveyance_amount = EXCLUDED.conveyance_amount`,
-    [examId, chairman_allowance || 0, conveyance_amount || 0]
+     VALUES ($1, 0, 0)
+     ON CONFLICT (exam_id) DO NOTHING`,
+    [examId]
   );
 
   // ðŸ”¥ TRIGGER CALCULATION
@@ -302,6 +299,7 @@ exports.listMyExams = async (req, res) => {
       e.id,
       e.exam_type,
       e.subject_name,
+      e.subject_code,
       e.status,
       e.claim_form_type,
       e.program,

@@ -4,6 +4,8 @@ const pool = require("../config/db");
    DASHBOARD STATS
 ================================ */
 exports.dashboardStats = async (req, res) => {
+  const userDepartment = req.user.department;
+
   const { rows } = await pool.query(`
     SELECT
       COUNT(*) FILTER (WHERE status IN ('submitted', 'approved')) AS pending_count,
@@ -21,9 +23,11 @@ exports.dashboardStats = async (req, res) => {
         0
       ) AS total_amount
     FROM exams e
+    JOIN users u ON u.id = e.faculty_id
     LEFT JOIN remuneration_calculations rc ON rc.exam_id = e.id
     WHERE e.status IN ('submitted', 'approved', 'paid')
-  `);
+      AND u.department = $1
+  `, [userDepartment]);
 
   res.json(rows[0]);
 };
@@ -34,6 +38,7 @@ exports.dashboardStats = async (req, res) => {
 ================================ */
 exports.listSubmittedClaims = async (req, res) => {
   const { status, facultyId } = req.query;
+  const userDepartment = req.user.department;
 
   // Filter logic:
   // - 'submitted' shows only submitted claims (pending approval)
@@ -55,6 +60,11 @@ exports.listSubmittedClaims = async (req, res) => {
     params = [status];
     paramIndex++;
   }
+
+  // Add department filter for Billing Incharge
+  where += ` AND u.department = $${paramIndex}`;
+  params.push(userDepartment);
+  paramIndex++;
 
   // Add faculty filter if provided
   if (facultyId) {
@@ -144,6 +154,11 @@ exports.getClaimDetails = async (req, res) => {
     }
 
     const examData = exam.rows[0];
+
+    // Verify department access for Billing Incharge
+    if (examData.faculty_department !== req.user.department) {
+      return res.status(403).json({ message: "Access denied: This claim belongs to a different department" });
+    }
 
     // Get staff members with calculated amounts (for non-teaching claims)
     let staffData = [];
@@ -256,6 +271,25 @@ exports.approveClaim = async (req, res) => {
   try {
     await pool.query("BEGIN");
 
+    // Verify department access
+    const examCheck = await pool.query(
+      `SELECT e.id, u.department 
+       FROM exams e 
+       JOIN users u ON u.id = e.faculty_id 
+       WHERE e.id = $1`,
+      [examId]
+    );
+
+    if (examCheck.rows.length === 0) {
+      await pool.query("ROLLBACK");
+      return res.status(404).json({ message: "Claim not found" });
+    }
+
+    if (examCheck.rows[0].department !== req.user.department) {
+      await pool.query("ROLLBACK");
+      return res.status(403).json({ message: "Access denied: This claim belongs to a different department" });
+    }
+
     const result = await pool.query(
       `UPDATE exams SET status='approved' WHERE id=$1 AND status='submitted' RETURNING id`,
       [examId]
@@ -270,7 +304,7 @@ exports.approveClaim = async (req, res) => {
       `
       INSERT INTO claim_actions
       (exam_id, action_by, action_role, action_type)
-      VALUES ($1,$2,'ACCOUNTANT','APPROVED')
+      VALUES ($1,$2,'BILLING_INCHARGE','APPROVED')
       `,
       [examId, req.user.id]
     );
@@ -300,6 +334,25 @@ exports.rejectClaim = async (req, res) => {
   try {
     await pool.query("BEGIN");
 
+    // Verify department access
+    const examCheck = await pool.query(
+      `SELECT e.id, u.department 
+       FROM exams e 
+       JOIN users u ON u.id = e.faculty_id 
+       WHERE e.id = $1`,
+      [examId]
+    );
+
+    if (examCheck.rows.length === 0) {
+      await pool.query("ROLLBACK");
+      return res.status(404).json({ message: "Claim not found" });
+    }
+
+    if (examCheck.rows[0].department !== req.user.department) {
+      await pool.query("ROLLBACK");
+      return res.status(403).json({ message: "Access denied: This claim belongs to a different department" });
+    }
+
     const result = await pool.query(
       `UPDATE exams SET status='rejected' WHERE id=$1 AND status IN ('submitted', 'approved') RETURNING id`,
       [examId]
@@ -314,7 +367,7 @@ exports.rejectClaim = async (req, res) => {
       `
       INSERT INTO claim_actions
       (exam_id, action_by, action_role, action_type, comment)
-      VALUES ($1,$2,'ACCOUNTANT','REJECTED',$3)
+      VALUES ($1,$2,'BILLING_INCHARGE','REJECTED',$3)
       `,
       [examId, req.user.id, reason]
     );
@@ -349,8 +402,9 @@ exports.markAsPaid = async (req, res) => {
 
     // Get calculation and verify status
     const calc = await client.query(
-      `SELECT e.id, e.status, rc.net_amount
+      `SELECT e.id, e.status, rc.net_amount, u.department
        FROM exams e
+       JOIN users u ON u.id = e.faculty_id
        LEFT JOIN remuneration_calculations rc ON rc.exam_id = e.id
        WHERE e.id = $1`,
       [examId]
@@ -362,6 +416,12 @@ exports.markAsPaid = async (req, res) => {
     }
 
     const exam = calc.rows[0];
+
+    // Verify department access
+    if (exam.department !== req.user.department) {
+      await client.query("ROLLBACK");
+      return res.status(403).json({ message: "Access denied: This claim belongs to a different department" });
+    }
 
     if (exam.status !== 'submitted' && exam.status !== 'approved') {
       await client.query("ROLLBACK");
@@ -427,6 +487,8 @@ exports.markAsPaid = async (req, res) => {
    FACULTY LIST
 ================================ */
 exports.listFaculty = async (req, res) => {
+  const userDepartment = req.user.department;
+
   const { rows } = await pool.query(`
     SELECT 
       u.id, 
@@ -438,10 +500,10 @@ exports.listFaculty = async (req, res) => {
       COUNT(e.id) AS total_claims
     FROM users u
     LEFT JOIN exams e ON e.faculty_id = u.id
-    WHERE u.role='FACULTY'
+    WHERE u.role='FACULTY' AND u.department = $1
     GROUP BY u.id, u.name, u.email, u.department, u.created_at
     ORDER BY u.name
-  `);
+  `, [userDepartment]);
 
   res.json(rows);
 };
@@ -459,6 +521,11 @@ exports.getFacultyDetails = async (req, res) => {
 
   if (!user.rows.length) {
     return res.status(404).json({ message: "Faculty not found" });
+  }
+
+  const facultyData = user.rows[0];
+  if (facultyData.department !== req.user.department) {
+    return res.status(403).json({ message: "Access denied: Faculty belongs to different department" });
   }
 
   const bank = await pool.query(
@@ -483,7 +550,7 @@ exports.getFacultyDetails = async (req, res) => {
   );
 
   res.json({
-    faculty: user.rows[0],
+    faculty: facultyData,
     bank: bank.rows[0] || null,
     claims: claims.rows
   });
@@ -507,6 +574,58 @@ exports.listPayments = async (req, res) => {
   `);
 
   res.json(rows);
+};
+
+/* ==============================
+   UPDATE ALLOWANCES
+================================ */
+exports.updateAllowances = async (req, res) => {
+  const examId = req.params.id;
+  const { chairman_allowance, conveyance_amount } = req.body;
+
+  try {
+    await pool.query("BEGIN");
+
+    // Verify department access
+    const examCheck = await pool.query(
+      `SELECT e.id, u.department, e.status 
+       FROM exams e 
+       JOIN users u ON u.id = e.faculty_id 
+       WHERE e.id = $1`,
+      [examId]
+    );
+
+    if (examCheck.rows.length === 0) {
+      await pool.query("ROLLBACK");
+      return res.status(404).json({ message: "Claim not found" });
+    }
+
+    if (examCheck.rows[0].department !== req.user.department) {
+      await pool.query("ROLLBACK");
+      return res.status(403).json({ message: "Access denied: This claim belongs to a different department" });
+    }
+
+    // Update allowances
+    await pool.query(
+      `INSERT INTO remuneration_calculations (exam_id, chairman_allowance, conveyance_amount)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (exam_id) DO UPDATE SET
+         chairman_allowance = EXCLUDED.chairman_allowance,
+         conveyance_amount = EXCLUDED.conveyance_amount`,
+      [examId, chairman_allowance || 0, conveyance_amount || 0]
+    );
+
+    // Trigger recalculation
+    await pool.query(`SELECT calculate_exam($1)`, [examId]);
+
+    await pool.query("COMMIT");
+
+    res.json({ message: "Allowances updated successfully" });
+  } catch (error) {
+    await pool.query("ROLLBACK");
+    console.error("Update allowances error:", error);
+    res.status(500).json({ message: "Failed to update allowances" });
+  }
 };
 
 /* ==============================

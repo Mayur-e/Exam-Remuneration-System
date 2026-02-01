@@ -106,6 +106,23 @@ export default function ProfileSettings({ initialData, onSave, readOnlyFields = 
                                 {field.icon && <field.icon className="w-4 h-4 text-gray-400" />}
                                 <span className="text-gray-600">{profileData[field.name] || 'N/A'}</span>
                             </div>
+                        ) : field.type === 'select' ? (
+                            <>
+                                <select
+                                    value={profileData[field.name] || ""}
+                                    onChange={(e) => handleChange(field.name, e.target.value)}
+                                    onBlur={() => handleBlur(field.name)}
+                                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors[field.name] ? "border-red-500" : "border-gray-300"}`}
+                                >
+                                    <option value="">Select {field.label}</option>
+                                    {field.options && field.options.map((opt) => (
+                                        <option key={opt} value={opt}>{opt}</option>
+                                    ))}
+                                </select>
+                                {errors[field.name] && (
+                                    <p className="text-xs text-red-600 mt-1">{errors[field.name]}</p>
+                                )}
+                            </>
                         ) : (
                             <>
                                 <Input

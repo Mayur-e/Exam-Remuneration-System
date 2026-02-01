@@ -4,6 +4,7 @@ import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import ProfileSettings from "../../components/settings/ProfileSettings";
 import SecuritySettings from "../../components/settings/SecuritySettings";
+import RatesManagement from "../../components/settings/RatesManagement";
 import { SettingsIcon, CheckCircleIcon, AlertCircleIcon } from "../../components/icons/logo";
 import { MailIcon } from "../../components/icons/logo";
 
@@ -152,81 +153,7 @@ export default function AdminSettings() {
             )}
 
             {activeTab === "system" && (
-                <Card className="p-6">
-                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                        <SettingsIcon className="w-5 h-5 text-purple-600" />
-                        System Configuration
-                    </h3>
-                    <div className="space-y-6">
-                        {/* Rate Masters */}
-                        <div className="border-b border-gray-200 pb-4">
-                            <h4 className="font-medium text-gray-900 mb-2">Exam Rate Masters</h4>
-                            <p className="text-sm text-gray-600 mb-3">
-                                Configure examination remuneration rates for different exam types and programs.
-                            </p>
-                            <Button variant="outline" size="sm" disabled>
-                                Manage Rates (Coming Soon)
-                            </Button>
-                        </div>
-
-                        {/* Staff Norms */}
-                        <div className="border-b border-gray-200 pb-4">
-                            <h4 className="font-medium text-gray-900 mb-2">Staff Norms Tables</h4>
-                            <p className="text-sm text-gray-600 mb-3">
-                                Define staff allocation norms based on exam type and student count.
-                            </p>
-                            <Button variant="outline" size="sm" disabled>
-                                Manage Norms (Coming Soon)
-                            </Button>
-                        </div>
-
-                        {/* Batch Size Rules */}
-                        <div className="border-b border-gray-200 pb-4">
-                            <h4 className="font-medium text-gray-900 mb-2">Batch Size Rules</h4>
-                            <p className="text-sm text-gray-600 mb-3">
-                                Configure batch size limits for different examination types.
-                            </p>
-                            <Button variant="outline" size="sm" disabled>
-                                Manage Rules (Coming Soon)
-                            </Button>
-                        </div>
-
-                        {/* Academic Year */}
-                        <div className="border-b border-gray-200 pb-4">
-                            <h4 className="font-medium text-gray-900 mb-2">Academic Year Locking</h4>
-                            <p className="text-sm text-gray-600 mb-3">
-                                Lock academic years to prevent claim modifications after finalization.
-                            </p>
-                            <Button variant="outline" size="sm" disabled>
-                                Manage Years (Coming Soon)
-                            </Button>
-                        </div>
-
-                        {/* Submission Deadlines */}
-                        <div>
-                            <h4 className="font-medium text-gray-900 mb-2">Claim Submission Deadlines</h4>
-                            <p className="text-sm text-gray-600 mb-3">
-                                Set deadline windows for claim submission by faculty.
-                            </p>
-                            <Button variant="outline" size="sm" disabled>
-                                Manage Deadlines (Coming Soon)
-                            </Button>
-                        </div>
-
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
-                            <div className="flex items-start gap-3">
-                                <AlertCircleIcon className="w-5 h-5 text-blue-600 mt-0.5" />
-                                <div>
-                                    <p className="text-sm font-medium text-blue-900">System Configuration</p>
-                                    <p className="text-sm text-blue-700 mt-1">
-                                        These settings affect the entire system. Changes should be made carefully and
-                                        with proper authorization. Contact the system administrator for assistance.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </Card>
+                <RatesManagement />
             )}
         </div>
     );

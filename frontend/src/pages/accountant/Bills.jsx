@@ -66,7 +66,7 @@ export default function Bills() {
       <div className="space-y-2">
         <h1 className="text-3xl font-bold text-gray-800">Bills Management</h1>
         <div className="flex items-center gap-3">
-          <p className="text-gray-600">Review and process claim payments</p>
+          <p className="text-gray-600">Review and process department claim payments</p>
           {facultyId && claims.length > 0 && (
             <div className="flex items-center gap-2">
               <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-full">

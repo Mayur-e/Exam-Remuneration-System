@@ -23,11 +23,15 @@ router.get("/external/documents/:id", auth, role(["ADMIN"]), idParamValidation, 
 router.get("/faculty", auth, role(["ADMIN"]), adminController.listAllFaculty);
 router.get("/faculty/:id", auth, role(["ADMIN"]), idParamValidation, adminController.getFacultyProfile);
 
-// Accountant Audit
-router.get("/accountant/audit", auth, role(["ADMIN"]), adminController.getAccountantAudit);
-router.get("/accountant/:id/actions", auth, role(["ADMIN"]), idParamValidation, adminController.getAccountantActions);
+// Billing Incharge Audit
+router.get("/billing-incharge/audit", auth, role(["ADMIN"]), adminController.getBillingInchargeAudit);
+router.get("/billing-incharge/:id/actions", auth, role(["ADMIN"]), idParamValidation, adminController.getBillingInchargeActions);
 
 // Audit Logs
 router.get("/audit-logs", auth, role(["ADMIN"]), adminController.getAuditLogs);
+
+// Rate Management
+router.get("/rates", auth, role(["ADMIN"]), adminController.getRates);
+router.put("/rates", auth, role(["ADMIN"]), adminController.updateRates);
 
 module.exports = router;

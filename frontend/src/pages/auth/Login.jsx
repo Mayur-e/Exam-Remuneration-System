@@ -66,7 +66,7 @@ export default function Login() {
 
       // Role-based redirect
       if (user.role === "ADMIN") navigate("/admin");
-      else if (user.role === "ACCOUNTANT") navigate("/accountant");
+      else if (user.role === "BILLING_INCHARGE") navigate("/accountant");
       else navigate("/faculty");
     } catch (err) {
       if (err.response?.status === 401) {
@@ -101,7 +101,7 @@ export default function Login() {
 
         // Role-based redirect
         if (user.role === "ADMIN") navigate("/admin");
-        else if (user.role === "ACCOUNTANT") navigate("/accountant");
+        else if (user.role === "BILLING_INCHARGE") navigate("/accountant");
         else navigate("/faculty");
       } else {
         // New user - show signup modal
@@ -154,7 +154,7 @@ export default function Login() {
 
       // Redirect immediately
       if (user.role === "ADMIN") navigate("/admin");
-      else if (user.role === "ACCOUNTANT") navigate("/accountant");
+      else if (user.role === "BILLING_INCHARGE") navigate("/accountant");
       else navigate("/faculty");
 
     } catch (err) {

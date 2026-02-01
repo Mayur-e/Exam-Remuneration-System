@@ -4,7 +4,7 @@ const role = require("../../middleware/roleMiddleware");
 const ctrl = require("../../controllers/accountant.controller");
 const { idParamValidation, rejectClaimValidation } = require("../../middleware/validationMiddleware");
 
-router.use(auth, role(["ACCOUNTANT"]));
+router.use(auth, role(["BILLING_INCHARGE"]));
 
 router.get("/dashboard", ctrl.dashboardStats);
 
@@ -14,6 +14,7 @@ router.get("/claims/:id", idParamValidation, ctrl.getClaimDetails);
 router.post("/claims/:id/approve", idParamValidation, ctrl.approveClaim);
 router.post("/claims/:id/reject", idParamValidation, rejectClaimValidation, ctrl.rejectClaim);
 router.post("/claims/:id/pay", idParamValidation, ctrl.markAsPaid);
+router.put("/claims/:id/allowances", idParamValidation, ctrl.updateAllowances);
 
 router.get("/faculty", ctrl.listFaculty);
 router.get("/faculty/:id", idParamValidation, ctrl.getFacultyDetails);

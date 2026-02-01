@@ -91,12 +91,19 @@ export default function MyClaims() {
 
   const handleDownloadPDF = async (claim) => {
     try {
-      showToast("Generating PDF...", "info");
+      showToast("Downloading PDF...", "info");
 
       // Determine the correct endpoint based on claim type
       const endpoint = claim.claim_form_type === 'NON_TEACHING'
         ? `/pdf/non-teaching/${claim.id}/download`
         : `/pdf/claim/${claim.id}/download`;
+
+      // Construct filename: course_code + type
+      const type = claim.claim_form_type === 'NON_TEACHING' ? 'Non-Teaching' : 'Teaching';
+      const code = claim.subject_code || 'Exam';
+      // Sanitize filename
+      const safeCode = code.replace(/[^a-zA-Z0-9-_]/g, '');
+      const filename = `${safeCode}-${type}.pdf`;
 
       const response = await api.get(endpoint, {
         responseType: 'blob',
@@ -111,23 +118,24 @@ export default function MyClaims() {
       const blob = new Blob([response.data], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
 
-      // Open in new tab
-      const newTab = window.open(url, '_blank');
+      // Trigger download
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
 
-      if (!newTab) {
-        showToast("Please allow popups to view the PDF", "warning");
-      } else {
-        showToast("PDF opened in new tab!", "success");
-      }
+      showToast("PDF Downloaded!", "success");
 
-      // Clean up the URL after a significant delay (1 minute) to allow the new tab to load
+      // Clean up the URL
       setTimeout(() => {
         window.URL.revokeObjectURL(url);
-      }, 60000);
+      }, 1000);
 
     } catch (err) {
-      console.error("Failed to generate PDF:", err);
-      showToast("Failed to generate PDF", "error");
+      console.error("Failed to download PDF:", err);
+      showToast("Failed to download PDF", "error");
     }
   };
 

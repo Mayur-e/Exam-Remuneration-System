@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
+const pool = require("../config/db");
 
-module.exports = (req, res, next) => {
+module.exports = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -12,11 +13,20 @@ module.exports = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // decoded must contain { id, role }
-    req.user = decoded;
+    // Fetch user details to get department and ensure user exists
+    const { rows } = await pool.query(
+      "SELECT id, role, department FROM users WHERE id = $1",
+      [decoded.id]
+    );
 
+    if (rows.length === 0) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    req.user = rows[0];
     next();
   } catch (err) {
+    console.error("Auth middleware error:", err);
     return res.status(401).json({ message: "Invalid token" });
   }
 };

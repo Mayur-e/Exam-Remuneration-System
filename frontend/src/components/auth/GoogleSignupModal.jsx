@@ -3,16 +3,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Card } from '../ui/card';
 
-const DEPARTMENTS = [
-    'Computer',
-    'Information Technology',
-    'Electronics & Telecommunication',
-    'Electrical',
-    'Mechanical',
-    'Civil',
-    'Artificial Intelligence & Data Science',
-    'Other'
-];
+import { DEPARTMENTS } from '../../constants/departments';
 
 export default function GoogleSignupModal({ isOpen, onClose, email, name, onSubmit, isLoading }) {
     const [prn, setPrn] = useState('');

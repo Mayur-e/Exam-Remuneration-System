@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 3gQYyuGECJxAy3KlA8LlvBJysTnr04ZcXmOTCgNfZ7r3XTFv3epb2DEgTJeSJNG
+\restrict ojmndrIg6MAAz7m9pYAWCN8blzGkkg5otDojXnCHpLfJqaswVltja6BXeuzpS2K
 
 -- Dumped from database version 18.1
 -- Dumped by pg_dump version 18.1
@@ -26,136 +26,138 @@ SET row_security = off;
 CREATE FUNCTION public.calculate_exam(p_exam_id integer) RETURNS void
     LANGUAGE plpgsql
     AS $$
-    DECLARE
-      v_exam RECORD;
-      v_rates RECORD;
-      v_batch RECORD;
-      v_students INT;
-      v_batch_size INT := 1;
-      v_batches INT := 1;
-      v_examiner NUMERIC := 0;
-      v_staff NUMERIC := 0;
-      v_min BOOLEAN := FALSE;
-      v_staff_member RECORD;
-      v_role RECORD;
-      v_gross NUMERIC := 0;
-      v_tds NUMERIC := 0;
-      v_net NUMERIC := 0;
-      v_chairman_allowance NUMERIC := 0;
-      v_conveyance_amount NUMERIC := 0;
-      v_prep_days INT;
-      v_clean_days INT;
-    BEGIN
-      SELECT * INTO v_exam FROM exams WHERE id = p_exam_id;
-      IF NOT FOUND THEN RAISE EXCEPTION 'Exam not found'; END IF;
+DECLARE
+  v_exam RECORD;
+  v_rates RECORD;
+  v_batch RECORD;
+  v_students INT;
+  v_batch_size INT := 1;
+  v_batches INT := 1;
+  v_examiner NUMERIC := 0;
+  v_staff NUMERIC := 0;
+  v_min BOOLEAN := FALSE;
+  v_staff_member RECORD;
+  v_role RECORD;
+  v_gross NUMERIC := 0;
+  v_tds NUMERIC := 0;
+  v_net NUMERIC := 0;
+  v_chairman_allowance NUMERIC := 0;
+  v_conveyance_amount NUMERIC := 0;
+  v_prep_days INT;
+  v_clean_days INT;
+BEGIN
+  SELECT * INTO v_exam FROM exams WHERE id = p_exam_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Exam not found'; END IF;
 
-      SELECT * INTO v_rates FROM remuneration_rates WHERE exam_type = v_exam.exam_type;
-      IF NOT FOUND THEN RAISE EXCEPTION 'Rates not found'; END IF;
+  SELECT * INTO v_rates FROM remuneration_rates WHERE exam_type = v_exam.exam_type;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Rates not found'; END IF;
 
-      SELECT * INTO v_batch FROM batch_sizes WHERE program = v_exam.program;
+  SELECT * INTO v_batch FROM batch_sizes WHERE program = v_exam.program;
 
-      -- 1. Calculate Examiner Amount (for TEACHING claims)
-      IF v_exam.claim_form_type IN ('TEACHING_INTERNAL', 'TEACHING_EXTERNAL') THEN
-        IF v_exam.exam_type = 'PR' THEN
-          v_batch_size := COALESCE(v_batch.practical_size,1);
-        ELSIF v_exam.exam_type = 'OR' THEN
-          v_batch_size := COALESCE(v_batch.oral_size,1);
-        ELSIF v_exam.exam_type = 'TW' THEN
-          v_batch_size := COALESCE(v_batch.termwork_size,1);
-        ELSE
-          v_batch_size := COALESCE(v_batch.project_oral_size,1);
-        END IF;
+  -- 1. Calculate Examiner Amount (for TEACHING claims ONLY)
+  IF v_exam.claim_form_type IN ('TEACHING_INTERNAL', 'TEACHING_EXTERNAL') THEN
+    IF v_exam.exam_type = 'PR' THEN
+      v_batch_size := COALESCE(v_batch.practical_size,1);
+    ELSIF v_exam.exam_type = 'OR' THEN
+      v_batch_size := COALESCE(v_batch.oral_size,1);
+    ELSIF v_exam.exam_type = 'TW' THEN
+      v_batch_size := COALESCE(v_batch.termwork_size,1);
+    ELSE
+      v_batch_size := COALESCE(v_batch.project_oral_size,1);
+    END IF;
 
-        v_students := v_exam.students_count;
-        IF v_students > 0 THEN
-          v_batches := CEIL(v_students::numeric / v_batch_size::numeric);
-        END IF;
+    v_students := v_exam.students_count;
+    IF v_students > 0 THEN
+      v_batches := CEIL(v_students::numeric / v_batch_size::numeric);
+    END IF;
 
-        IF v_exam.program IN ('BTECH','BVOC') THEN
-          IF v_exam.level IN ('FY','SY') THEN
-            v_examiner := v_students * COALESCE(v_rates.fy_sy_rate,0);
-          ELSE
-            v_examiner := v_students * COALESCE(v_rates.ty_final_rate,0);
-          END IF;
-        ELSE
-          v_examiner := v_students * COALESCE(v_rates.mtech_mca_rate,0);
-        END IF;
-
-        IF v_examiner < v_rates.min_per_day THEN
-          v_examiner := v_rates.min_per_day;
-          v_min := TRUE;
-        END IF;
+    IF v_exam.program IN ('BTECH','BVOC') THEN
+      IF v_exam.level IN ('FY','SY') THEN
+        v_examiner := v_students * COALESCE(v_rates.fy_sy_rate,0);
       ELSE
-        -- For NON_TEACHING claims, calculate batches for staff calculation
-        IF v_exam.exam_type = 'PR' THEN
-          v_batch_size := COALESCE(v_batch.practical_size,1);
-        ELSIF v_exam.exam_type = 'OR' THEN
-          v_batch_size := COALESCE(v_batch.oral_size,1);
-        ELSIF v_exam.exam_type = 'TW' THEN
-          v_batch_size := COALESCE(v_batch.termwork_size,1);
-        ELSE
-          v_batch_size := COALESCE(v_batch.project_oral_size,1);
-        END IF;
-
-        v_students := v_exam.students_count;
-        IF v_students > 0 THEN
-          v_batches := CEIL(v_students::numeric / v_batch_size::numeric);
-        END IF;
+        v_examiner := v_students * COALESCE(v_rates.ty_final_rate,0);
       END IF;
+    ELSE
+      v_examiner := v_students * COALESCE(v_rates.mtech_mca_rate,0);
+    END IF;
 
-      -- 2. Fetch Allowances (for TEACHING claims)
-      SELECT chairman_allowance, conveyance_amount INTO v_chairman_allowance, v_conveyance_amount
-      FROM remuneration_calculations WHERE exam_id = p_exam_id;
+    IF v_examiner < v_rates.min_per_day THEN
+      v_examiner := v_rates.min_per_day;
+      v_min := TRUE;
+    END IF;
+  ELSE
+    -- For NON_TEACHING claims, examiner_amount = 0, but still calculate batches for staff
+    IF v_exam.exam_type = 'PR' THEN
+      v_batch_size := COALESCE(v_batch.practical_size,1);
+    ELSIF v_exam.exam_type = 'OR' THEN
+      v_batch_size := COALESCE(v_batch.oral_size,1);
+    ELSIF v_exam.exam_type = 'TW' THEN
+      v_batch_size := COALESCE(v_batch.termwork_size,1);
+    ELSE
+      v_batch_size := COALESCE(v_batch.project_oral_size,1);
+    END IF;
 
-      v_chairman_allowance := COALESCE(v_chairman_allowance, 0);
-      v_conveyance_amount := COALESCE(v_conveyance_amount, 0);
+    v_students := v_exam.students_count;
+    IF v_students > 0 THEN
+      v_batches := CEIL(v_students::numeric / v_batch_size::numeric);
+    END IF;
+  END IF;
 
-      -- 3. Calculate Staff Amount from exam_staff_members
-      FOR v_staff_member IN SELECT * FROM exam_staff_members WHERE exam_id = p_exam_id LOOP
-        SELECT * INTO v_role FROM staff_role_rates WHERE staff_role = v_staff_member.staff_role;
-        IF FOUND THEN
-          -- RULE: Expert Assistants cannot claim preparation or cleaning days
-          IF v_staff_member.staff_role = 'Expert Assistant' THEN
-            v_prep_days := 0;
-            v_clean_days := 0;
-          ELSE
-            v_prep_days := v_staff_member.preparation_days;
-            v_clean_days := v_staff_member.cleaning_days;
-          END IF;
-          
-          v_staff := v_staff +
-            (
-              v_role.preparation_rate * v_prep_days +
-              v_role.per_batch_rate * v_batches +
-              v_role.cleaning_rate * v_clean_days
-            );
-        END IF;
-      END LOOP;
+  -- 2. Fetch Allowances (managed by Billing Incharge)
+  SELECT chairman_allowance, conveyance_amount INTO v_chairman_allowance, v_conveyance_amount
+  FROM remuneration_calculations WHERE exam_id = p_exam_id;
 
-      -- 4. Final Totals
-      v_gross := v_examiner + v_staff + v_chairman_allowance + v_conveyance_amount;
-      v_tds := v_gross * 0.10; -- 10% TDS
-      v_net := v_gross - v_tds;
+  v_chairman_allowance := COALESCE(v_chairman_allowance, 0);
+  v_conveyance_amount := COALESCE(v_conveyance_amount, 0);
 
-      -- 5. Update/Insert
-      INSERT INTO remuneration_calculations
-      (exam_id, examiner_amount, staff_amount, chairman_allowance, conveyance_amount, total_amount, tds_amount, net_amount, min_applied)
-      VALUES
-      (p_exam_id, v_examiner, v_staff, v_chairman_allowance, v_conveyance_amount, v_gross, v_tds, v_net, v_min)
-      ON CONFLICT (exam_id) DO UPDATE
-      SET examiner_amount = EXCLUDED.examiner_amount,
-          staff_amount = EXCLUDED.staff_amount,
-          chairman_allowance = EXCLUDED.chairman_allowance,
-          conveyance_amount = EXCLUDED.conveyance_amount,
-          total_amount = EXCLUDED.total_amount,
-          tds_amount = EXCLUDED.tds_amount,
-          net_amount = EXCLUDED.net_amount,
-          min_applied = EXCLUDED.min_applied,
-          updated_at = CURRENT_TIMESTAMP;
+  -- 3. Calculate Staff Amount from exam_staff_members
+  -- FIXED: Now correctly multiplies batch rate by examination_days for non-Expert Assistants
+  FOR v_staff_member IN SELECT * FROM exam_staff_members WHERE exam_id = p_exam_id LOOP
+    SELECT * INTO v_role FROM staff_role_rates WHERE staff_role = v_staff_member.staff_role;
+    IF FOUND THEN
+      -- RULE: Expert Assistants cannot claim preparation or cleaning days
+      IF v_staff_member.staff_role = 'Expert Assistant' THEN
+        v_prep_days := 0;
+        v_clean_days := 0;
+        -- Expert Assistant: Rate Ã— Batches (no exam days multiplier)
+        v_staff := v_staff + (v_role.per_batch_rate * v_batches);
+      ELSE
+        v_prep_days := v_staff_member.preparation_days;
+        v_clean_days := v_staff_member.cleaning_days;
+        -- Others: (Prep Rate Ã— Prep Days) + (Batch Rate Ã— Batches Ã— Exam Days) + (Clean Rate Ã— Clean Days)
+        v_staff := v_staff + (
+          v_role.preparation_rate * v_prep_days +
+          v_role.per_batch_rate * v_batches * v_staff_member.examination_days +
+          v_role.cleaning_rate * v_clean_days
+        );
+      END IF;
+    END IF;
+  END LOOP;
 
-      UPDATE exam_staff_members SET batches = v_batches WHERE exam_id = p_exam_id;
-    END;
-    $$;
+  -- 4. Final Totals
+  v_gross := v_examiner + v_staff + v_chairman_allowance + v_conveyance_amount;
+  v_tds := v_gross * 0.10; -- 10% TDS
+  v_net := v_gross - v_tds;
+
+  -- 5. Update/Insert
+  INSERT INTO remuneration_calculations
+  (exam_id, examiner_amount, staff_amount, chairman_allowance, conveyance_amount, total_amount, tds_amount, net_amount, min_applied)
+  VALUES
+  (p_exam_id, v_examiner, v_staff, v_chairman_allowance, v_conveyance_amount, v_gross, v_tds, v_net, v_min)
+  ON CONFLICT (exam_id) DO UPDATE
+  SET examiner_amount = EXCLUDED.examiner_amount,
+      staff_amount = EXCLUDED.staff_amount,
+      chairman_allowance = EXCLUDED.chairman_allowance,
+      conveyance_amount = EXCLUDED.conveyance_amount,
+      total_amount = EXCLUDED.total_amount,
+      tds_amount = EXCLUDED.tds_amount,
+      net_amount = EXCLUDED.net_amount,
+      min_applied = EXCLUDED.min_applied,
+      updated_at = CURRENT_TIMESTAMP;
+
+  UPDATE exam_staff_members SET batches = v_batches WHERE exam_id = p_exam_id;
+END;
+$$;
 
 
 ALTER FUNCTION public.calculate_exam(p_exam_id integer) OWNER TO postgres;
@@ -335,6 +337,7 @@ CREATE TABLE public.exam_staff_members (
     cleaning_days integer DEFAULT 0,
     batches integer DEFAULT 0,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    rate numeric(10,2) DEFAULT 0,
     CONSTRAINT exam_staff_members_cleaning_days_check CHECK ((cleaning_days >= 0)),
     CONSTRAINT exam_staff_members_examination_days_check CHECK ((examination_days >= 0)),
     CONSTRAINT exam_staff_members_preparation_days_check CHECK ((preparation_days >= 0))
@@ -348,6 +351,13 @@ ALTER TABLE public.exam_staff_members OWNER TO postgres;
 --
 
 COMMENT ON TABLE public.exam_staff_members IS 'Individual staff members assigned to exams for non-teaching claims';
+
+
+--
+-- Name: COLUMN exam_staff_members.rate; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.exam_staff_members.rate IS 'Rate per day for the staff member';
 
 
 --
@@ -455,6 +465,10 @@ CREATE TABLE public.exams (
     external_examiner_id integer,
     conveyance_amount numeric(10,2) DEFAULT 0,
     second_examiner character varying(200),
+    prep_dates text,
+    exam_dates text,
+    cleaning_dates text,
+    students_per_batch integer,
     CONSTRAINT exams_claim_form_type_check CHECK (((claim_form_type)::text = ANY ((ARRAY['TEACHING_INTERNAL'::character varying, 'TEACHING_EXTERNAL'::character varying, 'NON_TEACHING'::character varying])::text[]))),
     CONSTRAINT exams_students_count_check CHECK ((students_count >= 0))
 );
@@ -467,6 +481,27 @@ ALTER TABLE public.exams OWNER TO postgres;
 --
 
 COMMENT ON COLUMN public.exams.second_examiner IS 'Name of the second examiner (if any)';
+
+
+--
+-- Name: COLUMN exams.prep_dates; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.exams.prep_dates IS 'Comma-separated preparation dates for non-teaching claims';
+
+
+--
+-- Name: COLUMN exams.exam_dates; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.exams.exam_dates IS 'Comma-separated examination dates for non-teaching claims';
+
+
+--
+-- Name: COLUMN exams.cleaning_dates; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.exams.cleaning_dates IS 'Comma-separated cleaning dates for non-teaching claims';
 
 
 --
@@ -852,7 +887,7 @@ CREATE TABLE public.users (
     has_set_password boolean DEFAULT false,
     mobile character varying(15),
     pan_card character varying(20),
-    CONSTRAINT users_role_check CHECK (((role)::text = ANY ((ARRAY['FACULTY'::character varying, 'ACCOUNTANT'::character varying, 'ADMIN'::character varying])::text[])))
+    CONSTRAINT users_role_check CHECK (((role)::text = ANY ((ARRAY['FACULTY'::character varying, 'ADMIN'::character varying, 'BILLING_INCHARGE'::character varying])::text[])))
 );
 
 
@@ -1405,5 +1440,5 @@ ALTER TABLE ONLY public.remuneration_calculations
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 3gQYyuGECJxAy3KlA8LlvBJysTnr04ZcXmOTCgNfZ7r3XTFv3epb2DEgTJeSJNG
+\unrestrict ojmndrIg6MAAz7m9pYAWCN8blzGkkg5otDojXnCHpLfJqaswVltja6BXeuzpS2K
 

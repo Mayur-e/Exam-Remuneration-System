@@ -108,6 +108,7 @@ export default function NonTeachingBillForm() {
             {examId && (
                 <NonTeachingInfo
                     examId={examId}
+                    refreshKey={refreshKey}
                     disabled={status !== "draft" && status !== "rejected"}
                     onUpdated={fetchExam}
                 />
@@ -117,6 +118,7 @@ export default function NonTeachingBillForm() {
             {examId && (
                 <StaffClaimsSection
                     examId={examId}
+                    refreshKey={refreshKey}
                     disabled={status !== "draft" && status !== "rejected"}
                 />
             )}

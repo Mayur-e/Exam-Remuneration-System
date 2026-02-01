@@ -57,8 +57,8 @@ export default function AccountantDashboard() {
     <div className="space-y-8 p-6">
       {/* Header */}
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold text-gray-800">Accountant Dashboard</h1>
-        <p className="text-gray-600">Financial overview and payment management</p>
+        <h1 className="text-3xl font-bold text-gray-800">Billing Incharge Dashboard</h1>
+        <p className="text-gray-600">Department financial overview and payment management</p>
       </div>
 
       {/* Stats Grid */}

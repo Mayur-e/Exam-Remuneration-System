@@ -89,9 +89,6 @@ exports.submitExternalClaim = async (req, res) => {
     branch_name,
     account_number,
     ifsc_code,
-    is_local,
-    journey_days,
-    user_entered_travel_amount,
   } = req.body;
 
   // Files (multer)
@@ -104,17 +101,10 @@ exports.submitExternalClaim = async (req, res) => {
   const travel_proof_url = travelProofFile ? `/uploads/external/travel/${travelProofFile.filename}` : null;
 
   // Calculate travel allowance
-  let travel_allowance = 0;
-  const isLocal = is_local === true || is_local === 'true';
-  const days = parseInt(journey_days) || 1;
-
-  if (isLocal) {
-    // Within 25km: ₹500 × journey_days
-    travel_allowance = 500 * days;
-  } else {
-    // Beyond 25km: User-entered total travel expense
-    travel_allowance = parseFloat(user_entered_travel_amount) || 0;
-  }
+  // Travel details to be filled by Billing Incharge
+  const travel_allowance = 0;
+  const isLocal = false;
+  const days = 0;
 
   const client = await pool.connect();
 
@@ -276,7 +266,7 @@ exports.submitExternalClaim = async (req, res) => {
     await client.query(
       `INSERT INTO remuneration_calculations (exam_id, conveyance_amount)
        VALUES ($1, $2)
-       ON CONFLICT (exam_id) DO UPDATE SET conveyance_amount = EXCLUDED.conveyance_amount`,
+       ON CONFLICT (exam_id) DO NOTHING`,
       [examId, travel_allowance]
     );
 

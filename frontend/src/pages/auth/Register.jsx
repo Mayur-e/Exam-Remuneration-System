@@ -13,6 +13,7 @@ import { useToast } from "../../hooks/useToast";
 
 // Icons
 import { MailIcon, LockIcon, UserIcon, BuildingOfficeIcon } from "../../components/icons/logo";
+import { DEPARTMENTS } from "../../constants/departments";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -135,7 +136,7 @@ export default function Register() {
 
         // Role-based redirect
         if (user.role === "ADMIN") navigate("/admin");
-        else if (user.role === "ACCOUNTANT") navigate("/accountant");
+        else if (user.role === "BILLING_INCHARGE") navigate("/accountant");
         else navigate("/faculty");
       } else {
         // New user - show signup modal
@@ -188,7 +189,7 @@ export default function Register() {
 
       // Redirect immediately
       if (user.role === "ADMIN") navigate("/admin");
-      else if (user.role === "ACCOUNTANT") navigate("/accountant");
+      else if (user.role === "BILLING_INCHARGE") navigate("/accountant");
       else navigate("/faculty");
 
     } catch (err) {
@@ -366,17 +367,22 @@ export default function Register() {
                   Department
                 </label>
                 <div className="relative">
-                  <BuildingOfficeIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <Input
-                    type="text"
+                  <BuildingOfficeIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 z-10" />
+                  <select
                     name="department"
-                    placeholder="Enter your department"
                     value={form.department}
                     onChange={handleInputChange}
-                    className={`pl-10 ${errors.department ? "border-red-500 focus:ring-red-500" : ""}`}
+                    className={`w-full pl-10 pr-3 py-2 bg-white border border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-500 focus:outline-none transition-all duration-300 text-gray-700 appearance-none ${errors.department ? "border-red-500" : ""}`}
                     required
                     disabled={isGoogleLoading}
-                  />
+                  >
+                    <option value="">Select Department</option>
+                    {DEPARTMENTS.map((dept) => (
+                      <option key={dept} value={dept}>
+                        {dept}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 {errors.department && (
                   <p className="text-xs text-red-600 font-medium">

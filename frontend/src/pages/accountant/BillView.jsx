@@ -4,6 +4,7 @@ import api from "../../services/api";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
+import { Input } from "../../components/ui/input";
 import BillSummary from "../faculty/BillSummary";
 import PaymentModal from "./PaymentModal";
 import RejectModal from "./RejectModal";
@@ -16,7 +17,8 @@ import {
   BuildingOfficeIcon,
   CreditCardIcon,
   FileTextIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
+  CurrencyRupeeIcon
 } from "../../components/icons/logo";
 
 export default function BillView() {
@@ -28,6 +30,11 @@ export default function BillView() {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [editingAllowances, setEditingAllowances] = useState(false);
+  const [allowances, setAllowances] = useState({
+    chairman_allowance: 0,
+    conveyance_amount: 0
+  });
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -38,6 +45,14 @@ export default function BillView() {
     try {
       const res = await api.get(`/accountant/claims/${id}`);
       setData(res.data);
+
+      // Initialize allowances from calculation data
+      if (res.data.calculation) {
+        setAllowances({
+          chairman_allowance: res.data.calculation.chairman_allowance || 0,
+          conveyance_amount: res.data.calculation.conveyance_amount || 0
+        });
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -82,6 +97,20 @@ export default function BillView() {
       fetchDetails(); // Refresh
     } catch (err) {
       showToast(err.response?.data?.message || "Failed to reject claim", "error");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleUpdateAllowances = async () => {
+    setProcessing(true);
+    try {
+      await api.put(`/accountant/claims/${id}/allowances`, allowances);
+      showToast("Allowances updated successfully!", "success");
+      setEditingAllowances(false);
+      fetchDetails(); // Refresh to get updated calculations
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to update allowances", "error");
     } finally {
       setProcessing(false);
     }
@@ -394,19 +423,117 @@ export default function BillView() {
         <div className="space-y-6">
           <BillSummary examId={id} billData={data.calculation} />
 
-          {/* Staff Info for Non-Teaching */}
-          {staff && staff.length > 0 && (
-            <Card className="p-6">
-              <h3 className="font-semibold mb-3">Staff Allocation</h3>
-              <div className="space-y-3">
-                {staff.map((s, idx) => (
-                  <div key={idx} className="text-sm border-b pb-2 last:border-0">
-                    <div className="flex justify-between font-medium">
-                      <span>{s.staff_name || s.staff_role}</span>
-                      <span className="text-gray-500">{s.staff_role}</span>
+          {/* Allowances Management - Only for non-paid claims */}
+          {!isPaid && (
+            <Card className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                  <CurrencyRupeeIcon className="w-5 h-5 text-blue-600" />
+                  Manage Allowances
+                </h3>
+                {!editingAllowances && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setEditingAllowances(true)}
+                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-100"
+                  >
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    Edit
+                  </Button>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                {/* Chairman Allowance */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Chairman Allowance (₹)
+                  </label>
+                  {editingAllowances ? (
+                    <Input
+                      type="number"
+                      value={allowances.chairman_allowance}
+                      onChange={(e) => setAllowances({ ...allowances, chairman_allowance: e.target.value })}
+                      placeholder="0"
+                      min="0"
+                      className="bg-white"
+                    />
+                  ) : (
+                    <div className="p-3 bg-white rounded-lg border border-gray-200">
+                      <p className="font-semibold text-gray-900">
+                        ₹{Number(allowances.chairman_allowance).toFixed(2)}
+                      </p>
                     </div>
+                  )}
+                </div>
+
+                {/* Conveyance Amount */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Conveyance Amount (₹)
+                    {isExternal && (
+                      <span className="ml-2 text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded">
+                        For External Examiner
+                      </span>
+                    )}
+                  </label>
+                  {editingAllowances ? (
+                    <Input
+                      type="number"
+                      value={allowances.conveyance_amount}
+                      onChange={(e) => setAllowances({ ...allowances, conveyance_amount: e.target.value })}
+                      placeholder="0"
+                      min="0"
+                      className="bg-white"
+                    />
+                  ) : (
+                    <div className="p-3 bg-white rounded-lg border border-gray-200">
+                      <p className="font-semibold text-gray-900">
+                        ₹{Number(allowances.conveyance_amount).toFixed(2)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Action Buttons */}
+                {editingAllowances && (
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      onClick={handleUpdateAllowances}
+                      disabled={processing}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      {processing ? "Saving..." : "Save & Recalculate"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setEditingAllowances(false);
+                        // Reset to original values
+                        if (data.calculation) {
+                          setAllowances({
+                            chairman_allowance: data.calculation.chairman_allowance || 0,
+                            conveyance_amount: data.calculation.conveyance_amount || 0
+                          });
+                        }
+                      }}
+                      disabled={processing}
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
                   </div>
-                ))}
+                )}
+
+                {/* Info Notice */}
+                <div className="p-3 bg-blue-100 border border-blue-200 rounded-lg">
+                  <p className="text-xs text-blue-800">
+                    <span className="font-semibold">ℹ️ Note:</span> Updating allowances will automatically recalculate the total bill amount and update the payee's view.
+                  </p>
+                </div>
               </div>
             </Card>
           )}

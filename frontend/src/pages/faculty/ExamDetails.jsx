@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useToast } from "../../hooks/useToast";
 import api from "../../services/api";
 
@@ -13,7 +13,8 @@ import {
   BookOpenIcon,
   GraduationCapIcon,
   ClockIcon,
-  AlertCircleIcon
+  AlertCircleIcon,
+  SearchIcon
 } from "../../components/icons/logo";
 
 const EXAM_TYPES = [
@@ -55,6 +56,13 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
   const [errors, setErrors] = useState({});
   const { showToast } = useToast();
 
+  // Search State
+  const [searchResults, setSearchResults] = useState([]);
+  const [showResults, setShowResults] = useState(false);
+  const [activeSearchField, setActiveSearchField] = useState(null); // 'code' or 'name'
+  const searchTimeoutRef = useRef(null);
+  const wrapperRef = useRef(null);
+
   /** Load exam if editing existing draft */
   useEffect(() => {
     if (!examId) return;
@@ -74,12 +82,53 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
     });
   }, [examId]);
 
+  // Close results on click outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+        setShowResults(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const update = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }));
     // Clear error for this field if it exists
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: "" }));
     }
+  };
+
+  const handleSearch = (query, field) => {
+    update(field, query);
+    setActiveSearchField(field);
+
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+
+    if (!query || query.length < 2) {
+      setSearchResults([]);
+      setShowResults(false);
+      return;
+    }
+
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const res = await api.get(`/faculty/subjects?query=${encodeURIComponent(query)}`);
+        setSearchResults(res.data);
+        setShowResults(true);
+      } catch (err) {
+        console.error("Search failed:", err);
+      }
+    }, 300);
+  };
+
+  const selectSubject = (subject) => {
+    update("subject_code", subject.code);
+    update("subject_name", subject.name);
+    setShowResults(false);
+    setSearchResults([]);
   };
 
   const validateForm = () => {
@@ -229,7 +278,98 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
               </p>
             )}
           </div>
+        </div>
 
+        {/* Row 3: Subject Details */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative" ref={wrapperRef}>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
+              Course Code *
+              {activeSearchField === 'subject_code' && loading && !showResults && <span className="text-xs text-gray-400">Searching...</span>}
+            </label>
+            <div className="relative">
+              <Input
+                disabled={disabled}
+                placeholder="Enter subject code"
+                value={form.subject_code}
+                onChange={(e) => handleSearch(e.target.value, "subject_code")}
+                onFocus={() => {
+                  setActiveSearchField("subject_code");
+                  if (form.subject_code?.length >= 2) handleSearch(form.subject_code, "subject_code");
+                }}
+                className={errors.subject_code ? "border-red-500 pr-10" : "pr-10"}
+                autoComplete="off"
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                <SearchIcon className="w-4 h-4" />
+              </div>
+            </div>
+            {errors.subject_code && (
+              <p className="text-xs text-red-600 flex items-center gap-1">
+                <AlertCircleIcon className="w-3 h-3" />
+                {errors.subject_code}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
+              Course Name *
+            </label>
+            <div className="relative">
+              <Input
+                disabled={disabled}
+                placeholder="Enter subject name"
+                value={form.subject_name}
+                onChange={(e) => handleSearch(e.target.value, "subject_name")}
+                onFocus={() => {
+                  setActiveSearchField("subject_name");
+                  if (form.subject_name?.length >= 2) handleSearch(form.subject_name, "subject_name");
+                }}
+                className={errors.subject_name ? "border-red-500 pr-10" : "pr-10"}
+                autoComplete="off"
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                <SearchIcon className="w-4 h-4" />
+              </div>
+            </div>
+            {errors.subject_name && (
+              <p className="text-xs text-red-600 flex items-center gap-1">
+                <AlertCircleIcon className="w-3 h-3" />
+                {errors.subject_name}
+              </p>
+            )}
+          </div>
+
+          {/* Search Results Dropdown */}
+          {showResults && searchResults.length > 0 && !disabled && (
+            <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto w-full">
+              {searchResults.map((subject, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => selectSubject(subject)}
+                  className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b last:border-0 border-gray-100 group"
+                >
+                  <div className="flex justify-between items-start">
+                    <span className="font-medium text-gray-800 group-hover:text-blue-700">
+                      {subject.name}
+                    </span>
+                    <span className="text-xs font-mono bg-gray-100 text-gray-600 px-2 py-1 rounded ml-2 group-hover:bg-blue-100 group-hover:text-blue-800">
+                      {subject.code}
+                    </span>
+                  </div>
+                  {subject.department && (
+                    <div className="text-xs text-gray-500 mt-1">
+                      {subject.department} • {subject.type}
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div>
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
               <UsersIcon className="w-4 h-4" />
@@ -248,43 +388,6 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
               <p className="text-xs text-red-600 flex items-center gap-1">
                 <AlertCircleIcon className="w-3 h-3" />
                 {errors.students_count}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Row 3: Subject Details */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Subject Name *</label>
-            <Input
-              disabled={disabled}
-              placeholder="Enter subject name"
-              value={form.subject_name}
-              onChange={(e) => update("subject_name", e.target.value)}
-              className={errors.subject_name ? "border-red-500" : ""}
-            />
-            {errors.subject_name && (
-              <p className="text-xs text-red-600 flex items-center gap-1">
-                <AlertCircleIcon className="w-3 h-3" />
-                {errors.subject_name}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Subject Code *</label>
-            <Input
-              disabled={disabled}
-              placeholder="Enter subject code"
-              value={form.subject_code}
-              onChange={(e) => update("subject_code", e.target.value)}
-              className={errors.subject_code ? "border-red-500" : ""}
-            />
-            {errors.subject_code && (
-              <p className="text-xs text-red-600 flex items-center gap-1">
-                <AlertCircleIcon className="w-3 h-3" />
-                {errors.subject_code}
               </p>
             )}
           </div>

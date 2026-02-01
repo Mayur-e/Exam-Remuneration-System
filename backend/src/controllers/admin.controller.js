@@ -430,38 +430,39 @@ exports.getFacultyProfile = async (req, res) => {
 };
 
 /* ==============================
-   GET ACCOUNTANT AUDIT
+   GET BILLING_INCHARGE AUDIT
 ================================ */
-exports.getAccountantAudit = async (req, res) => {
+exports.getBillingInchargeAudit = async (req, res) => {
     try {
         const { rows } = await pool.query(`
       SELECT
         u.id,
         u.name,
+        u.department,
         COUNT(ca.id) FILTER (WHERE ca.action_type = 'APPROVED') AS approvals_count,
         COUNT(ca.id) FILTER (WHERE ca.action_type = 'REJECTED') AS rejections_count,
         COUNT(p.id) AS payments_count,
         COALESCE(SUM(p.amount), 0) AS total_paid_amount
       FROM users u
-      LEFT JOIN claim_actions ca ON ca.action_by = u.id AND ca.action_role = 'ACCOUNTANT'
+      LEFT JOIN claim_actions ca ON ca.action_by = u.id AND ca.action_role = 'BILLING_INCHARGE'
       LEFT JOIN payments p ON p.accountant_id = u.id
-      WHERE u.role = 'ACCOUNTANT'
-      GROUP BY u.id, u.name
+      WHERE u.role = 'BILLING_INCHARGE'
+      GROUP BY u.id, u.name, u.department
       ORDER BY u.name
     `);
 
         res.json(rows);
     } catch (error) {
-        console.error("getAccountantAudit error:", error);
-        res.status(500).json({ message: "Failed to fetch accountant audit" });
+        console.error("getBillingInchargeAudit error:", error);
+        res.status(500).json({ message: "Failed to fetch billing incharge audit" });
     }
 };
 
 /* ==============================
-   GET ACCOUNTANT ACTIONS DETAIL
+   GET BILLING_INCHARGE ACTIONS DETAIL
 ================================ */
-exports.getAccountantActions = async (req, res) => {
-    const accountantId = req.params.id;
+exports.getBillingInchargeActions = async (req, res) => {
+    const billingInchargeId = req.params.id;
 
     try {
         const actions = await pool.query(
@@ -474,9 +475,9 @@ exports.getAccountantActions = async (req, res) => {
       FROM claim_actions ca
       JOIN exams e ON e.id = ca.exam_id
       JOIN users u ON u.id = e.faculty_id
-      WHERE ca.action_by = $1 AND ca.action_role = 'ACCOUNTANT'
+      WHERE ca.action_by = $1 AND ca.action_role = 'BILLING_INCHARGE'
       ORDER BY ca.action_at DESC`,
-            [accountantId]
+            [billingInchargeId]
         );
 
         const payments = await pool.query(
@@ -490,7 +491,7 @@ exports.getAccountantActions = async (req, res) => {
       JOIN users u ON u.id = e.faculty_id
       WHERE p.accountant_id = $1
       ORDER BY p.payment_date DESC`,
-            [accountantId]
+            [billingInchargeId]
         );
 
         res.json({
@@ -498,8 +499,8 @@ exports.getAccountantActions = async (req, res) => {
             payments: payments.rows
         });
     } catch (error) {
-        console.error("getAccountantActions error:", error);
-        res.status(500).json({ message: "Failed to fetch accountant actions" });
+        console.error("getBillingInchargeActions error:", error);
+        res.status(500).json({ message: "Failed to fetch billing incharge actions" });
     }
 };
 
@@ -561,7 +562,7 @@ exports.getAuditLogs = async (req, res) => {
 };
 
 /* ==============================
-   GET EXTERNAL EXAMINERS (NOT LINKS)
+   GET EXTERNAL EXAMINERS
 ================================ */
 exports.getExternalExaminers = async (req, res) => {
     try {
@@ -709,5 +710,98 @@ exports.listAllFaculty = async (req, res) => {
     } catch (error) {
         console.error("listAllFaculty error:", error);
         res.status(500).json({ message: "Failed to fetch faculty list" });
+    }
+};
+
+/* ==============================
+   RATE MANAGEMENT
+================================ */
+exports.getRates = async (req, res) => {
+    try {
+        // Get teaching rates (remuneration_rates)
+        const teachingRates = await pool.query(`
+            SELECT * FROM remuneration_rates
+            ORDER BY exam_type
+        `);
+
+        // Get non-teaching rates (staff_role_rates)
+        const staffRates = await pool.query(`
+            SELECT * FROM staff_role_rates
+            ORDER BY staff_role
+        `);
+
+        // Get batch sizes
+        const batchSizes = await pool.query(`
+            SELECT * FROM batch_sizes
+            ORDER BY program
+        `);
+
+        res.json({
+            teachingRates: teachingRates.rows,
+            staffRates: staffRates.rows,
+            batchSizes: batchSizes.rows
+        });
+    } catch (error) {
+        console.error("getRates error:", error);
+        res.status(500).json({ message: "Failed to fetch rates" });
+    }
+};
+
+exports.updateRates = async (req, res) => {
+    const { teachingRates, staffRates, batchSizes } = req.body;
+
+    try {
+        await pool.query("BEGIN");
+
+        // Update teaching rates
+        if (teachingRates && Array.isArray(teachingRates)) {
+            for (const rate of teachingRates) {
+                await pool.query(
+                    `UPDATE remuneration_rates 
+                     SET fy_sy_rate = $1, ty_final_rate = $2, mtech_mca_rate = $3, min_per_day = $4
+                     WHERE exam_type = $5`,
+                    [rate.fy_sy_rate, rate.ty_final_rate, rate.mtech_mca_rate, rate.min_per_day, rate.exam_type]
+                );
+            }
+        }
+
+        // Update staff rates
+        if (staffRates && Array.isArray(staffRates)) {
+            for (const rate of staffRates) {
+                await pool.query(
+                    `UPDATE staff_role_rates 
+                     SET preparation_rate = $1, per_batch_rate = $2, cleaning_rate = $3
+                     WHERE staff_role = $4`,
+                    [rate.preparation_rate, rate.per_batch_rate, rate.cleaning_rate, rate.staff_role]
+                );
+            }
+        }
+
+        // Update batch sizes
+        if (batchSizes && Array.isArray(batchSizes)) {
+            for (const batch of batchSizes) {
+                await pool.query(
+                    `UPDATE batch_sizes 
+                     SET practical_size = $1, oral_size = $2, termwork_size = $3, 
+                         project_oral_size = $4, dissertation_size = $5
+                     WHERE program = $6`,
+                    [
+                        batch.practical_size,
+                        batch.oral_size,
+                        batch.termwork_size,
+                        batch.project_oral_size,
+                        batch.dissertation_size,
+                        batch.program
+                    ]
+                );
+            }
+        }
+
+        await pool.query("COMMIT");
+        res.json({ message: "Rates updated successfully" });
+    } catch (error) {
+        await pool.query("ROLLBACK");
+        console.error("updateRates error:", error);
+        res.status(500).json({ message: "Failed to update rates" });
     }
 };

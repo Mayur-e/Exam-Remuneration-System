@@ -28,8 +28,6 @@ export default function TeachingBillForm() {
   const [exam, setExam] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [externalLink, setExternalLink] = useState("");
-  const [chairmanAllowance, setChairmanAllowance] = useState("");
-  const [conveyanceAllowance, setConveyanceAllowance] = useState("");
 
 
   useEffect(() => {
@@ -38,8 +36,6 @@ export default function TeachingBillForm() {
       setExamId(null);
       setStatus("draft");
       setExam(null);
-      setChairmanAllowance("");
-      setConveyanceAllowance("");
     }
   }, [claimTypeFromUrl]);
 
@@ -67,10 +63,7 @@ export default function TeachingBillForm() {
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      await api.post(`/faculty/exams/${examId}/submit`, {
-        chairman_allowance: Number(chairmanAllowance) || 0,
-        conveyance_amount: Number(conveyanceAllowance) || 0
-      });
+      await api.post(`/faculty/exams/${examId}/submit`, {});
       setStatus("submitted");
       setRefreshKey(k => k + 1); // Refresh summary
       showToast("Claim submitted successfully!", "success");
@@ -250,34 +243,7 @@ export default function TeachingBillForm() {
         </Card>
       )}
 
-      {/* STEP 2.5: Allowances (Internal Only) */}
-      {examId && claimTypeFromUrl === "TEACHING_INTERNAL" && (
-        <Card className="p-6 space-y-4">
-          <h3 className="text-lg font-semibold">Allowances</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Chairman Allowance</label>
-              <Input
-                type="number"
-                placeholder="0"
-                value={chairmanAllowance}
-                onChange={(e) => setChairmanAllowance(e.target.value)}
-                disabled={status !== "draft" && status !== "rejected"}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Conveyance Allowance (External Only)</label>
-              <Input
-                type="number"
-                placeholder="0"
-                value={conveyanceAllowance}
-                onChange={(e) => setConveyanceAllowance(e.target.value)}
-                disabled={status !== "draft" && status !== "rejected"}
-              />
-            </div>
-          </div>
-        </Card>
-      )}
+
 
       {/* STEP 4 */}
       {examId && (status === "submitted" || status === "approved") && (
