@@ -716,27 +716,56 @@ exports.listAllFaculty = async (req, res) => {
 /* ==============================
    RATE MANAGEMENT
 ================================ */
+exports.getAcademicYears = async (req, res) => {
+    try {
+        // Get distinct academic years from all rate tables
+        const result = await pool.query(`
+            SELECT DISTINCT academic_year 
+            FROM (
+                SELECT academic_year FROM remuneration_rates
+                UNION
+                SELECT academic_year FROM staff_role_rates
+                UNION
+                SELECT academic_year FROM batch_sizes
+            ) AS years
+            ORDER BY academic_year DESC
+        `);
+
+        res.json(result.rows.map(r => r.academic_year));
+    } catch (error) {
+        console.error("getAcademicYears error:", error);
+        res.status(500).json({ message: "Failed to fetch academic years" });
+    }
+};
+
 exports.getRates = async (req, res) => {
     try {
+        const { academic_year } = req.query;
+        const year = academic_year || '2024-25'; // Default to current year
+
         // Get teaching rates (remuneration_rates)
         const teachingRates = await pool.query(`
             SELECT * FROM remuneration_rates
+            WHERE academic_year = $1
             ORDER BY exam_type
-        `);
+        `, [year]);
 
         // Get non-teaching rates (staff_role_rates)
         const staffRates = await pool.query(`
             SELECT * FROM staff_role_rates
+            WHERE academic_year = $1
             ORDER BY staff_role
-        `);
+        `, [year]);
 
         // Get batch sizes
         const batchSizes = await pool.query(`
             SELECT * FROM batch_sizes
+            WHERE academic_year = $1
             ORDER BY program
-        `);
+        `, [year]);
 
         res.json({
+            academicYear: year,
             teachingRates: teachingRates.rows,
             staffRates: staffRates.rows,
             batchSizes: batchSizes.rows
@@ -748,7 +777,11 @@ exports.getRates = async (req, res) => {
 };
 
 exports.updateRates = async (req, res) => {
-    const { teachingRates, staffRates, batchSizes } = req.body;
+    const { teachingRates, staffRates, batchSizes, academic_year } = req.body;
+
+    if (!academic_year) {
+        return res.status(400).json({ message: "Academic year is required" });
+    }
 
     try {
         await pool.query("BEGIN");
@@ -759,8 +792,8 @@ exports.updateRates = async (req, res) => {
                 await pool.query(
                     `UPDATE remuneration_rates 
                      SET fy_sy_rate = $1, ty_final_rate = $2, mtech_mca_rate = $3, min_per_day = $4
-                     WHERE exam_type = $5`,
-                    [rate.fy_sy_rate, rate.ty_final_rate, rate.mtech_mca_rate, rate.min_per_day, rate.exam_type]
+                     WHERE exam_type = $5 AND academic_year = $6`,
+                    [rate.fy_sy_rate, rate.ty_final_rate, rate.mtech_mca_rate, rate.min_per_day, rate.exam_type, academic_year]
                 );
             }
         }
@@ -771,8 +804,8 @@ exports.updateRates = async (req, res) => {
                 await pool.query(
                     `UPDATE staff_role_rates 
                      SET preparation_rate = $1, per_batch_rate = $2, cleaning_rate = $3
-                     WHERE staff_role = $4`,
-                    [rate.preparation_rate, rate.per_batch_rate, rate.cleaning_rate, rate.staff_role]
+                     WHERE staff_role = $4 AND academic_year = $5`,
+                    [rate.preparation_rate, rate.per_batch_rate, rate.cleaning_rate, rate.staff_role, academic_year]
                 );
             }
         }
@@ -784,24 +817,96 @@ exports.updateRates = async (req, res) => {
                     `UPDATE batch_sizes 
                      SET practical_size = $1, oral_size = $2, termwork_size = $3, 
                          project_oral_size = $4, dissertation_size = $5
-                     WHERE program = $6`,
+                     WHERE program = $6 AND academic_year = $7`,
                     [
                         batch.practical_size,
                         batch.oral_size,
                         batch.termwork_size,
                         batch.project_oral_size,
                         batch.dissertation_size,
-                        batch.program
+                        batch.program,
+                        academic_year
                     ]
                 );
             }
         }
 
         await pool.query("COMMIT");
-        res.json({ message: "Rates updated successfully" });
+        res.json({ message: `Rates updated successfully for ${academic_year}` });
     } catch (error) {
         await pool.query("ROLLBACK");
         console.error("updateRates error:", error);
         res.status(500).json({ message: "Failed to update rates" });
+    }
+};
+
+exports.cloneRatesToNewYear = async (req, res) => {
+    const { source_year, target_year } = req.body;
+
+    if (!source_year || !target_year) {
+        return res.status(400).json({ message: "Source year and target year are required" });
+    }
+
+    if (source_year === target_year) {
+        return res.status(400).json({ message: "Source and target years must be different" });
+    }
+
+    try {
+        await pool.query("BEGIN");
+
+        // Check if target year already exists
+        const existingCheck = await pool.query(
+            `SELECT 1 FROM remuneration_rates WHERE academic_year = $1 LIMIT 1`,
+            [target_year]
+        );
+
+        if (existingCheck.rows.length > 0) {
+            await pool.query("ROLLBACK");
+            return res.status(400).json({
+                message: `Rates for ${target_year} already exist. Please delete them first or use the edit feature.`
+            });
+        }
+
+        // Clone remuneration rates
+        const remunerationResult = await pool.query(
+            `INSERT INTO remuneration_rates (exam_type, fy_sy_rate, ty_final_rate, mtech_mca_rate, min_per_day, academic_year)
+             SELECT exam_type, fy_sy_rate, ty_final_rate, mtech_mca_rate, min_per_day, $1
+             FROM remuneration_rates
+             WHERE academic_year = $2`,
+            [target_year, source_year]
+        );
+
+        // Clone staff role rates
+        const staffResult = await pool.query(
+            `INSERT INTO staff_role_rates (staff_role, preparation_rate, per_batch_rate, cleaning_rate, academic_year)
+             SELECT staff_role, preparation_rate, per_batch_rate, cleaning_rate, $1
+             FROM staff_role_rates
+             WHERE academic_year = $2`,
+            [target_year, source_year]
+        );
+
+        // Clone batch sizes
+        const batchResult = await pool.query(
+            `INSERT INTO batch_sizes (program, practical_size, oral_size, termwork_size, project_oral_size, dissertation_size, academic_year)
+             SELECT program, practical_size, oral_size, termwork_size, project_oral_size, dissertation_size, $1
+             FROM batch_sizes
+             WHERE academic_year = $2`,
+            [target_year, source_year]
+        );
+
+        await pool.query("COMMIT");
+
+        res.json({
+            message: `Successfully cloned rates from ${source_year} to ${target_year}`,
+            cloned: {
+                teachingRates: remunerationResult.rowCount,
+                staffRates: staffResult.rowCount,
+                batchSizes: batchResult.rowCount
+            }
+        });
+    } catch (error) {
+        await pool.query("ROLLBACK");
+        console.error("cloneRatesToNewYear error:", error);
+        res.status(500).json({ message: "Failed to clone rates to new year" });
     }
 };

@@ -212,6 +212,7 @@ export default function Login() {
                   shape="rectangular"
                   size="large"
                   width="100%"
+                  locale="en"
                 />
               </div>
 

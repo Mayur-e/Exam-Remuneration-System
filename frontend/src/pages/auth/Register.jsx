@@ -253,6 +253,7 @@ export default function Register() {
                   shape="rectangular"
                   size="large"
                   width="100%"
+                  locale="en"
                 />
               </div>
 

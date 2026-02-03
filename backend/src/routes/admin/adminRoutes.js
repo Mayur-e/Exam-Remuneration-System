@@ -31,7 +31,9 @@ router.get("/billing-incharge/:id/actions", auth, role(["ADMIN"]), idParamValida
 router.get("/audit-logs", auth, role(["ADMIN"]), adminController.getAuditLogs);
 
 // Rate Management
+router.get("/rates/academic-years", auth, role(["ADMIN"]), adminController.getAcademicYears);
 router.get("/rates", auth, role(["ADMIN"]), adminController.getRates);
 router.put("/rates", auth, role(["ADMIN"]), adminController.updateRates);
+router.post("/rates/clone", auth, role(["ADMIN"]), adminController.cloneRatesToNewYear);
 
 module.exports = router;
