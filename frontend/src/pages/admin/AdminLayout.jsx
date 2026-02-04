@@ -5,7 +5,8 @@ import {
     UsersIcon,
     SettingsIcon,
     ShieldIcon,
-    ClipboardIcon
+    ClipboardIcon,
+    QueryIcon
 } from "../../components/icons/logo";
 
 export default function AdminLayout() {
@@ -34,6 +35,11 @@ export default function AdminLayout() {
             to: "/admin/audit-logs",
             label: "Audit Logs",
             icon: <ClipboardIcon className="w-5 h-5" />
+        },
+        {
+            to: "/admin/queries",
+            label: "Support Queries",
+            icon: <QueryIcon className="w-5 h-5" />
         },
         {
             to: "/admin/settings",

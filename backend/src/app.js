@@ -10,6 +10,7 @@ const externalRoutes = require("./routes/faculty/external.routes");
 const accountantroutes = require("./routes/accountant/accountantRoutes");
 const adminRoutes = require("./routes/admin/adminRoutes");
 const pdfRoutes = require("./routes/pdf.routes");
+const queryRoutes = require("./routes/query.routes");
 
 const app = express();
 
@@ -37,7 +38,7 @@ app.use(
   cors({
     origin: FRONTEND_ORIGIN,
     allowedHeaders: ["Content-Type", "Authorization"],
-    methods: ["GET", "POST", "PUT", "DELETE"]
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"]
   })
 );
 
@@ -50,6 +51,7 @@ app.use("/api/external", externalRoutes);
 app.use("/api/accountant", accountantroutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/pdf", pdfRoutes);
+app.use("/api", queryRoutes);
 app.use("/uploads", express.static("uploads"));
 
 // Health check

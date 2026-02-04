@@ -208,10 +208,10 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-white to-blue-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-white to-blue-50 dark:from-background dark:via-background dark:to-accent p-4">
       <div className="w-full max-w-md">
-        <Card className="border-0 shadow-2xl overflow-hidden bg-white">
-          <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 via-transparent to-blue-500/5 pointer-events-none" />
+        <Card className="border-0 shadow-2xl overflow-hidden bg-card">
+          <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 via-transparent to-blue-500/5 dark:from-green-500/10 dark:via-transparent dark:to-blue-500/10 pointer-events-none" />
 
           <div className="relative p-8 space-y-6">
             {/* Header */}
@@ -224,21 +224,21 @@ export default function Register() {
               <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-green-500 bg-clip-text text-transparent">
                 Create Account
               </h1>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">
                 Join the billing management system
               </p>
             </div>
 
             {/* Success message */}
             {successMessage && (
-              <div className="p-3 bg-green-50 text-green-700 rounded-lg text-sm font-medium border border-green-200 animate-in">
+              <div className="p-3 bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 rounded-lg text-sm font-medium border border-green-200 dark:border-green-800 animate-in">
                 {successMessage}
               </div>
             )}
 
             {/* General error */}
             {errors.general && (
-              <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm font-medium border border-red-200 animate-in">
+              <div className="p-3 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 rounded-lg text-sm font-medium border border-red-200 dark:border-red-800 animate-in">
                 {errors.general}
               </div>
             )}
@@ -260,10 +260,10 @@ export default function Register() {
               {/* Divider */}
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300"></div>
+                  <div className="w-full border-t border-border"></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">Or register with email</span>
+                  <span className="px-2 bg-card text-muted-foreground">Or register with email</span>
                 </div>
               </div>
             </div>
@@ -272,7 +272,7 @@ export default function Register() {
             <form onSubmit={submit} className="space-y-5">
               {/* Full Name field */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
+                <label className="text-sm font-medium text-card-foreground">
                   Full Name
                 </label>
                 <div className="relative">
@@ -410,13 +410,13 @@ export default function Register() {
             </form>
 
             {/* Switch to Sign In */}
-            <div className="pt-4 text-center border-t border-gray-200">
-              <p className="text-sm text-gray-600">
+            <div className="pt-4 text-center border-t border-border">
+              <p className="text-sm text-muted-foreground">
                 Already have an account?{" "}
                 <button
                   type="button"
                   onClick={() => navigate("/")}
-                  className="text-green-600 hover:text-green-700 font-semibold transition-colors duration-300 hover:underline"
+                  className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-semibold transition-colors duration-300 hover:underline"
                 >
                   Sign In
                 </button>

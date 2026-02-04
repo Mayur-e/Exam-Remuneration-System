@@ -5,6 +5,7 @@ import {
     LogoutIcon
 } from "../icons/logo";
 import { Button } from "../ui/button";
+import { ThemeToggle } from "../ui/theme-toggle";
 
 /**
  * Shared Dashboard Layout Component
@@ -36,31 +37,31 @@ export default function DashboardLayout({ role, navItems, branding, theme }) {
     const activeTheme = theme || defaultTheme;
 
     return (
-        <div className={`flex min-h-screen bg-gradient-to-br ${activeTheme.gradient}`}>
+        <div className={`flex min-h-screen bg-gradient-to-br ${activeTheme.gradient} dark:from-background dark:via-background dark:to-accent`}>
             {/* Sidebar */}
-            <aside className="w-64 bg-white border-r border-gray-200 shadow-lg transition-all duration-300 hover:shadow-xl">
+            <aside className="w-64 bg-card border-r border-border shadow-lg transition-all duration-300 hover:shadow-xl">
                 {/* Logo/Sidebar Header */}
-                <div className="p-6 border-b border-gray-200">
+                <div className="p-6 border-b border-border">
                     <div className="flex items-center gap-3">
                         <div className={`w-10 h-10 rounded-lg bg-gradient-to-br from-${activeTheme.primary} to-${activeTheme.secondary} flex items-center justify-center shadow-md`}>
                             {branding.icon}
                         </div>
                         <div>
-                            <h1 className="font-bold text-gray-800 text-lg">{branding.title}</h1>
-                            <p className="text-xs text-gray-500">{branding.subtitle}</p>
+                            <h1 className="font-bold text-card-foreground text-lg">{branding.title}</h1>
+                            <p className="text-xs text-muted-foreground">{branding.subtitle}</p>
                         </div>
                     </div>
                 </div>
 
                 {/* User Profile */}
-                <div className="p-4 border-b border-gray-200">
+                <div className="p-4 border-b border-border">
                     <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-full bg-gradient-to-br from-${activeTheme.primary}-100 to-${activeTheme.primary}-50 border-2 border-${activeTheme.primary}-200 flex items-center justify-center`}>
-                            <UserIcon className={`w-5 h-5 text-${activeTheme.primary}`} />
+                        <div className={`w-10 h-10 rounded-full bg-gradient-to-br from-${activeTheme.primary}-100 to-${activeTheme.primary}-50 dark:from-${activeTheme.primary}-900 dark:to-${activeTheme.primary}-800 border-2 border-${activeTheme.primary}-200 dark:border-${activeTheme.primary}-700 flex items-center justify-center`}>
+                            <UserIcon className={`w-5 h-5 text-${activeTheme.primary} dark:text-${activeTheme.primary}-300`} />
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-gray-800 truncate">{user?.name || role}</p>
-                            <p className="text-xs text-gray-500 truncate">{user?.email || user?.role || "User"}</p>
+                            <p className="font-semibold text-card-foreground truncate">{user?.name || role}</p>
+                            <p className="text-xs text-muted-foreground truncate">{user?.email || user?.role || "User"}</p>
                         </div>
                     </div>
                 </div>
@@ -75,7 +76,7 @@ export default function DashboardLayout({ role, navItems, branding, theme }) {
                             className={({ isActive }) =>
                                 `flex items-center justify-between gap-3 p-3 rounded-lg transition-all duration-200 ${isActive
                                     ? `bg-gradient-to-r from-${activeTheme.primary} to-${activeTheme.secondary} text-white shadow-md`
-                                    : `text-gray-700 hover:bg-${activeTheme.hover} hover:text-${activeTheme.hoverText}`
+                                    : `text-muted-foreground hover:bg-accent hover:text-accent-foreground`
                                 }`
                             }
                         >
@@ -92,22 +93,23 @@ export default function DashboardLayout({ role, navItems, branding, theme }) {
             {/* Main Content Area */}
             <main className="flex-1 flex flex-col overflow-hidden">
                 {/* Header */}
-                <header className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
+                <header className="sticky top-0 z-10 bg-card border-b border-border shadow-sm">
                     <div className="flex items-center justify-between px-6 py-4">
                         <div>
-                            <h2 className="text-xl font-bold text-gray-800">Welcome back, {user?.name || role}!</h2>
-                            <p className="text-sm text-gray-600">{branding.headerSubtitle}</p>
+                            <h2 className="text-xl font-bold text-card-foreground">Welcome back, {user?.name || role}!</h2>
+                            <p className="text-sm text-muted-foreground">{branding.headerSubtitle}</p>
                         </div>
 
                         <div className="flex items-center gap-4">
                             <div className="text-right hidden md:block">
-                                <p className="text-sm font-medium text-gray-800">{user?.role || role}</p>
-                                <p className="text-xs text-gray-500">{user?.department || branding.subtitle}</p>
+                                <p className="text-sm font-medium text-card-foreground">{user?.role || role}</p>
+                                <p className="text-xs text-muted-foreground">{user?.department || branding.subtitle}</p>
                             </div>
+                            <ThemeToggle />
                             <Button
                                 onClick={logout}
                                 variant="outline"
-                                className="flex items-center gap-2 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-400"
+                                className="flex items-center gap-2 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-400 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950 dark:hover:text-red-300"
                             >
                                 <LogoutIcon className="w-4 h-4" />
                                 Logout
@@ -124,8 +126,8 @@ export default function DashboardLayout({ role, navItems, branding, theme }) {
                 </div>
 
                 {/* Footer */}
-                <footer className="bg-white border-t border-gray-200 py-3 px-6">
-                    <div className="flex items-center justify-between text-sm text-gray-500">
+                <footer className="bg-card border-t border-border py-3 px-6">
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
                         <div>
                             <p>Examination Remuneration System{branding.footerSuffix ? ` - ${branding.footerSuffix}` : ""}</p>
                         </div>

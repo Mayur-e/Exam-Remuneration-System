@@ -28,12 +28,14 @@ import ExternalTeachingForm from "../pages/external/ExternalTeachingForm"
 
 
 
+// Accountant
 import AccountantLayout from "../pages/accountant/AccountantLayout";
 import AccountantDashboard from "../pages/accountant/AccountantDashboard";
 import Bills from "../pages/accountant/Bills";
 import BillView from "../pages/accountant/BillView";
 import FacultyList from "../pages/accountant/FacultyList";
 import FacultyProfile from "../pages/accountant/FacultyProfile";
+import QueryManagement from "../pages/accountant/QueryManagement";
 import Settingsacc from "../pages/accountant/Settings";
 
 // Protection
@@ -63,6 +65,7 @@ export default function AppRoutes() {
         <Route path="faculty/:id" element={<AdminFacultyProfile />} />
         <Route path="external" element={<AdminExternalSupervision />} />
         <Route path="audit-logs" element={<AdminAuditLogs />} />
+        <Route path="queries" element={<QueryManagement />} />
         <Route path="settings" element={<AdminSettings />} />
       </Route>
 
@@ -77,6 +80,7 @@ export default function AppRoutes() {
         <Route path="bills/:id" element={<BillView />} />
         <Route path="faculty" element={<FacultyList />} />
         <Route path="faculty/:id" element={<FacultyProfile />} />
+        <Route path="queries" element={<QueryManagement />} />
         <Route path="settings" element={<Settingsacc />} />
       </Route>
 

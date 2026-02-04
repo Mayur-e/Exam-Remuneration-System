@@ -172,11 +172,10 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-background dark:via-background dark:to-accent p-4">
       <div className="w-full max-w-md">
-        <Card className="border-0 shadow-2xl overflow-hidden bg-white">
-          {/* Gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5 pointer-events-none" />
+        <Card className="border-0 shadow-2xl overflow-hidden bg-card">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5 dark:from-blue-500/10 dark:via-transparent dark:to-purple-500/10 pointer-events-none" />
 
           <div className="relative p-8 space-y-6">
             {/* Header */}
@@ -189,14 +188,14 @@ export default function Login() {
               <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">
                 Staff Billing
               </h1>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">
                 Professional Billing Management System
               </p>
             </div>
 
             {/* Error message */}
             {generalError && (
-              <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm font-medium border border-red-200">
+              <div className="p-3 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 rounded-lg text-sm font-medium border border-red-200 dark:border-red-800">
                 {generalError}
               </div>
             )}
@@ -219,10 +218,10 @@ export default function Login() {
               {/* Divider */}
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300"></div>
+                  <div className="w-full border-t border-border"></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">Or continue with email</span>
+                  <span className="px-2 bg-card text-muted-foreground">Or continue with email</span>
                 </div>
               </div>
             </div>
@@ -231,11 +230,11 @@ export default function Login() {
             <form onSubmit={handleLogin} className="space-y-5">
               {/* Email field */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
+                <label className="text-sm font-medium text-card-foreground">
                   Email Address
                 </label>
                 <div className="relative group">
-                  <MailIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors duration-300" />
+                  <MailIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-blue-500 transition-colors duration-300" />
                   <Input
                     type="email"
                     placeholder="Enter your email"
@@ -257,11 +256,11 @@ export default function Login() {
 
               {/* Password field */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
+                <label className="text-sm font-medium text-card-foreground">
                   Password
                 </label>
                 <div className="relative group">
-                  <LockIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors duration-300" />
+                  <LockIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-blue-500 transition-colors duration-300" />
                   <Input
                     type="password"
                     placeholder="Enter your password"
@@ -299,13 +298,13 @@ export default function Login() {
             </form>
 
             {/* Switch to Sign Up */}
-            <div className="pt-4 text-center border-t border-gray-200">
-              <p className="text-sm text-gray-600">
+            <div className="pt-4 text-center border-t border-border">
+              <p className="text-sm text-muted-foreground">
                 Don't have an account?{" "}
                 <button
                   type="button"
                   onClick={() => navigate("/signup")}
-                  className="text-blue-600 hover:text-blue-700 font-semibold transition-colors duration-300 hover:underline"
+                  className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-semibold transition-colors duration-300 hover:underline"
                 >
                   Sign Up
                 </button>

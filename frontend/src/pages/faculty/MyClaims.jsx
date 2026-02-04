@@ -14,7 +14,8 @@ import {
   FilterIcon,
   CheckCircleIcon,
   ClockIcon,
-  XIcon
+  XIcon,
+  QueryIcon
 } from "../../components/icons/logo";
 
 export default function MyClaims() {
@@ -336,6 +337,18 @@ export default function MyClaims() {
                     >
                       <EyeIcon className="w-4 h-4 mr-1" />
                       View
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-dashed"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/faculty/queries?claim_id=${c.id}`);
+                      }}
+                      title="Raise query"
+                    >
+                      <QueryIcon className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
