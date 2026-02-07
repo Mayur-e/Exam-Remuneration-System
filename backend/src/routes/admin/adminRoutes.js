@@ -43,7 +43,7 @@ router.get("/subjects/counts", auth, role(["ADMIN"]), subjectController.getSubje
 
 // Excel Export
 const exportController = require("../../controllers/export.controller");
-router.get("/export/billing-sheet", auth, role(["ADMIN"]), exportController.exportBillingSheet);
+router.get("/export/billing-sheet", auth, role(["ADMIN", "BILLING_INCHARGE"]), exportController.exportBillingSheet);
 
 module.exports = router;
 

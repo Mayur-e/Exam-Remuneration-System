@@ -8,55 +8,83 @@ exports.exportBillingSheet = async (req, res) => {
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.readFile(templatePath);
 
+        const { department } = req.user;
+        const isBillingIncharge = req.user.role === 'BILLING_INCHARGE';
+
+        // Helper to formatting dates
+        const formatDate = (dateStr) => {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('en-GB'); // DD/MM/YYYY
+        };
+
+        const getMonthYear = (dateStr) => {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            return d.toLocaleString('default', { month: 'long', year: 'numeric' });
+        };
+
         // --- Sheet 1: Ext-1 (External Examiners) ---
-        // Data starts at Row 13
-        // Footer (with Totals) starts at Row 24 (or row 13 + initial blank count)
         const sheet1 = workbook.getWorksheet('Ext-1');
         if (sheet1) {
-            const externalClaimsQuery = `
+            let externalClaimsQuery = `
                 SELECT 
-                    e.subject_code, e.subject_name, e.students_count, e.exam_date, e.exam_type, e.program, e.level,
+                    e.subject_code, e.subject_name, e.students_count, e.exam_date, e.exam_type, e.program, e.level, e.semester, e.academic_year,
                     ex.full_name, ex.parent_institute, ex.mobile, ex.pan_number, ex.bank_name, ex.branch_name, ex.account_number, ex.ifsc_code,
                     rc.examiner_amount, rc.conveyance_amount,
-                    (COALESCE(rc.examiner_amount, 0) + COALESCE(rc.conveyance_amount, 0)) as total_amount
+                    (COALESCE(rc.examiner_amount, 0) + COALESCE(rc.conveyance_amount, 0)) as total_amount,
+                    u.department as exam_department
                 FROM exams e
                 JOIN remuneration_calculations rc ON e.id = rc.exam_id
                 LEFT JOIN external_examiners ex ON e.external_examiner_id = ex.id
+                JOIN users u ON e.faculty_id = u.id
                 WHERE e.claim_form_type = 'TEACHING_EXTERNAL' AND e.status IN ('approved', 'paid')
-                ORDER BY e.exam_date
             `;
-            const { rows: extClaims } = await db.query(externalClaimsQuery);
 
-            let rowIdx = 13;
-            // We need to shift the footer down for every row we add beyond the initial space.
-            // Actually, best practice is to insert new rows before the footer.
-            // The template has ~11 blank rows (13 to 23). If we have more than 11 claims, we need to insert rows.
-            // If we have fewer, we might leave blank rows.
-            // "Dynamic" request implies we should just insert rows and push the footer down.
+            const queryParams = [];
+            if (isBillingIncharge && department) {
+                externalClaimsQuery += ` AND u.department = $1`;
+                queryParams.push(department);
+            }
+            externalClaimsQuery += ` ORDER BY e.exam_date`;
 
-            // To be safe and truly dynamic:
-            // 1. Identify the 'footer' row index. Based on dump: Row 24 is "EXTERNAL EXAMINER TOTAL AMOUNT".
+            const { rows: extClaims } = await db.query(externalClaimsQuery, queryParams);
+
+            // Populate Headers (using first row if available)
+            if (extClaims.length > 0) {
+                const first = extClaims[0];
+                const dept = first.exam_department || department || '';
+                const prog = first.program || '';
+                const acadYear = first.academic_year || '';
+                const semester = first.semester || '';
+                const classYear = first.level || ''; // FE/SE/TE/BE
+                const examMonth = getMonthYear(first.exam_date);
+
+                // A6: Programme
+                sheet1.getCell('A6').value = `Programme : ${prog}`;
+                // A7: Department
+                sheet1.getCell('A7').value = `Department : ${dept}`;
+                // K7: Class Year
+                sheet1.getCell('K7').value = `Class Year: ${classYear}`;
+                // A8: Academic Year
+                sheet1.getCell('A8').value = `Academic Year : ${acadYear}`;
+                // K8: Semester
+                sheet1.getCell('K8').value = `Semester : ${semester}`;
+                // K9: Exam Month
+                sheet1.getCell('K9').value = `Exam Month : ${examMonth}`;
+            }
+
+            // Body Population (Dynamic Row Insertion)
+            const rowsToAdd = Math.max(0, extClaims.length - 11);
             let footerRowIdx = 24;
 
-            // Calculate how many rows to add.
-            // If we have N claims, we want to write them starting at 13.
-            // We can just insert (N) rows at 13, pushing 13->13+N. 
-            // BUT wait, row 13 might already have formatting or be part of the "body".
-            // The template has pre-filled empty rows 13-23.
-            // We should overwrite 13-23 with data. If N > 11, insert (N-11) rows at 24.
-
-            const existingBodyRows = 11; // 13 to 23 inclusive
-            const neededRows = extClaims.length;
-            const rowsToAdd = Math.max(0, neededRows - existingBodyRows);
-
             if (rowsToAdd > 0) {
-                sheet1.insertRows(24, new Array(rowsToAdd).fill([])); // Insert at footer start
-                footerRowIdx += rowsToAdd; // Footer pushed down
+                sheet1.insertRows(24, new Array(rowsToAdd).fill([]));
+                footerRowIdx += rowsToAdd;
             }
 
             extClaims.forEach((claim, index) => {
-                const currentRow = 13 + index;
-                const row = sheet1.getRow(currentRow);
+                const row = sheet1.getRow(13 + index);
                 row.getCell(2).value = index + 1;
                 row.getCell(3).value = claim.full_name;
                 row.getCell(4).value = "External";
@@ -65,7 +93,7 @@ exports.exportBillingSheet = async (req, res) => {
                 row.getCell(7).value = claim.subject_code;
                 row.getCell(8).value = claim.subject_name;
                 row.getCell(9).value = claim.level;
-                row.getCell(10).value = claim.exam_date ? new Date(claim.exam_date).toLocaleDateString() : '';
+                row.getCell(10).value = formatDate(claim.exam_date);
                 row.getCell(11).value = claim.exam_type;
                 row.getCell(12).value = claim.students_count;
                 row.getCell(14).value = Number(claim.examiner_amount);
@@ -79,75 +107,86 @@ exports.exportBillingSheet = async (req, res) => {
                 row.commit();
             });
 
-            // Re-calculate Total Formulas in Sheet 'Total' if footer moved
-            // Original Ext-1 Footer was at 24. New is at footerRowIdx.
-            // Sheet 'Total' references Ext-1!M24 etc.
-            // We need to update 'Total' sheet formulas to point to new footerRowIdx.
-            const totalSheet = workbook.getWorksheet('Total');
-            if (totalSheet && rowsToAdd > 0) {
-                // Update Row 2 (External Total) -> Ext-1!M{newRow}
-                // Update Row 3 (External LCA) -> Ext-1!N{newRow}
-
-                // Note: The template dump for Total sheet had:
-                // Row 2: ... formula: "'Ext-1'!M24"
-                // Check if it's strictly row 2/3.
-
-                const extTotalCell = totalSheet.getCell('D2'); // Assuming col D based on dump [null, 1, "Descr", Formula] -> Col 4 is D? No, array is 1-based in exceljs?
-                // Dump: [null, 1, "External...", {formula}] -> Index 0 is null, 1 is 'A', 2 is 'B', 3 is 'C'.
-                // So formula is in Column D (4).
-
-                // Wait, ExcelJS values array is [empty, col1, col2, ...]
-                // So index 3 is Column C.
-                // Let's verify dump of Total sheet:
-                // Row 2: [null,1,"External Examiner Total Amount:",{"formula":"'Ext-1'!M24"}]
-                // col 1 (A) = 1
-                // col 2 (B) = "External..."
-                // col 3 (C) = formula
-
-                totalSheet.getCell('C2').value = { formula: `'Ext-1'!M${footerRowIdx}` };
-                totalSheet.getCell('C3').value = { formula: `'Ext-1'!N${footerRowIdx}` };
+            // Update Total Sheet Reference
+            if (rowsToAdd > 0) {
+                const totalSheet = workbook.getWorksheet('Total');
+                if (totalSheet) {
+                    totalSheet.getCell('C2').value = { formula: `'Ext-1'!M${footerRowIdx}` };
+                    totalSheet.getCell('C3').value = { formula: `'Ext-1'!N${footerRowIdx}` };
+                }
             }
         }
 
         // --- Sheet 2: Int-2 (Internal Examiners & Support Staff) ---
-        // Data starts at Row 23
-        // Footer starts at Row 97
         const sheet2 = workbook.getWorksheet('Int-2');
         if (sheet2) {
-            // 1. Fetch all data first to know count
-            const internalClaimsQuery = `
+            let internalClaimsQuery = `
                 SELECT 
-                    e.subject_code, e.subject_name, e.students_count, e.exam_date, e.exam_type, e.program, e.level,
+                    e.subject_code, e.subject_name, e.students_count, e.exam_date, e.exam_type, e.program, e.level, e.semester, e.academic_year,
                     u.name as staff_name, fba.pan_number, fba.bank_name, fba.branch_name, fba.account_number, fba.ifsc_code,
-                    rc.examiner_amount
+                    rc.examiner_amount,
+                    u.department as exam_department
                 FROM exams e
                 JOIN remuneration_calculations rc ON e.id = rc.exam_id
                 JOIN users u ON e.faculty_id = u.id
                 LEFT JOIN faculty_bank_accounts fba ON e.faculty_id = fba.faculty_id AND fba.is_active = true
                 WHERE e.claim_form_type = 'TEACHING_INTERNAL' AND e.status IN ('approved', 'paid')
-                ORDER BY e.exam_date
             `;
-            const { rows: intClaims } = await db.query(internalClaimsQuery);
 
-            const staffClaimsQuery = `
+            const intParams = [];
+            if (isBillingIncharge && department) {
+                internalClaimsQuery += ` AND u.department = $1`;
+                intParams.push(department);
+            }
+            internalClaimsQuery += ` ORDER BY e.exam_date`;
+
+            const { rows: intClaims } = await db.query(internalClaimsQuery, intParams);
+
+            let staffClaimsQuery = `
                  SELECT 
-                    e.subject_code, e.subject_name, e.students_count, e.exam_date, e.exam_type, e.program, e.level,
+                    e.subject_code, e.subject_name, e.students_count, e.exam_date, e.exam_type, e.program, e.level, e.semester, e.academic_year,
                     esm.staff_name, esm.staff_role, esm.preparation_days, esm.cleaning_days, esm.batches, esm.examination_days, esm.rate,
-                    '' as pan_number, '' as bank_name, '' as branch_name, '' as account_number, '' as ifsc_code
+                    '' as pan_number, '' as bank_name, '' as branch_name, '' as account_number, '' as ifsc_code,
+                    u.department as exam_department
                 FROM exams e
                 JOIN exam_staff_members esm ON e.id = esm.exam_id
+                JOIN users u ON e.faculty_id = u.id
                 WHERE e.claim_form_type = 'NON_TEACHING' AND e.status IN ('approved', 'paid')
-                ORDER BY e.exam_date
             `;
-            const { rows: staffClaims } = await db.query(staffClaimsQuery);
 
-            const allIntRows = [...intClaims, ...staffClaims]; // Combine logic for writing? Or separate?
-            // Let's keep separate loops but continuous index.
+            const staffParams = [];
+            if (isBillingIncharge && department) {
+                staffClaimsQuery += ` AND u.department = $1`;
+                staffParams.push(department);
+            }
+            staffClaimsQuery += ` ORDER BY e.exam_date`;
 
-            const existingIntBodyRows = 74; // 23 to 96 inclusive
+            const { rows: staffClaims } = await db.query(staffClaimsQuery, staffParams);
+
+            // Populate Headers (using first row of internal claims preferably)
+            const first = intClaims[0] || staffClaims[0];
+            if (first) {
+                const dept = first.exam_department || department || '';
+                const prog = first.program || '';
+                const acadYear = first.academic_year || '';
+                const semester = first.semester || '';
+                const classYear = first.level || '';
+                const examMonth = getMonthYear(first.exam_date);
+
+                // Assuming same header layout as Ext-1 or verify Int-2?
+                // Usually they match. Let's assume A6/A7... mapping holds for Int-2 too.
+                // User provided ONE template, structure usually consistent.
+                sheet2.getCell('A6').value = `Programme : ${prog}`;
+                sheet2.getCell('A7').value = `Department : ${dept}`;
+                sheet2.getCell('K7').value = `Class Year: ${classYear}`;
+                sheet2.getCell('A8').value = `Academic Year : ${acadYear}`;
+                sheet2.getCell('K8').value = `Semester : ${semester}`;
+                sheet2.getCell('K9').value = `Exam Month : ${examMonth}`;
+            }
+
+            const existingIntBodyRows = 74;
             const neededIntRows = intClaims.length + staffClaims.length;
             const intRowsToAdd = Math.max(0, neededIntRows - existingIntBodyRows);
-
             let intFooterRowIdx = 97;
 
             if (intRowsToAdd > 0) {
@@ -157,7 +196,6 @@ exports.exportBillingSheet = async (req, res) => {
 
             let currentRowIdx = 23;
 
-            // Write Internal Claims
             intClaims.forEach((claim, index) => {
                 const row = sheet2.getRow(currentRowIdx);
                 row.getCell(1).value = currentRowIdx - 22;
@@ -166,10 +204,9 @@ exports.exportBillingSheet = async (req, res) => {
                 row.getCell(4).value = claim.subject_code;
                 row.getCell(5).value = claim.subject_name;
                 row.getCell(6).value = claim.level;
-                row.getCell(7).value = claim.exam_date ? new Date(claim.exam_date).toLocaleDateString() : '';
+                row.getCell(7).value = formatDate(claim.exam_date);
                 row.getCell(8).value = claim.exam_type;
                 row.getCell(9).value = claim.students_count;
-
                 row.getCell(11).value = Number(claim.examiner_amount);
                 row.getCell(18).value = Number(claim.examiner_amount);
 
@@ -182,7 +219,6 @@ exports.exportBillingSheet = async (req, res) => {
                 currentRowIdx++;
             });
 
-            // Write Support Claims
             staffClaims.forEach((claim) => {
                 const row = sheet2.getRow(currentRowIdx);
                 const prepDays = (claim.preparation_days || 0) + (claim.cleaning_days || 0);
@@ -199,7 +235,7 @@ exports.exportBillingSheet = async (req, res) => {
                 row.getCell(4).value = claim.subject_code;
                 row.getCell(5).value = claim.subject_name;
                 row.getCell(6).value = claim.level;
-                row.getCell(7).value = claim.exam_date ? new Date(claim.exam_date).toLocaleDateString() : '';
+                row.getCell(7).value = formatDate(claim.exam_date);
 
                 if (prepDays > 0) {
                     row.getCell(12).value = prepDays;
@@ -220,17 +256,13 @@ exports.exportBillingSheet = async (req, res) => {
                 currentRowIdx++;
             });
 
-            // Update Total Sheet Formulas for Int-2
-            const totalSheet = workbook.getWorksheet('Total');
-            if (totalSheet && intRowsToAdd > 0) {
-                // Dump for Total sheet:
-                // Row 4: "Internal Examiner Total Amount:",{"formula":"'Int-2'!K97"}
-                // Row 6: "Prep...": {"formula":"'Int-2'!N97"}
-                // Row 7: "Examination...": {"formula":"'Int-2'!Q97"}
-
-                totalSheet.getCell('C4').value = { formula: `'Int-2'!K${intFooterRowIdx}` };
-                totalSheet.getCell('C6').value = { formula: `'Int-2'!N${intFooterRowIdx}` };
-                totalSheet.getCell('C7').value = { formula: `'Int-2'!Q${intFooterRowIdx}` };
+            if (intRowsToAdd > 0) {
+                const totalSheet = workbook.getWorksheet('Total');
+                if (totalSheet) {
+                    totalSheet.getCell('C4').value = { formula: `'Int-2'!K${intFooterRowIdx}` };
+                    totalSheet.getCell('C6').value = { formula: `'Int-2'!N${intFooterRowIdx}` };
+                    totalSheet.getCell('C7').value = { formula: `'Int-2'!Q${intFooterRowIdx}` };
+                }
             }
         }
 
