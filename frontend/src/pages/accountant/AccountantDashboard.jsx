@@ -29,12 +29,33 @@ export default function AccountantDashboard() {
       .finally(() => setLoading(false));
   }, []);
 
+  const handleExport = async () => {
+    try {
+      const response = await api.get('/admin/export/billing-sheet', {
+        responseType: 'blob',
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'Billing_Sheet_Export.xlsx');
+      document.body.appendChild(link);
+      link.click();
+
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Export failed:", error);
+      alert("Failed to export billing sheet");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center space-y-4">
           <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
+          <p className="text-muted-foreground">Loading dashboard...</p>
         </div>
       </div>
     );
@@ -57,8 +78,8 @@ export default function AccountantDashboard() {
     <div className="space-y-8 p-6">
       {/* Header */}
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold text-gray-800">Billing Incharge Dashboard</h1>
-        <p className="text-gray-600">Department financial overview and payment management</p>
+        <h1 className="text-3xl font-bold text-card-foreground">Billing Incharge Dashboard</h1>
+        <p className="text-muted-foreground">Department financial overview and payment management</p>
       </div>
 
       {/* Stats Grid */}
@@ -109,8 +130,8 @@ export default function AccountantDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <Card className="p-6 bg-white border-gray-200">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">Quick Actions</h2>
+      <Card className="p-6 bg-card border-border">
+        <h2 className="text-xl font-semibold text-card-foreground mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Button
             onClick={() => navigate("/accountant/bills?status=submitted")}
@@ -136,6 +157,15 @@ export default function AccountantDashboard() {
           >
             <FileTextIcon className="w-5 h-5 mr-2" />
             Faculty Directory
+          </Button>
+
+          <Button
+            onClick={handleExport}
+            variant="outline"
+            className="border-green-600 text-green-600 hover:bg-green-50 font-semibold"
+          >
+            <FileTextIcon className="w-5 h-5 mr-2" />
+            Export Billing Excel
           </Button>
         </div>
       </Card>
@@ -163,10 +193,10 @@ function StatCard({ title, value, subtitle, icon, bgColor, borderColor, textColo
     <Card className={`p-6 ${bgColor} border ${borderColor} hover:shadow-lg transition-shadow duration-300`}>
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
-          <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
+          <p className="text-sm font-medium text-muted-foreground mb-1">{title}</p>
           <h3 className={`text-2xl font-bold ${textColor}`}>{value}</h3>
           {subtitle && (
-            <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
+            <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
           )}
         </div>
         <div className={`p-3 rounded-lg ${bgColor}`}>
