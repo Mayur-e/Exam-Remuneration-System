@@ -5,6 +5,7 @@ import { Button } from "../../components/ui/button";
 import ProfileSettings from "../../components/settings/ProfileSettings";
 import SecuritySettings from "../../components/settings/SecuritySettings";
 import RatesManagement from "../../components/settings/RatesManagement";
+import StudentCountManagement from "../../components/settings/StudentCountManagement";
 import { SettingsIcon, CheckCircleIcon, AlertCircleIcon } from "../../components/icons/logo";
 import { MailIcon } from "../../components/icons/logo";
 
@@ -113,15 +114,6 @@ export default function AdminSettings() {
                         Profile
                     </button>
                     <button
-                        onClick={() => setActiveTab("security")}
-                        className={`px-4 py-2 font-medium border-b-2 transition-colors ${activeTab === "security"
-                            ? "border-purple-600 text-purple-600"
-                            : "border-transparent text-gray-500 hover:text-gray-700"
-                            }`}
-                    >
-                        Security
-                    </button>
-                    <button
                         onClick={() => setActiveTab("system")}
                         className={`px-4 py-2 font-medium border-b-2 transition-colors ${activeTab === "system"
                             ? "border-purple-600 text-purple-600"
@@ -130,6 +122,15 @@ export default function AdminSettings() {
                     >
                         System Configuration
                     </button>
+                    <button
+                        onClick={() => setActiveTab("counts")}
+                        className={`px-4 py-2 font-medium border-b-2 transition-colors ${activeTab === "counts"
+                            ? "border-purple-600 text-purple-600"
+                            : "border-transparent text-gray-500 hover:text-gray-700"
+                            }`}
+                    >
+                        Student Counts
+                    </button>
                 </nav>
             </div>
 
@@ -137,24 +138,29 @@ export default function AdminSettings() {
 
             {/* Tab Content */}
             {activeTab === "profile" && (
-                <ProfileSettings
-                    initialData={profileData}
-                    onSave={handleSaveProfile}
-                    readOnlyFields={['email']}
-                    fields={profileFields}
-                />
-            )}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <ProfileSettings
+                        initialData={profileData}
+                        onSave={handleSaveProfile}
+                        readOnlyFields={['email']}
+                        fields={profileFields}
+                    />
 
-            {activeTab === "security" && (
-                <SecuritySettings
-                    onSave={handleChangePassword}
-                    primaryColor="purple-600"
-                />
+                    <SecuritySettings
+                        onSave={handleChangePassword}
+                        primaryColor="purple-600"
+                    />
+                </div>
             )}
 
             {activeTab === "system" && (
                 <RatesManagement />
             )}
+
+            {activeTab === "counts" && (
+                <StudentCountManagement />
+            )}
         </div>
     );
 }
+
