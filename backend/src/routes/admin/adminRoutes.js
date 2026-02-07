@@ -36,4 +36,10 @@ router.get("/rates", auth, role(["ADMIN"]), adminController.getRates);
 router.put("/rates", auth, role(["ADMIN"]), adminController.updateRates);
 router.post("/rates/clone", auth, role(["ADMIN"]), adminController.cloneRatesToNewYear);
 
+// Subject Count Management
+const subjectController = require("../../controllers/subject.controller");
+router.post("/subjects/counts", auth, role(["ADMIN"]), subjectController.setSubjectCount);
+router.get("/subjects/counts", auth, role(["ADMIN"]), subjectController.getSubjectCounts);
+
 module.exports = router;
+

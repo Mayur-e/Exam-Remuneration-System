@@ -54,6 +54,7 @@ exports.createExam = async (req, res) => {
   }
 
 
+
   // VALIDATION: Subject must exist in subjects table if provided
   if (subject_code || subject_name) {
     const subjectCheck = await pool.query(
@@ -67,6 +68,41 @@ exports.createExam = async (req, res) => {
       });
     }
   }
+
+  // VALIDATION: Check student count against registered limit
+  if (subject_code && academic_year && semester) {
+    // Get the registered count for this subject/semester combination
+    const registeredCountResult = await pool.query(
+      `SELECT registered_count FROM subject_semester_counts 
+       WHERE subject_code = $1 AND academic_year = $2 AND semester = $3`,
+      [subject_code, academic_year, semester]
+    );
+
+    if (registeredCountResult.rows.length > 0) {
+      const registeredCount = registeredCountResult.rows[0].registered_count;
+
+      // Calculate total claimed students for this subject/semester (excluding rejected claims)
+      const existingClaimsResult = await pool.query(
+        `SELECT COALESCE(SUM(students_count), 0) as total_claimed
+         FROM exams
+         WHERE subject_code = $1 
+           AND academic_year = $2 
+           AND semester = $3
+           AND status != 'rejected'`,
+        [subject_code, academic_year, semester]
+      );
+
+      const totalClaimed = parseInt(existingClaimsResult.rows[0].total_claimed);
+      const newTotal = totalClaimed + safeStudentsCount;
+
+      if (newTotal > registeredCount) {
+        return res.status(400).json({
+          message: `Total student count (${newTotal}) exceeds registered count (${registeredCount}) for subject ${subject_code} in ${semester}, ${academic_year}. Already claimed: ${totalClaimed} students.`
+        });
+      }
+    }
+  }
+
 
   // ✅ Now safe to insert
   const result = await pool.query(
@@ -156,6 +192,41 @@ exports.updateExam = async (req, res) => {
         return res.status(400).json({
           message: `Subject "${subject_code || subject_name}" not found in master subjects list. Please select a valid subject from the dropdown.`
         });
+      }
+    }
+
+    // VALIDATION: Check student count against registered limit
+    if (subject_code && academic_year && semester && students_count) {
+      // Get the registered count for this subject/semester combination
+      const registeredCountResult = await pool.query(
+        `SELECT registered_count FROM subject_semester_counts 
+         WHERE subject_code = $1 AND academic_year = $2 AND semester = $3`,
+        [subject_code, academic_year, semester]
+      );
+
+      if (registeredCountResult.rows.length > 0) {
+        const registeredCount = registeredCountResult.rows[0].registered_count;
+
+        // Calculate total claimed students for this subject/semester (excluding rejected claims and THIS exam)
+        const existingClaimsResult = await pool.query(
+          `SELECT COALESCE(SUM(students_count), 0) as total_claimed
+           FROM exams
+           WHERE subject_code = $1 
+             AND academic_year = $2 
+             AND semester = $3
+             AND status != 'rejected'
+             AND id != $4`,
+          [subject_code, academic_year, semester, examId]
+        );
+
+        const totalClaimed = parseInt(existingClaimsResult.rows[0].total_claimed);
+        const newTotal = totalClaimed + Number(students_count);
+
+        if (newTotal > registeredCount) {
+          return res.status(400).json({
+            message: `Total student count (${newTotal}) exceeds registered count (${registeredCount}) for subject ${subject_code} in ${semester}, ${academic_year}. Already claimed by others: ${totalClaimed} students.`
+          });
+        }
       }
     }
 
