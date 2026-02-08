@@ -208,14 +208,14 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
   const academicYears = getAcademicYears();
 
   return (
-    <Card className="p-6 bg-white border-gray-200">
+    <Card className="p-6">
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-          <BookOpenIcon className="w-5 h-5 text-blue-600" />
+        <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+          <BookOpenIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
         </div>
         <div>
-          <h3 className="text-xl font-semibold text-gray-800">Exam Details</h3>
-          <p className="text-sm text-gray-600">Fill in the examination information</p>
+          <h3 className="text-xl font-semibold text-card-foreground">Exam Details</h3>
+          <p className="text-sm text-muted-foreground">Fill in the examination information</p>
         </div>
       </div>
 
@@ -223,7 +223,7 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
         {/* Row 1: Exam Type & Program */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
+            <label className="text-sm font-medium text-foreground flex items-center gap-1">
               <GraduationCapIcon className="w-4 h-4" />
               Exam Type *
             </label>
@@ -232,7 +232,7 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
                 disabled={disabled}
                 value={form.exam_type}
                 onChange={(e) => update("exam_type", e.target.value)}
-                className={`w-full px-3 py-2 border ${errors.exam_type ? 'border-red-500' : 'border-gray-300'} rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed`}
+                className={`w-full px-3 py-2 border ${errors.exam_type ? 'border-red-500' : 'border-border'} rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent disabled:bg-muted disabled:cursor-not-allowed`}
               >
                 <option value="">Select Exam Type</option>
                 {EXAM_TYPES.map((t) => (
@@ -424,6 +424,11 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
               <p className="text-xs text-red-600 flex items-center gap-1">
                 <AlertCircleIcon className="w-3 h-3" />
                 {errors.students_count}
+              </p>
+            )}
+            {!errors.students_count && form.students_count && form.subject_code && form.semester && form.academic_year && (
+              <p className="text-xs text-blue-600 bg-blue-50 px-2 py-1.5 rounded border border-blue-200">
+                ℹ️ <strong>Note:</strong> Ensure this count doesn't exceed the registered student limit for <strong>{form.subject_code}</strong> in Semester <strong>{form.semester}</strong>, {form.academic_year}. The system will validate this when you save.
               </p>
             )}
           </div>

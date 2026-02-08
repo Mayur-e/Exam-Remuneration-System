@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "../../hooks/useToast";
 import api from "../../services/api";
 
@@ -14,7 +15,8 @@ import {
   UsersIcon,
   ClockIcon,
   TrashIcon,
-  EditIcon
+  EditIcon,
+  SearchIcon
 } from "../../components/icons/logo";
 
 export default function GenerateClaim() {
@@ -34,87 +36,147 @@ export default function GenerateClaim() {
 
   return (
     <div className="max-w-6xl mx-auto p-4 space-y-8">
-      {/* Header */}
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold text-gray-800">Generate Claim</h1>
-        <p className="text-gray-600">Create new claims or continue from saved drafts</p>
-      </div>
+      {/* Header with animation */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="space-y-2"
+      >
+        <h1 className="text-3xl font-bold text-foreground">Generate Claim</h1>
+        <p className="text-muted-foreground">Create new claims or continue from saved drafts</p>
+      </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Left Column: Claim Type Selection */}
-        <div className="space-y-6">
-          <Card className="p-6 bg-white border-gray-200">
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="space-y-6"
+        >
+          <Card className="p-6 bg-card border-border hover:shadow-lg transition-shadow duration-300">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                <FileTextIcon className="w-5 h-5 text-blue-600" />
-              </div>
-              <h2 className="text-xl font-semibold text-gray-800">Select Claim Type</h2>
+              <motion.div 
+                whileHover={{ rotate: 360 }}
+                transition={{ duration: 0.6 }}
+                className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center"
+              >
+                <FileTextIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </motion.div>
+              <h2 className="text-xl font-semibold text-foreground">Select Claim Type</h2>
             </div>
 
             <div className="space-y-4">
-              <div className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-all duration-200">
-                <Button
-                  onClick={() => navigate("/faculty/claim/teaching?claimType=TEACHING_INTERNAL")}
-                  className="w-full h-auto py-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-semibold shadow-md hover:shadow-lg transition-all duration-300"
-                >
-                  <div className="flex flex-col items-center gap-2">
-                    <UserIcon className="w-6 h-6" />
-                    <span className="text-lg">Teaching Staff Claim</span>
-                    <span className="text-sm opacity-90">(Internal Examiner)</span>
-                  </div>
-                </Button>
-              </div>
+              {/* Teaching Internal */}
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <div className="p-4 border border-border rounded-lg hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200">
+                  <Button
+                    onClick={() => navigate("/faculty/claim/teaching?claimType=TEACHING_INTERNAL")}
+                    className="w-full h-auto py-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-semibold shadow-md hover:shadow-lg transition-all duration-300"
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      <motion.div
+                        whileHover={{ scale: 1.2 }}
+                      >
+                        <UserIcon className="w-6 h-6" />
+                      </motion.div>
+                      <span className="text-lg">Teaching Staff Claim</span>
+                      <span className="text-sm opacity-90">(Internal Examiner)</span>
+                    </div>
+                  </Button>
+                </div>
+              </motion.div>
 
-              <div className="p-4 border border-gray-200 rounded-lg hover:border-green-300 hover:bg-green-50 transition-all duration-200">
-                <Button
-                  variant="outline"
-                  onClick={() => navigate("/faculty/claim/teaching?claimType=TEACHING_EXTERNAL")}
-                  className="w-full h-auto py-4 border-green-400 hover:border-green-500 hover:bg-green-50 text-green-700 font-semibold"
-                >
-                  <div className="flex flex-col items-center gap-2">
-                    <UsersIcon className="w-6 h-6" />
-                    <span className="text-lg">Teaching Staff Claim</span>
-                    <span className="text-sm opacity-90">(External Examiner)</span>
-                  </div>
-                </Button>
-              </div>
+              {/* Teaching External */}
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <div className="p-4 border border-border rounded-lg hover:border-green-300 dark:hover:border-green-700 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all duration-200">
+                  <Button
+                    variant="outline"
+                    onClick={() => navigate("/faculty/claim/teaching?claimType=TEACHING_EXTERNAL")}
+                    className="w-full h-auto py-4 border-green-400 dark:border-green-600 hover:border-green-500 dark:hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 text-green-700 dark:text-green-400 font-semibold"
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      <motion.div
+                        whileHover={{ scale: 1.2 }}
+                      >
+                        <UsersIcon className="w-6 h-6" />
+                      </motion.div>
+                      <span className="text-lg">Teaching Staff Claim</span>
+                      <span className="text-sm opacity-90">(External Examiner)</span>
+                    </div>
+                  </Button>
+                </div>
+              </motion.div>
 
-              <div className="p-4 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 transition-all duration-200">
-                <Button
-                  onClick={() => navigate("/faculty/claim/non-teaching")}
-                  variant="outline"
-                  className="w-full h-auto py-4 border-purple-400 hover:border-purple-500 hover:bg-purple-50 text-purple-700 font-semibold"
-                >
-                  <div className="flex flex-col items-center gap-2">
-                    <UsersIcon className="w-6 h-6" />
-                    <span className="text-lg">Non-Teaching Staff Claim</span>
-                    <span className="text-sm opacity-90">(Support Staff)</span>
-                  </div>
-                </Button>
-              </div>
+              {/* Non-Teaching */}
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <div className="p-4 border border-border rounded-lg hover:border-purple-300 dark:hover:border-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all duration-200">
+                  <Button
+                    onClick={() => navigate("/faculty/claim/non-teaching")}
+                    variant="outline"
+                    className="w-full h-auto py-4 border-purple-400 dark:border-purple-600 hover:border-purple-500 dark:hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 text-purple-700 dark:text-purple-400 font-semibold"
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      <motion.div
+                        whileHover={{ scale: 1.2 }}
+                      >
+                        <UsersIcon className="w-6 h-6" />
+                      </motion.div>
+                      <span className="text-lg">Non-Teaching Staff Claim</span>
+                      <span className="text-sm opacity-90">(Support Staff)</span>
+                    </div>
+                  </Button>
+                </div>
+              </motion.div>
             </div>
           </Card>
 
           {/* Quick Stats */}
-          <Card className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Quick Information</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-3 bg-white rounded-lg border border-gray-200">
-                <p className="text-sm text-gray-600">Average Processing</p>
-                <p className="text-xl font-bold text-blue-600">7-10 Days</p>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+          >
+            <Card className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200 dark:border-blue-800/50">
+              <h3 className="text-lg font-semibold text-foreground mb-4">Quick Information</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  className="p-3 bg-white dark:bg-card rounded-lg border border-border"
+                >
+                  <p className="text-sm text-muted-foreground">Average Processing</p>
+                  <p className="text-xl font-bold text-blue-600 dark:text-blue-400">7-10 Days</p>
+                </motion.div>
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  className="p-3 bg-white dark:bg-card rounded-lg border border-border"
+                >
+                  <p className="text-sm text-muted-foreground">TDS Rate</p>
+                  <p className="text-xl font-bold text-blue-600 dark:text-blue-400">10%</p>
+                </motion.div>
               </div>
-              <div className="p-3 bg-white rounded-lg border border-gray-200">
-                <p className="text-sm text-gray-600">TDS Rate</p>
-                <p className="text-xl font-bold text-blue-600">10%</p>
-              </div>
-            </div>
-          </Card>
-        </div>
+            </Card>
+          </motion.div>
+        </motion.div>
 
         {/* Right Column: Drafts List */}
-        <div>
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
           <DraftList onEdit={handleEditDraft} />
-        </div>
+        </motion.div>
       </div>
     </div>
   );
@@ -129,6 +191,8 @@ function DraftList({ onEdit }) {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const { showToast } = useToast();
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState("");
 
   useEffect(() => {
     api
@@ -144,9 +208,16 @@ function DraftList({ onEdit }) {
     try {
       await api.delete(`/faculty/drafts/${id}`);
       setDrafts((prev) => prev.filter((d) => d.id !== id));
-      showToast("Draft deleted successfully", "success");
+      
+      // Custom toast animation
+      setToastMessage("Draft deleted successfully");
+      setToastType("success");
+      setTimeout(() => setToastMessage(""), 3000);
     } catch {
-      showToast("Failed to delete draft. Please try again.", "error");
+      // Error toast animation
+      setToastMessage("Failed to delete draft. Please try again.");
+      setToastType("error");
+      setTimeout(() => setToastMessage(""), 3000);
     }
   };
 
@@ -155,131 +226,239 @@ function DraftList({ onEdit }) {
     draft.exam_type.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: "spring",
+        stiffness: 100,
+        damping: 12
+      }
+    }
+  };
+
   if (loading) {
     return (
-      <Card className="p-6 bg-white border-gray-200">
-        <div className="flex items-center justify-center py-12">
+      <Card className="p-6 bg-card border-border">
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="flex items-center justify-center py-12"
+        >
           <div className="space-y-4 text-center">
-            <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
-            <p className="text-gray-600">Loading drafts...</p>
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full mx-auto"
+            ></motion.div>
+            <p className="text-muted-foreground">Loading drafts...</p>
           </div>
-        </div>
+        </motion.div>
       </Card>
     );
   }
 
   return (
-    <Card className="p-6 bg-white border-gray-200 h-full">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-            <FileTextIcon className="w-5 h-5 text-blue-600" />
-          </div>
-          <h2 className="text-xl font-semibold text-gray-800">Saved Drafts</h2>
-        </div>
-        <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-full">
-          {drafts.length} {drafts.length === 1 ? 'draft' : 'drafts'}
-        </span>
-      </div>
+    <>
+      {/* Custom Toast Animation */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 50 }}
+            transition={{ duration: 0.3 }}
+            className={`fixed top-4 right-4 px-4 py-2 rounded shadow-lg z-50 ${
+              toastType === "success" 
+                ? "bg-green-600 text-white" 
+                : "bg-red-600 text-white"
+            }`}
+          >
+            {toastMessage}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Search Bar */}
-      <div className="mb-6">
-        <div className="relative">
-          <Input
-            type="text"
-            placeholder="Search drafts by subject or exam type..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 border-gray-300"
-          />
-          <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-        </div>
-      </div>
-
-      {drafts.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <FileTextIcon className="w-8 h-8 text-gray-400" />
+      <Card className="p-6 bg-card border-border hover:shadow-lg transition-shadow duration-300 h-full">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <motion.div 
+              whileHover={{ rotate: 360 }}
+              transition={{ duration: 0.6 }}
+              className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center"
+            >
+              <FileTextIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </motion.div>
+            <h2 className="text-xl font-semibold text-foreground">Saved Drafts</h2>
           </div>
-          <h3 className="text-lg font-medium text-gray-700 mb-2">No saved drafts</h3>
-          <p className="text-gray-500">Create a new claim to get started</p>
+          <motion.span 
+            key={drafts.length}
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-sm font-medium rounded-full"
+          >
+            {drafts.length} {drafts.length === 1 ? 'draft' : 'drafts'}
+          </motion.span>
         </div>
-      ) : filteredDrafts.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-gray-500">No drafts match your search</p>
+
+        {/* Search Bar */}
+        <div className="mb-6">
+          <motion.div 
+            whileHover={{ scale: 1.02 }}
+            className="relative"
+          >
+            <Input
+              type="text"
+              placeholder="Search drafts by subject or exam type..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 border-border focus:border-blue-500"
+            />
+            <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+          </motion.div>
         </div>
-      ) : (
-        <div className="space-y-4">
-          {filteredDrafts.map((draft) => (
-            <div key={draft.id} className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:shadow-sm transition-all duration-200">
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                  <h4 className="font-semibold text-gray-800">{draft.subject_name}</h4>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded">
-                      {draft.exam_type}
-                    </span>
-                    {draft.claim_form_type === 'NON_TEACHING' && (
-                      <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded">
-                        Non-Teaching
+
+        {drafts.length === 0 ? (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center py-12"
+          >
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <FileTextIcon className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-medium text-foreground mb-2">No saved drafts</h3>
+            <p className="text-muted-foreground">Create a new claim to get started</p>
+          </motion.div>
+        ) : filteredDrafts.length === 0 ? (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-12"
+          >
+            <p className="text-muted-foreground">No drafts match your search</p>
+          </motion.div>
+        ) : (
+          <motion.div 
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="space-y-4"
+          >
+            {filteredDrafts.map((draft, index) => (
+              <motion.div
+                key={draft.id}
+                variants={itemVariants}
+                whileHover={{ scale: 1.02, borderColor: "rgb(59 130 246)" }}
+                className="p-4 border border-border rounded-lg hover:shadow-sm transition-all duration-200"
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <h4 className="font-semibold text-foreground">{draft.subject_name}</h4>
+                    <div className="flex items-center gap-2 mt-1">
+                      <motion.span 
+                        whileHover={{ scale: 1.1 }}
+                        className="px-2 py-1 bg-muted text-foreground text-xs font-medium rounded"
+                      >
+                        {draft.exam_type}
+                      </motion.span>
+                      {draft.claim_form_type === 'NON_TEACHING' && (
+                        <motion.span 
+                          whileHover={{ scale: 1.1 }}
+                          className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-xs font-medium rounded"
+                        >
+                          Non-Teaching
+                        </motion.span>
+                      )}
+                      {draft.claim_form_type === 'TEACHING_EXTERNAL' && (
+                        <motion.span 
+                          whileHover={{ scale: 1.1 }}
+                          className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium rounded"
+                        >
+                          External
+                        </motion.span>
+                      )}
+                      {draft.claim_form_type === 'TEACHING_INTERNAL' && (
+                        <motion.span 
+                          whileHover={{ scale: 1.1 }}
+                          className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-medium rounded"
+                        >
+                          Internal
+                        </motion.span>
+                      )}
+                      <span className="text-sm text-muted-foreground">
+                        <ClockIcon className="w-3 h-3 inline mr-1" />
+                        {new Date(draft.created_at).toLocaleDateString('en-IN', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric'
+                        })}
                       </span>
-                    )}
-                    {draft.claim_form_type === 'TEACHING_EXTERNAL' && (
-                      <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded">
-                        External
-                      </span>
-                    )}
-                    {draft.claim_form_type === 'TEACHING_INTERNAL' && (
-                      <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">
-                        Internal
-                      </span>
-                    )}
-                    <span className="text-sm text-gray-500">
-                      <ClockIcon className="w-3 h-3 inline mr-1" />
-                      {new Date(draft.created_at).toLocaleDateString('en-IN', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric'
-                      })}
-                    </span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => onEdit(draft)}
-                  className="flex items-center gap-2"
-                >
-                  <EditIcon className="w-4 h-4" />
-                  Edit
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => remove(draft.id)}
-                  className="flex items-center gap-2"
-                >
-                  <TrashIcon className="w-4 h-4" />
-                  Delete
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+                <div className="flex justify-end gap-2 pt-3 border-t border-border">
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onEdit(draft)}
+                      className="flex items-center gap-2"
+                    >
+                      <EditIcon className="w-4 h-4" />
+                      Edit
+                    </Button>
+                  </motion.div>
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => remove(draft.id)}
+                      className="flex items-center gap-2"
+                    >
+                      <TrashIcon className="w-4 h-4" />
+                      Delete
+                    </Button>
+                  </motion.div>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
 
-      {drafts.length > 0 && filteredDrafts.length > 0 && (
-        <div className="mt-6 pt-4 border-t border-gray-200">
-          <p className="text-sm text-gray-500 text-center">
-            Drafts are automatically saved. You can edit or delete them anytime.
-          </p>
-        </div>
-      )}
-    </Card>
+        {drafts.length > 0 && filteredDrafts.length > 0 && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="mt-6 pt-4 border-t border-border"
+          >
+            <p className="text-sm text-muted-foreground text-center">
+              Drafts are automatically saved. You can edit or delete them anytime.
+            </p>
+          </motion.div>
+        )}
+      </Card>
+    </>
   );
 }

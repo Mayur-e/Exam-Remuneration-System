@@ -30,7 +30,7 @@ const DateInputSection = ({ label, value, onChange, disabled }) => {
 
     return (
         <div className="space-y-3">
-            <label className="text-sm font-medium text-gray-700">
+            <label className="text-sm font-medium text-foreground">
                 {label}
             </label>
 
@@ -55,21 +55,21 @@ const DateInputSection = ({ label, value, onChange, disabled }) => {
                 </div>
             )}
 
-            <div className="flex flex-wrap gap-2 min-h-[40px] p-3 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+            <div className="flex flex-wrap gap-2 min-h-[40px] p-3 bg-muted rounded-lg border border-dashed border-border">
                 {dates.length === 0 ? (
-                    <span className="text-sm text-gray-400 italic">No dates added</span>
+                    <span className="text-sm text-muted-foreground italic">No dates added</span>
                 ) : (
                     dates.map((date, idx) => (
                         <div
                             key={idx}
-                            className="flex items-center gap-2 px-3 py-1 bg-white border border-gray-200 rounded-full shadow-sm"
+                            className="flex items-center gap-2 px-3 py-1 bg-card border border-border rounded-full shadow-sm"
                         >
-                            <span className="text-sm font-medium text-gray-700">{date}</span>
+                            <span className="text-sm font-medium text-foreground">{date}</span>
                             {!disabled && (
                                 <button
                                     type="button"
                                     onClick={() => removeDate(date)}
-                                    className="text-gray-400 hover:text-red-500 transition-colors"
+                                    className="text-muted-foreground hover:text-red-500 transition-colors"
                                 >
                                     <TrashIcon className="w-3 h-3" />
                                 </button>
@@ -208,10 +208,10 @@ export default function NonTeachingInfo({ examId, disabled, onUpdated, refreshKe
 
     if (!examId) {
         return (
-            <Card className="p-6 bg-white border-gray-200">
+            <Card className="p-6 bg-card border-border">
                 <div className="text-center py-8">
-                    <CalendarIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-600">
+                    <CalendarIcon className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">
                         Please complete exam details first
                     </p>
                 </div>
@@ -220,14 +220,14 @@ export default function NonTeachingInfo({ examId, disabled, onUpdated, refreshKe
     }
 
     return (
-        <Card className="p-6 bg-white border-gray-200">
+        <Card className="p-6 bg-card border-border">
             <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
                     <CalendarIcon className="w-5 h-5 text-green-600" />
                 </div>
                 <div>
-                    <h3 className="text-xl font-semibold text-gray-800">Dates & Student Information</h3>
-                    <p className="text-sm text-gray-600">Enter examination dates and batch details</p>
+                    <h3 className="text-xl font-semibold text-card-foreground">Dates & Student Information</h3>
+                    <p className="text-sm text-muted-foreground">Enter examination dates and batch details</p>
                 </div>
             </div>
 
@@ -257,43 +257,43 @@ export default function NonTeachingInfo({ examId, disabled, onUpdated, refreshKe
                 </div>
 
                 {/* Student Info Section */}
-                <div className="border-t border-gray-200 pt-6">
+                <div className="border-t border-border pt-6">
                     <div className="flex items-center gap-2 mb-4">
                         <UsersIcon className="w-5 h-5 text-blue-600" />
-                        <h4 className="font-semibold text-gray-800">Batch Information</h4>
+                        <h4 className="font-semibold text-card-foreground">Batch Information</h4>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">
+                            <label className="text-sm font-medium text-foreground">
                                 Total Students
                             </label>
                             <Input
                                 disabled
                                 value={form.total_students}
-                                className="bg-gray-50"
+                                className="bg-muted"
                             />
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-muted-foreground">
                                 From exam details
                             </p>
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">
+                            <label className="text-sm font-medium text-foreground">
                                 Students Per Batch
                             </label>
-                            <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg">
-                                <span className="text-sm font-semibold text-gray-800">
+                            <div className="px-3 py-2 bg-muted border border-border rounded-lg">
+                                <span className="text-sm font-semibold text-card-foreground">
                                     {form.students_per_batch}
                                 </span>
                             </div>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-muted-foreground">
                                 From batch size configuration
                             </p>
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">
+                            <label className="text-sm font-medium text-foreground">
                                 Total Batches
                             </label>
                             <div className="px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
@@ -301,7 +301,7 @@ export default function NonTeachingInfo({ examId, disabled, onUpdated, refreshKe
                                     {form.total_batches}
                                 </span>
                             </div>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-muted-foreground">
                                 Auto-calculated
                             </p>
                         </div>
@@ -309,7 +309,7 @@ export default function NonTeachingInfo({ examId, disabled, onUpdated, refreshKe
                 </div>
 
                 {!disabled && (
-                    <div className="pt-4 border-t border-gray-200">
+                    <div className="pt-4 border-t border-border">
                         <div className="flex justify-end">
                             <Button
                                 onClick={save}

@@ -231,10 +231,10 @@ export default function StaffClaimsSection({ examId, disabled, refreshKey }) {
 
     if (!examId) {
         return (
-            <Card className="p-6 bg-white border-gray-200">
+            <Card className="p-6 bg-card border-border">
                 <div className="text-center py-8">
-                    <UsersIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-600">
+                    <UsersIcon className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">
                         Please complete exam details first to add staff information
                     </p>
                 </div>
@@ -243,17 +243,17 @@ export default function StaffClaimsSection({ examId, disabled, refreshKey }) {
     }
 
     return (
-        <Card className="p-6 bg-white border-gray-200">
+        <Card className="p-6 bg-card border-border">
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
                         <UsersIcon className="w-5 h-5 text-purple-600" />
                     </div>
                     <div>
-                        <h3 className="text-xl font-semibold text-gray-800">
+                        <h3 className="text-xl font-semibold text-card-foreground">
                             Staff Table
                         </h3>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-muted-foreground">
                             Manage supporting staff and their remuneration
                         </p>
                     </div>
@@ -288,14 +288,14 @@ export default function StaffClaimsSection({ examId, disabled, refreshKey }) {
             <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                     <thead>
-                        <tr className="bg-gray-100 border-b-2 border-gray-300">
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Designation</th>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Rate (₹)</th>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Prep & Clean Rs</th>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Batch Rs</th>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Total Amount</th>
-                            {!disabled && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>}
+                        <tr className="bg-accent border-b-2 border-border">
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Name</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Designation</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Rate (₹)</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Prep & Clean Rs</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Batch Rs</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Total Amount</th>
+                            {!disabled && <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Actions</th>}
                         </tr>
                     </thead>
                     <tbody>
@@ -306,7 +306,7 @@ export default function StaffClaimsSection({ examId, disabled, refreshKey }) {
                             const { prepCleanAmount, batchAmount, totalAmount } = calculateAmounts(currentStaff);
 
                             return (
-                                <tr key={staff.id} className="border-b border-gray-200 hover:bg-gray-50">
+                                <tr key={staff.id} className="border-b border-border hover:bg-muted">
                                     <td className="px-4 py-3">
                                         {isEditing ? (
                                             <Input
@@ -315,7 +315,7 @@ export default function StaffClaimsSection({ examId, disabled, refreshKey }) {
                                                 className="w-full"
                                             />
                                         ) : (
-                                            <span className="text-sm text-gray-800">{staff.staff_name}</span>
+                                            <span className="text-sm text-card-foreground">{staff.staff_name}</span>
                                         )}
                                     </td>
                                     <td className="px-4 py-3">
@@ -323,7 +323,7 @@ export default function StaffClaimsSection({ examId, disabled, refreshKey }) {
                                             <select
                                                 value={editingStaff.staff_role}
                                                 onChange={(e) => updateEditingStaff("staff_role", e.target.value)}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                                className="w-full px-3 py-2 border border-border rounded-lg"
                                             >
                                                 <option value="">Select</option>
                                                 {STAFF_ROLES.map(role => (
@@ -331,7 +331,7 @@ export default function StaffClaimsSection({ examId, disabled, refreshKey }) {
                                                 ))}
                                             </select>
                                         ) : (
-                                            <span className="text-sm text-gray-800">{staff.staff_role}</span>
+                                            <span className="text-sm text-card-foreground">{staff.staff_role}</span>
                                         )}
                                     </td>
                                     <td className="px-4 py-3">
@@ -343,23 +343,23 @@ export default function StaffClaimsSection({ examId, disabled, refreshKey }) {
                                                 className="w-24"
                                             />
                                         ) : (
-                                            <span className="text-sm text-gray-800">₹{staff.rate || 0}</span>
+                                            <span className="text-sm text-card-foreground">₹{staff.rate || 0}</span>
                                         )}
                                     </td>
                                     <td className="px-4 py-3">
                                         <div className="space-y-1">
                                             {currentStaff.staff_role === "Expert Assistant" ? (
                                                 <>
-                                                    <span className="text-xs text-gray-500 italic">
+                                                    <span className="text-xs text-muted-foreground italic">
                                                         Not applicable
                                                     </span>
-                                                    <div className="text-sm font-semibold text-gray-400">
+                                                    <div className="text-sm font-semibold text-muted-foreground">
                                                         N/A
                                                     </div>
                                                 </>
                                             ) : (
                                                 <>
-                                                    <span className="text-xs text-gray-600">
+                                                    <span className="text-xs text-muted-foreground">
                                                         {batchInfo.prepDays || 0} + {batchInfo.cleanDays || 0} days
                                                     </span>
                                                     <div className="text-sm font-semibold text-green-700">
@@ -372,11 +372,11 @@ export default function StaffClaimsSection({ examId, disabled, refreshKey }) {
                                     <td className="px-4 py-3">
                                         <div className="space-y-1">
                                             {currentStaff.staff_role === "Expert Assistant" ? (
-                                                <span className="text-xs text-gray-600">
+                                                <span className="text-xs text-muted-foreground">
                                                     {batchInfo.batches} batches
                                                 </span>
                                             ) : (
-                                                <span className="text-xs text-gray-600">
+                                                <span className="text-xs text-muted-foreground">
                                                     {batchInfo.examDays || 0} days × {batchInfo.batches} batches
                                                 </span>
                                             )}
@@ -453,7 +453,7 @@ export default function StaffClaimsSection({ examId, disabled, refreshKey }) {
                                     <select
                                         value={newStaff.staff_role}
                                         onChange={(e) => updateNewStaff("staff_role", e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                        className="w-full px-3 py-2 border border-border rounded-lg"
                                     >
                                         <option value="">Select Role</option>
                                         {STAFF_ROLES.map(role => (
@@ -472,20 +472,20 @@ export default function StaffClaimsSection({ examId, disabled, refreshKey }) {
                                 </td>
                                 <td className="px-4 py-3">
                                     {newStaff.staff_role === "Expert Assistant" ? (
-                                        <div className="text-xs text-gray-500 italic">N/A</div>
+                                        <div className="text-xs text-muted-foreground italic">N/A</div>
                                     ) : (
-                                        <div className="text-xs text-gray-600">
+                                        <div className="text-xs text-muted-foreground">
                                             {batchInfo.prepDays || 0} + {batchInfo.cleanDays || 0} days
                                         </div>
                                     )}
                                 </td>
                                 <td className="px-4 py-3">
                                     {newStaff.staff_role === "Expert Assistant" ? (
-                                        <div className="text-xs text-gray-600">
+                                        <div className="text-xs text-muted-foreground">
                                             {batchInfo.batches} batches
                                         </div>
                                     ) : (
-                                        <div className="text-xs text-gray-600">
+                                        <div className="text-xs text-muted-foreground">
                                             {batchInfo.examDays || 0} days × {batchInfo.batches} batches
                                         </div>
                                     )}
@@ -522,9 +522,9 @@ export default function StaffClaimsSection({ examId, disabled, refreshKey }) {
                         {savedStaff.length === 0 && !newStaff && (
                             <tr>
                                 <td colSpan="7" className="px-4 py-8 text-center">
-                                    <UsersIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                                    <p className="text-gray-600 mb-2">No staff added yet</p>
-                                    <p className="text-sm text-gray-500">
+                                    <UsersIcon className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                                    <p className="text-muted-foreground mb-2">No staff added yet</p>
+                                    <p className="text-sm text-muted-foreground">
                                         Click "Add Staff" to add supporting staff
                                     </p>
                                 </td>
@@ -536,7 +536,7 @@ export default function StaffClaimsSection({ examId, disabled, refreshKey }) {
                     {savedStaff.length > 0 && (
                         <tfoot>
                             <tr className="bg-gradient-to-r from-purple-100 to-blue-100 border-t-2 border-purple-300">
-                                <td colSpan="5" className="px-4 py-4 text-right font-bold text-gray-800">
+                                <td colSpan="5" className="px-4 py-4 text-right font-bold text-card-foreground">
                                     Grand Total:
                                 </td>
                                 <td className="px-4 py-4">

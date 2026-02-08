@@ -4,6 +4,7 @@ import { Card } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { useToast } from '../../hooks/useToast';
+import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../services/api';
 
 export default function Queries() {
@@ -14,9 +15,12 @@ export default function Queries() {
     const [selectedQuery, setSelectedQuery] = useState(null);
     const [editingQueryId, setEditingQueryId] = useState(null);
     const [replyText, setReplyText] = useState('');
+    const [statusFilter, setStatusFilter] = useState('');
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const { showToast } = useToast();
+    const [toastMessage, setToastMessage] = useState("");
+    const [toastType, setToastType] = useState("");
 
     const preSelectedClaimId = searchParams.get('claim_id');
 
@@ -31,7 +35,7 @@ export default function Queries() {
     useEffect(() => {
         fetchQueries();
         fetchClaims();
-    }, []);
+    }, [statusFilter]);
 
     useEffect(() => {
         if (preSelectedClaimId && claims.length > 0) {
@@ -50,11 +54,15 @@ export default function Queries() {
     const fetchQueries = async () => {
         try {
             setLoading(true);
-            const response = await api.get('/queries');
+            const url = statusFilter ? `/queries?status=${statusFilter}` : '/queries';
+            const response = await api.get(url);
             setQueries(response.data.queries);
         } catch (error) {
             console.error('Fetch queries error:', error);
-            showToast('Failed to load queries', 'error');
+            // Custom toast animation
+            setToastMessage('Failed to load queries');
+            setToastType('error');
+            setTimeout(() => setToastMessage(""), 3000);
         } finally {
             setLoading(false);
         }
@@ -73,7 +81,11 @@ export default function Queries() {
         e.preventDefault();
         try {
             await api.post('/queries', formData);
-            showToast('Query submitted successfully!', 'success');
+            // Custom toast animation
+            setToastMessage('Query submitted successfully!');
+            setToastType('success');
+            setTimeout(() => setToastMessage(""), 3000);
+            
             setShowCreateModal(false);
             setFormData({
                 subject: '',
@@ -88,7 +100,9 @@ export default function Queries() {
             fetchQueries();
         } catch (error) {
             console.error('Create query error:', error);
-            showToast(error.response?.data?.message || 'Failed to create query', 'error');
+            setToastMessage(error.response?.data?.message || 'Failed to create query');
+            setToastType('error');
+            setTimeout(() => setToastMessage(""), 3000);
         }
     };
 
@@ -99,7 +113,9 @@ export default function Queries() {
             setReplyText('');
         } catch (error) {
             console.error('Fetch query details error:', error);
-            showToast('Failed to load query details', 'error');
+            setToastMessage('Failed to load query details');
+            setToastType('error');
+            setTimeout(() => setToastMessage(""), 3000);
         }
     };
 
@@ -118,7 +134,11 @@ export default function Queries() {
         e.preventDefault();
         try {
             await api.put(`/queries/${editingQueryId}`, formData);
-            showToast('Query updated successfully!', 'success');
+            // Custom toast animation
+            setToastMessage('Query updated successfully!');
+            setToastType('success');
+            setTimeout(() => setToastMessage(""), 3000);
+            
             setShowCreateModal(false);
             setEditingQueryId(null);
             setFormData({
@@ -133,7 +153,9 @@ export default function Queries() {
             }
         } catch (error) {
             console.error('Update query error:', error);
-            showToast(error.response?.data?.message || 'Failed to update query', 'error');
+            setToastMessage(error.response?.data?.message || 'Failed to update query');
+            setToastType('error');
+            setTimeout(() => setToastMessage(""), 3000);
         }
     };
 
@@ -143,14 +165,20 @@ export default function Queries() {
         }
         try {
             await api.delete(`/queries/${queryId}`);
-            showToast('Query deleted successfully', 'success');
+            // Custom toast animation
+            setToastMessage('Query deleted successfully');
+            setToastType('success');
+            setTimeout(() => setToastMessage(""), 3000);
+            
             if (selectedQuery && selectedQuery.query.id === queryId) {
                 setSelectedQuery(null);
             }
             fetchQueries();
         } catch (error) {
             console.error('Delete query error:', error);
-            showToast(error.response?.data?.message || 'Failed to delete query', 'error');
+            setToastMessage(error.response?.data?.message || 'Failed to delete query');
+            setToastType('error');
+            setTimeout(() => setToastMessage(""), 3000);
         }
     };
 
@@ -163,13 +191,19 @@ export default function Queries() {
                 message: replyText,
                 is_internal_note: false
             });
-            showToast('Reply sent successfully', 'success');
+            // Custom toast animation
+            setToastMessage('Reply sent successfully');
+            setToastType('success');
+            setTimeout(() => setToastMessage(""), 3000);
+            
             setReplyText('');
             viewQueryDetails(selectedQuery.query.id);
             fetchQueries();
         } catch (error) {
             console.error('Send reply error:', error);
-            showToast(error.response?.data?.message || 'Failed to send reply', 'error');
+            setToastMessage(error.response?.data?.message || 'Failed to send reply');
+            setToastType('error');
+            setTimeout(() => setToastMessage(""), 3000);
         }
     };
 
@@ -193,260 +227,338 @@ export default function Queries() {
         return labels[status] || status;
     };
 
+    // Animation variants
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.1
+            }
+        }
+    };
+
+    const itemVariants = {
+        hidden: { opacity: 0, y: 20 },
+        visible: {
+            opacity: 1,
+            y: 0,
+            transition: {
+                type: "spring",
+                stiffness: 100,
+                damping: 12
+            }
+        }
+    };
+
+    const modalVariants = {
+        hidden: { opacity: 0, scale: 0.9 },
+        visible: {
+            opacity: 1,
+            scale: 1,
+            transition: {
+                type: "spring",
+                stiffness: 200,
+                damping: 25
+            }
+        },
+        exit: {
+            opacity: 0,
+            scale: 0.9,
+            transition: {
+                duration: 0.2
+            }
+        }
+    };
+
+    const overlayVariants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: {
+                duration: 0.3
+            }
+        },
+        exit: {
+            opacity: 0,
+            transition: {
+                duration: 0.2
+            }
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"
+                ></motion.div>
             </div>
         );
     }
 
     return (
         <div className="space-y-6">
+            {/* Custom Toast Animation */}
+            <AnimatePresence>
+                {toastMessage && (
+                    <motion.div
+                        initial={{ opacity: 0, x: 50 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 50 }}
+                        transition={{ duration: 0.3 }}
+                        className={`fixed top-4 right-4 px-4 py-2 rounded shadow-lg z-50 ${
+                            toastType === "success" 
+                                ? "bg-green-600 text-white" 
+                                : toastType === "error"
+                                ? "bg-red-600 text-white"
+                                : "bg-blue-600 text-white"
+                        }`}
+                    >
+                        {toastMessage}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="flex items-center justify-between"
+            >
                 <div>
-                    <h1 className="text-2xl font-bold text-card-foreground">Support & Queries</h1>
+                    <h1 className="text-2xl font-bold text-foreground">Support & Queries</h1>
                     <p className="text-sm text-muted-foreground mt-1">
                         Get help with your claims and payments
                     </p>
                 </div>
-                <Button
-                    onClick={() => setShowCreateModal(true)}
-                    className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600"
+                <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                 >
-                    + Raise New Query
-                </Button>
-            </div>
+                    <Button
+                        onClick={() => setShowCreateModal(true)}
+                        className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600"
+                    >
+                        + Raise New Query
+                    </Button>
+                </motion.div>
+            </motion.div>
 
-            {/* Queries List */}
-            <div className="grid gap-4">
-                {queries.length === 0 ? (
-                    <Card className="p-12 text-center">
-                        <div className="text-muted-foreground">
-                            <p className="text-lg font-medium">No queries yet</p>
-                            <p className="text-sm mt-2">Click "Raise New Query" to get started</p>
-                        </div>
-                    </Card>
-                ) : (
-                    queries.map((query) => (
-                        <Card
-                            key={query.id}
-                            className="p-6 hover:shadow-lg transition-shadow"
+            {/* Main Layout - Sidebar + Detail */}
+            <div className="flex h-[calc(100vh-12rem)] gap-4">
+                {/* Query List Sidebar */}
+                <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5, delay: 0.1 }}
+                    className="w-1/3 flex flex-col bg-card rounded-lg border border-border overflow-hidden"
+                >
+                    <div className="p-4 border-b border-border bg-muted/20">
+                        <h2 className="font-semibold text-foreground mb-3">My Queries</h2>
+                        <select
+                            className="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
                         >
-                            <div className="flex items-start justify-between">
-                                <div className="flex-1 cursor-pointer" onClick={() => viewQueryDetails(query.id)}>
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <h3 className="text-lg font-semibold text-card-foreground">
-                                            {query.subject}
-                                        </h3>
-                                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(query.status)}`}>
+                            <option value="">All Statuses</option>
+                            <option value="OPEN">Unresolved</option>
+                            <option value="IN_PROGRESS">In Progress</option>
+                            <option value="RESOLVED">Resolved</option>
+                        </select>
+                    </div>
+
+                    <motion.div 
+                        variants={containerVariants}
+                        initial="hidden"
+                        animate="visible"
+                        className="flex-1 overflow-y-auto p-3 space-y-2"
+                    >
+                        {loading ? (
+                            <p className="text-center py-4 text-muted-foreground">Loading...</p>
+                        ) : queries.length === 0 ? (
+                            <motion.p 
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                className="text-center py-8 text-muted-foreground"
+                            >
+                                No queries found
+                            </motion.p>
+                        ) : (
+                            queries.map((query, index) => (
+                                <motion.div
+                                    key={query.id}
+                                    variants={itemVariants}
+                                    whileHover={{ scale: 1.01, borderColor: "rgb(59 130 246)" }}
+                                    onClick={() => viewQueryDetails(query.id)}
+                                    className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 ${selectedQuery?.query?.id === query.id
+                                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                                        : 'border-border hover:bg-accent/50'
+                                        }`}
+                                >
+                                    <div className="flex justify-between items-start mb-1">
+                                        <motion.span 
+                                            whileHover={{ scale: 1.1 }}
+                                            className={`text-xs px-2 py-0.5 rounded-full ${getStatusColor(query.status)}`}
+                                        >
                                             {getStatusLabel(query.status)}
+                                        </motion.span>
+                                        <span className="text-xs text-muted-foreground">
+                                            {new Date(query.created_at).toLocaleDateString()}
                                         </span>
                                     </div>
-                                    <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                                    <h3 className="font-medium text-sm text-foreground mb-1 line-clamp-1">
+                                        {query.subject}
+                                    </h3>
+                                    <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
                                         {query.description}
                                     </p>
-                                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                        <span>Category: {query.category.replace('_', ' ')}</span>
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                        <span>{query.category.replace('_', ' ')}</span>
+                                        <span>•</span>
                                         <span>{query.response_count || 0} responses</span>
-                                        <span>{new Date(query.created_at).toLocaleDateString()}</span>
-                                        {query.claim_id && (
-                                            <span className="bg-muted px-2 py-0.5 rounded">
-                                                Claim #{query.claim_id}
+                                    </div>
+                                </motion.div>
+                            ))
+                        )}
+                    </motion.div>
+                </motion.div>
+
+                {/* Query Detail View */}
+                <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                    className="flex-1 bg-card rounded-lg border border-border overflow-hidden"
+                >
+                    {!selectedQuery ? (
+                        <div className="flex items-center justify-center h-full text-muted-foreground">
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="text-center"
+                            >
+                                <p className="text-lg font-medium">Select a query to view details</p>
+                                <p className="text-sm mt-2">Click on a query from the list to see the conversation</p>
+                            </motion.div>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col h-full">
+                            {/* Query Header */}
+                            <div className="p-6 border-b border-border bg-muted/20">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="flex-1">
+                                        <h2 className="text-xl font-bold text-foreground mb-2">
+                                            {selectedQuery.query.subject}
+                                        </h2>
+                                        <div className="flex items-center gap-3">
+                                            <motion.span 
+                                                whileHover={{ scale: 1.1 }}
+                                                className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedQuery.query.status)}`}
+                                            >
+                                                {getStatusLabel(selectedQuery.query.status)}
+                                            </motion.span>
+                                            <span className="text-sm text-muted-foreground">
+                                                {new Date(selectedQuery.query.created_at).toLocaleString()}
                                             </span>
+                                        </div>
+                                        {selectedQuery.query.claim_id && (
+                                            <motion.div 
+                                                initial={{ opacity: 0, y: -10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                className="mt-2 text-sm text-blue-600 dark:text-blue-400"
+                                            >
+                                                Linked to Claim #{selectedQuery.query.claim_id}
+                                            </motion.div>
                                         )}
                                     </div>
-                                </div>
-                                <div className="flex gap-2 ml-4">
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleEditQuery(query);
-                                        }}
-                                        className="text-blue-600 hover:text-blue-700"
-                                    >
-                                        Edit
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDeleteQuery(query.id);
-                                        }}
-                                        className="text-red-600 hover:text-red-700"
-                                    >
-                                        Delete
-                                    </Button>
-                                </div>
-                            </div>
-                        </Card>
-                    ))
-                )}
-            </div>
-
-            {/* Create/Edit Query Modal */}
-            {showCreateModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-card">
-                        <div className="p-6">
-                            <h2 className="text-2xl font-bold text-card-foreground mb-6">
-                                {editingQueryId ? 'Edit Query' : 'Raise New Query'}
-                            </h2>
-                            <form onSubmit={editingQueryId ? handleUpdateQuery : handleCreateQuery} className="space-y-4">
-
-                                {/* Claim Selection */}
-                                <div>
-                                    <label className="block text-sm font-medium text-card-foreground mb-2">
-                                        Related Claim (Optional)
-                                    </label>
-                                    <select
-                                        value={formData.claim_id}
-                                        onChange={(e) => setFormData({ ...formData, claim_id: e.target.value })}
-                                        className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    >
-                                        <option value="">-- Select a Claim --</option>
-                                        {claims.map(claim => (
-                                            <option key={claim.id} value={claim.id}>
-                                                {new Date(claim.created_at || Date.now()).toLocaleDateString()} - {claim.subject_name} ({claim.subject_code}) - {claim.status}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-card-foreground mb-2">
-                                        Subject *
-                                    </label>
-                                    <Input
-                                        value={formData.subject}
-                                        onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                                        placeholder="Brief description of your issue"
-                                        required
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-card-foreground mb-2">
-                                        Description *
-                                    </label>
-                                    <textarea
-                                        value={formData.description}
-                                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                        placeholder="Provide detailed information about your query"
-                                        className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground min-h-[120px] focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        required
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-card-foreground mb-2">
-                                        Category *
-                                    </label>
-                                    <select
-                                        value={formData.category}
-                                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                                        className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        required
-                                    >
-                                        <option value="PAYMENT_ISSUE">Payment Issue</option>
-                                        <option value="CLAIM_REJECTION">Claim Rejection</option>
-                                        <option value="TECHNICAL">Technical Issue</option>
-                                        <option value="RATE_INQUIRY">Rate Inquiry</option>
-                                        <option value="OTHER">Other</option>
-                                    </select>
-                                </div>
-
-                                <div className="flex gap-3 pt-4">
-                                    <Button
-                                        type="submit"
-                                        className="flex-1 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600"
-                                    >
-                                        {editingQueryId ? 'Update Query' : 'Submit Query'}
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => {
-                                            setShowCreateModal(false);
-                                            setEditingQueryId(null);
-                                            setFormData({
-                                                subject: '',
-                                                description: '',
-                                                category: 'OTHER',
-                                                claim_id: ''
-                                            });
-                                            if (preSelectedClaimId) navigate('/faculty/queries');
-                                        }}
-                                        className="flex-1"
-                                    >
-                                        Cancel
-                                    </Button>
-                                </div>
-                            </form>
-                        </div>
-                    </Card>
-                </div>
-            )}
-
-            {/* Query Details Modal */}
-            {selectedQuery && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <Card className="w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-card">
-                        <div className="p-6">
-                            <div className="flex items-start justify-between mb-6">
-                                <div className="flex-1">
-                                    <h2 className="text-2xl font-bold text-card-foreground mb-2">
-                                        {selectedQuery.query.subject}
-                                    </h2>
-                                    <div className="flex items-center gap-3">
-                                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedQuery.query.status)}`}>
-                                            {getStatusLabel(selectedQuery.query.status)}
-                                        </span>
-                                        <span className="text-sm text-muted-foreground">
-                                            {new Date(selectedQuery.query.created_at).toLocaleString()}
-                                        </span>
+                                    <div className="flex gap-2">
+                                        <motion.div
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                        >
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => handleEditQuery(selectedQuery.query)}
+                                                className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                                            >
+                                                Edit
+                                            </Button>
+                                        </motion.div>
+                                        <motion.div
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                        >
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => handleDeleteQuery(selectedQuery.query.id)}
+                                                className="text-red-600 hover:text-red-700 dark:text-red-400"
+                                            >
+                                                Delete
+                                            </Button>
+                                        </motion.div>
+                                        <motion.button
+                                            whileHover={{ rotate: 90 }}
+                                            onClick={() => setSelectedQuery(null)}
+                                            className="text-muted-foreground hover:text-foreground transition-colors"
+                                        >
+                                            ✕
+                                        </motion.button>
                                     </div>
-                                    {selectedQuery.query.claim_id && (
-                                        <div className="mt-2 text-sm text-blue-600 dark:text-blue-400">
-                                            Linked to Claim #{selectedQuery.query.claim_id}
-                                        </div>
-                                    )}
                                 </div>
-                                <button
-                                    onClick={() => setSelectedQuery(null)}
-                                    className="text-muted-foreground hover:text-foreground"
-                                >
-                                    ✕
-                                </button>
                             </div>
 
-                            <div className="space-y-6">
-                                <div>
-                                    <h3 className="font-semibold text-card-foreground mb-2">Description</h3>
+                            {/* Query Content & Responses */}
+                            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                                {/* Description */}
+                                <motion.div
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 0.1 }}
+                                >
+                                    <h3 className="font-semibold text-foreground mb-2">Description</h3>
                                     <p className="text-muted-foreground">{selectedQuery.query.description}</p>
-                                </div>
+                                </motion.div>
 
-                                <div className="border-t border-border pt-6">
-                                    <h3 className="font-semibold text-card-foreground mb-4">
+                                {/* Responses */}
+                                <motion.div
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 0.2 }}
+                                    className="border-t border-border pt-6"
+                                >
+                                    <h3 className="font-semibold text-foreground mb-4">
                                         Responses ({selectedQuery.responses.length})
                                     </h3>
                                     {selectedQuery.responses.length === 0 ? (
-                                        <p className="text-sm text-muted-foreground text-center py-8">
+                                        <motion.p
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            className="text-sm text-muted-foreground text-center py-8"
+                                        >
                                             No responses yet. Our team will respond soon.
-                                        </p>
+                                        </motion.p>
                                     ) : (
-                                        <div className="space-y-4">
-                                            {selectedQuery.responses.map((response) => (
-                                                <div
+                                        <motion.div
+                                            variants={containerVariants}
+                                            initial="hidden"
+                                            animate="visible"
+                                            className="space-y-4"
+                                        >
+                                            {selectedQuery.responses.map((response, index) => (
+                                                <motion.div
                                                     key={response.id}
-                                                    className="bg-accent/50 rounded-lg p-4"
+                                                    variants={itemVariants}
+                                                    whileHover={{ scale: 1.01, backgroundColor: "rgba(148, 163, 184, 0.1)" }}
+                                                    className="bg-accent/50 rounded-lg p-4 transition-all duration-200"
                                                 >
                                                     <div className="flex items-center justify-between mb-2">
-                                                        <span className="font-medium text-card-foreground">
+                                                        <span className="font-medium text-foreground">
                                                             {response.responder_name} ({response.responder_role})
                                                         </span>
                                                         <span className="text-xs text-muted-foreground">
@@ -454,38 +566,184 @@ export default function Queries() {
                                                         </span>
                                                     </div>
                                                     <p className="text-sm text-muted-foreground">{response.message}</p>
-                                                </div>
+                                                </motion.div>
                                             ))}
-                                        </div>
+                                        </motion.div>
                                     )}
-                                </div>
+                                </motion.div>
 
                                 {/* Reply Section */}
-                                <div className="border-t border-border pt-6 mt-6">
-                                    <h3 className="font-semibold text-card-foreground mb-3">Add Reply</h3>
+                                <motion.div
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 0.3 }}
+                                    className="border-t border-border pt-6"
+                                >
+                                    <h3 className="font-semibold text-foreground mb-3">Add Reply</h3>
                                     <form onSubmit={handleSendReply} className="space-y-3">
-                                        <textarea
+                                        <motion.textarea
+                                            whileFocus={{ scale: 1.01 }}
                                             value={replyText}
                                             onChange={(e) => setReplyText(e.target.value)}
                                             placeholder="Type your reply..."
-                                            className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground min-h-[100px] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground min-h-[100px] focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
                                             required
                                         />
                                         <div className="flex justify-end">
-                                            <Button
-                                                type="submit"
-                                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                                            <motion.div
+                                                whileHover={{ scale: 1.05 }}
+                                                whileTap={{ scale: 0.95 }}
                                             >
-                                                Send Reply
-                                            </Button>
+                                                <Button
+                                                    type="submit"
+                                                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                                                >
+                                                    Send Reply
+                                                </Button>
+                                            </motion.div>
+                                        </div>
+                                    </form>
+                                </motion.div>
+                            </div>
+                        </div>
+                    )}
+                </motion.div>
+            </div>
+
+            {/* Create/Edit Query Modal */}
+            <AnimatePresence>
+                {showCreateModal && (
+                    <motion.div
+                        variants={overlayVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit="exit"
+                        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+                    >
+                        <motion.div
+                            variants={modalVariants}
+                            initial="hidden"
+                            animate="visible"
+                            exit="exit"
+                        >
+                            <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-card">
+                                <div className="p-6">
+                                    <h2 className="text-2xl font-bold text-foreground mb-6">
+                                        {editingQueryId ? 'Edit Query' : 'Raise New Query'}
+                                    </h2>
+                                    <form onSubmit={editingQueryId ? handleUpdateQuery : handleCreateQuery} className="space-y-4">
+
+                                        {/* Claim Selection */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-foreground mb-2">
+                                                Related Claim (Optional)
+                                            </label>
+                                            <select
+                                                value={formData.claim_id}
+                                                onChange={(e) => setFormData({ ...formData, claim_id: e.target.value })}
+                                                className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+                                            >
+                                                <option value="">-- Select a Claim --</option>
+                                                {claims.map(claim => (
+                                                    <option key={claim.id} value={claim.id}>
+                                                        {new Date(claim.created_at || Date.now()).toLocaleDateString()} - {claim.subject_name} ({claim.subject_code}) - {claim.status}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-foreground mb-2">
+                                                Subject *
+                                            </label>
+                                            <motion.div whileHover={{ scale: 1.01 }}>
+                                                <Input
+                                                    value={formData.subject}
+                                                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                                                    placeholder="Brief description of your issue"
+                                                    required
+                                                    className="focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+                                                />
+                                            </motion.div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-foreground mb-2">
+                                                Description *
+                                            </label>
+                                            <motion.textarea
+                                                whileFocus={{ scale: 1.01 }}
+                                                value={formData.description}
+                                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                                placeholder="Provide detailed information about your query"
+                                                className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground min-h-[120px] focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+                                                required
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-foreground mb-2">
+                                                Category *
+                                            </label>
+                                            <select
+                                                value={formData.category}
+                                                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                                                className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+                                                required
+                                            >
+                                                <option value="PAYMENT_ISSUE">Payment Issue</option>
+                                                <option value="CLAIM_REJECTION">Claim Rejection</option>
+                                                <option value="TECHNICAL">Technical Issue</option>
+                                                <option value="RATE_INQUIRY">Rate Inquiry</option>
+                                                <option value="OTHER">Other</option>
+                                            </select>
+                                        </div>
+
+                                        <div className="flex gap-3 pt-4">
+                                            <motion.div
+                                                whileHover={{ scale: 1.05 }}
+                                                whileTap={{ scale: 0.95 }}
+                                                className="flex-1"
+                                            >
+                                                <Button
+                                                    type="submit"
+                                                    className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600"
+                                                >
+                                                    {editingQueryId ? 'Update Query' : 'Submit Query'}
+                                                </Button>
+                                            </motion.div>
+                                            <motion.div
+                                                whileHover={{ scale: 1.05 }}
+                                                whileTap={{ scale: 0.95 }}
+                                                className="flex-1"
+                                            >
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    onClick={() => {
+                                                        setShowCreateModal(false);
+                                                        setEditingQueryId(null);
+                                                        setFormData({
+                                                            subject: '',
+                                                            description: '',
+                                                            category: 'OTHER',
+                                                            claim_id: ''
+                                                        });
+                                                        if (preSelectedClaimId) navigate('/faculty/queries');
+                                                    }}
+                                                    className="w-full"
+                                                >
+                                                    Cancel
+                                                </Button>
+                                            </motion.div>
                                         </div>
                                     </form>
                                 </div>
-                            </div>
-                        </div>
-                    </Card>
-                </div>
-            )}
+                            </Card>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
