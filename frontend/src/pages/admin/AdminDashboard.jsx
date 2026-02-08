@@ -34,12 +34,33 @@ export default function AdminDashboard() {
       .finally(() => setLoading(false));
   }, []);
 
+  const handleExport = async () => {
+    try {
+      const response = await api.get('/admin/export/billing-sheet', {
+        responseType: 'blob',
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'Billing_Sheet_Export.xlsx');
+      document.body.appendChild(link);
+      link.click();
+
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Export failed:", error);
+      alert("Failed to export billing sheet");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center space-y-4">
           <div className="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
+          <p className="text-muted-foreground">Loading dashboard...</p>
         </div>
       </div>
     );
@@ -62,8 +83,8 @@ export default function AdminDashboard() {
     <div className="space-y-8">
       {/* Header */}
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
-        <p className="text-gray-600">System-wide overview and supervision</p>
+        <h1 className="text-3xl font-bold text-card-foreground">Admin Dashboard</h1>
+        <p className="text-muted-foreground">System-wide overview and supervision</p>
       </div>
 
       {/* System Summary Cards */}
@@ -131,8 +152,8 @@ export default function AdminDashboard() {
 
       {/* Alerts Section */}
       {alerts && (
-        <Card className="p-6 bg-white border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+        <Card className="p-6 bg-card border-border">
+          <h2 className="text-xl font-semibold text-card-foreground mb-4 flex items-center gap-2">
             <AlertCircleIcon className="w-6 h-6 text-orange-600" />
             System Alerts
           </h2>
@@ -174,7 +195,7 @@ export default function AdminDashboard() {
             )}
 
             {!alerts.pending_beyond_limit && !alerts.repeated_rejections && !alerts.external_without_docs && !alerts.rate_mismatch_flags && (
-              <div className="text-center py-4 text-gray-500">
+              <div className="text-center py-4 text-muted-foreground">
                 <CheckCircleIcon className="w-12 h-12 mx-auto mb-2 text-green-500" />
                 <p>No alerts at this time. System is running smoothly.</p>
               </div>
@@ -184,8 +205,8 @@ export default function AdminDashboard() {
       )}
 
       {/* Quick Actions */}
-      <Card className="p-6 bg-white border-gray-200">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">Quick Actions</h2>
+      <Card className="p-6 bg-card border-border">
+        <h2 className="text-xl font-semibold text-card-foreground mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Button
             onClick={() => navigate("/admin/claims")}
@@ -212,6 +233,15 @@ export default function AdminDashboard() {
             <FileTextIcon className="w-5 h-5 mr-2" />
             Audit Logs
           </Button>
+
+          <Button
+            onClick={handleExport}
+            variant="outline"
+            className="border-green-600 text-green-600 hover:bg-green-50 font-semibold"
+          >
+            <FileTextIcon className="w-5 h-5 mr-2" />
+            Export Billing Excel
+          </Button>
         </div>
       </Card>
     </div>
@@ -223,10 +253,10 @@ function StatCard({ title, value, subtitle, icon, bgColor, borderColor, textColo
     <Card className={`p-6 ${bgColor} border ${borderColor} hover:shadow-lg transition-shadow duration-300`}>
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
-          <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
+          <p className="text-sm font-medium text-muted-foreground mb-1">{title}</p>
           <h3 className={`text-2xl font-bold ${textColor}`}>{value}</h3>
           {subtitle && (
-            <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
+            <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
           )}
         </div>
         <div className={`p-3 rounded-lg ${bgColor}`}>

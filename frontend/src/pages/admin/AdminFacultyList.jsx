@@ -46,12 +46,12 @@ export default function AdminFacultyList() {
         <div className="space-y-6">
             {/* Header */}
             <div className="space-y-2">
-                <h1 className="text-3xl font-bold text-gray-800">Faculty Oversight</h1>
-                <p className="text-gray-600">Monitor faculty claims and profiles</p>
+                <h1 className="text-3xl font-bold text-card-foreground">Faculty Oversight</h1>
+                <p className="text-muted-foreground">Monitor faculty claims and profiles</p>
             </div>
 
             {/* Search */}
-            <Card className="p-6 bg-white border-gray-200">
+            <Card className="p-6 bg-card border-border">
                 <div className="relative">
                     <Input
                         type="text"
@@ -60,26 +60,26 @@ export default function AdminFacultyList() {
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="pl-10"
                     />
-                    <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                 </div>
             </Card>
 
             {/* Faculty Table */}
-            <Card className="bg-white border-gray-200">
+            <Card className="bg-card border-border">
                 {loading ? (
                     <div className="p-12 text-center">
                         <div className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto mb-4"></div>
-                        <p className="text-gray-600">Loading faculty...</p>
+                        <p className="text-muted-foreground">Loading faculty...</p>
                     </div>
                 ) : filteredFaculty.length === 0 ? (
                     <div className="p-12 text-center">
-                        <UsersIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-700 mb-2">
+                        <UsersIcon className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-foreground mb-2">
                             {faculty.length === 0 ? "No faculty found" : "No matching faculty"}
                         </h3>
-                        <p className="text-gray-500">
+                        <p className="text-muted-foreground">
                             {faculty.length === 0
                                 ? "There are no faculty members in the system."
                                 : "Try adjusting your search criteria."}
@@ -88,27 +88,27 @@ export default function AdminFacultyList() {
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full">
-                            <thead className="bg-gray-50 border-b border-gray-200">
+                            <thead className="bg-muted border-b border-border">
                                 <tr>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                         Name
                                     </th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                         Email
                                     </th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                         Department
                                     </th>
-                                    <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                    <th className="px-6 py-4 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                         Total Claims
                                     </th>
-                                    <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                    <th className="px-6 py-4 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                         Pending
                                     </th>
-                                    <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                    <th className="px-6 py-4 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                         Rejected
                                     </th>
-                                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                    <th className="px-6 py-4 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                         Action
                                     </th>
                                 </tr>
@@ -117,13 +117,13 @@ export default function AdminFacultyList() {
                                 {filteredFaculty.map((f) => (
                                     <tr key={f.id} className="hover:bg-purple-50 transition-colors">
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="font-medium text-gray-900">{f.name}</div>
+                                            <div className="font-medium text-foreground">{f.name}</div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm text-gray-700">{f.email}</div>
+                                            <div className="text-sm text-foreground">{f.email}</div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className="text-sm text-gray-700">{f.department || 'N/A'}</span>
+                                            <span className="text-sm text-foreground">{f.department || 'N/A'}</span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-center">
                                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -143,7 +143,7 @@ export default function AdminFacultyList() {
                                                     {f.rejected_claims}
                                                 </span>
                                             ) : (
-                                                <span className="text-gray-400">-</span>
+                                                <span className="text-muted-foreground">-</span>
                                             )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right">
@@ -165,8 +165,8 @@ export default function AdminFacultyList() {
 
                 {/* Footer */}
                 {filteredFaculty.length > 0 && (
-                    <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-                        <p className="text-sm text-gray-600">
+                    <div className="px-6 py-4 bg-muted border-t border-border">
+                        <p className="text-sm text-muted-foreground">
                             Showing <span className="font-semibold">{filteredFaculty.length}</span> of{" "}
                             <span className="font-semibold">{faculty.length}</span> faculty members
                         </p>

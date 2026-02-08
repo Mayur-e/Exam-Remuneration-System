@@ -42,7 +42,7 @@ export default function AdminFacultyProfile() {
         return (
             <div className="p-12 text-center">
                 <div className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-gray-600">Loading faculty profile...</p>
+                <p className="text-muted-foreground">Loading faculty profile...</p>
             </div>
         );
     }
@@ -76,7 +76,7 @@ export default function AdminFacultyProfile() {
                     </Button>
                     <div>
                         <h1 className="text-2xl font-bold">{faculty.name}</h1>
-                        <p className="text-sm text-gray-500">{faculty.email} • {faculty.department}</p>
+                        <p className="text-sm text-muted-foreground">{faculty.email} • {faculty.department}</p>
                     </div>
                 </div>
                 <div className={`px-3 py-1 rounded-full text-sm font-medium ${faculty.is_active
@@ -88,7 +88,7 @@ export default function AdminFacultyProfile() {
             </div>
 
             {/* Tabs */}
-            <div className="border-b border-gray-200">
+            <div className="border-b border-border">
                 <nav className="flex space-x-8">
                     {tabs.map((tab) => {
                         const Icon = tab.icon;
@@ -98,7 +98,7 @@ export default function AdminFacultyProfile() {
                                 onClick={() => setActiveTab(tab.id)}
                                 className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id
                                     ? 'border-purple-600 text-purple-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
                                     }`}
                             >
                                 <Icon className="w-5 h-5" />
@@ -106,7 +106,7 @@ export default function AdminFacultyProfile() {
                                 {tab.count !== undefined && (
                                     <span className={`px-2 py-0.5 rounded-full text-xs ${activeTab === tab.id
                                         ? 'bg-purple-100 text-purple-700'
-                                        : 'bg-gray-100 text-gray-600'
+                                        : 'bg-accent text-muted-foreground'
                                         }`}>
                                         {tab.count}
                                     </span>
@@ -174,7 +174,7 @@ function OverviewTab({ faculty, bank, claims, rejectionHistory, externalLinks })
                         <InfoRow label="Account Type" value={bank.account_type} />
                     </div>
                 ) : (
-                    <p className="text-sm text-gray-500">No bank details provided</p>
+                    <p className="text-sm text-muted-foreground">No bank details provided</p>
                 )}
             </Card>
 
@@ -183,20 +183,20 @@ function OverviewTab({ faculty, bank, claims, rejectionHistory, externalLinks })
                 <h3 className="text-lg font-semibold mb-4">Statistics</h3>
                 <div className="space-y-4">
                     <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Total Claims</span>
+                        <span className="text-sm text-muted-foreground">Total Claims</span>
                         <span className="text-2xl font-bold text-purple-600">{claims?.length || 0}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Rejected Claims</span>
+                        <span className="text-sm text-muted-foreground">Rejected Claims</span>
                         <span className="text-2xl font-bold text-red-600">{rejectionHistory?.length || 0}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">External Links</span>
+                        <span className="text-sm text-muted-foreground">External Links</span>
                         <span className="text-2xl font-bold text-green-600">{externalLinks?.length || 0}</span>
                     </div>
                     <div className="pt-4 border-t border-purple-200">
                         <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600">Total Earnings</span>
+                            <span className="text-sm text-muted-foreground">Total Earnings</span>
                             <span className="text-xl font-bold text-purple-700">
                                 ₹{claims?.reduce((sum, claim) => sum + Number(claim.total_amount || 0), 0).toLocaleString('en-IN') || 0}
                             </span>
@@ -219,7 +219,7 @@ function ClaimsTab({ claims }) {
             {claims && claims.length > 0 ? (
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
-                        <thead className="bg-gray-50">
+                        <thead className="bg-muted">
                             <tr>
                                 <th className="px-4 py-3 text-left font-semibold">ID</th>
                                 <th className="px-4 py-3 text-left font-semibold">Subject</th>
@@ -231,11 +231,11 @@ function ClaimsTab({ claims }) {
                         </thead>
                         <tbody className="divide-y">
                             {claims.map((claim) => (
-                                <tr key={claim.id} className="hover:bg-gray-50 transition-colors">
+                                <tr key={claim.id} className="hover:bg-muted transition-colors">
                                     <td className="px-4 py-3 font-medium">#{claim.id}</td>
                                     <td className="px-4 py-3">{claim.subject_name || 'N/A'}</td>
                                     <td className="px-4 py-3">
-                                        <span className="text-xs px-2 py-1 rounded bg-gray-100 font-medium">
+                                        <span className="text-xs px-2 py-1 rounded bg-accent font-medium">
                                             {claim.exam_type}
                                         </span>
                                     </td>
@@ -244,7 +244,7 @@ function ClaimsTab({ claims }) {
                                             claim.status === 'approved' ? 'bg-blue-100 text-blue-700' :
                                                 claim.status === 'submitted' ? 'bg-orange-100 text-orange-700' :
                                                     claim.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                                                        'bg-gray-100 text-gray-700'
+                                                        'bg-accent text-foreground'
                                             }`}>
                                             {claim.status}
                                         </span>
@@ -252,7 +252,7 @@ function ClaimsTab({ claims }) {
                                     <td className="px-4 py-3 text-right font-semibold">
                                         ₹{Number(claim.total_amount || 0).toLocaleString('en-IN')}
                                     </td>
-                                    <td className="px-4 py-3 text-gray-500">
+                                    <td className="px-4 py-3 text-muted-foreground">
                                         {new Date(claim.created_at).toLocaleDateString()}
                                     </td>
                                 </tr>
@@ -262,8 +262,8 @@ function ClaimsTab({ claims }) {
                 </div>
             ) : (
                 <div className="text-center py-12">
-                    <FileTextIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-sm text-gray-500">No claims found</p>
+                    <FileTextIcon className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground">No claims found</p>
                 </div>
             )}
         </Card>
@@ -284,20 +284,20 @@ function RejectionsTab({ rejectionHistory }) {
                         <div key={idx} className="bg-red-50 p-4 rounded-lg border border-red-200 hover:shadow-md transition-shadow">
                             <div className="flex justify-between items-start mb-2">
                                 <div>
-                                    <span className="font-semibold text-gray-900">
+                                    <span className="font-semibold text-foreground">
                                         Claim #{rejection.id}
                                     </span>
-                                    <span className="text-gray-600 ml-2">
+                                    <span className="text-muted-foreground ml-2">
                                         {rejection.subject_name}
                                     </span>
                                 </div>
-                                <span className="text-sm text-gray-500">
+                                <span className="text-sm text-muted-foreground">
                                     {new Date(rejection.action_at).toLocaleDateString()}
                                 </span>
                             </div>
-                            <div className="bg-white p-3 rounded border border-red-100 mt-2">
-                                <p className="text-sm font-medium text-gray-500 mb-1">Rejection Reason:</p>
-                                <p className="text-sm text-gray-700">{rejection.comment}</p>
+                            <div className="bg-card p-3 rounded border border-red-100 mt-2">
+                                <p className="text-sm font-medium text-muted-foreground mb-1">Rejection Reason:</p>
+                                <p className="text-sm text-foreground">{rejection.comment}</p>
                             </div>
                         </div>
                     ))}
@@ -305,7 +305,7 @@ function RejectionsTab({ rejectionHistory }) {
             ) : (
                 <div className="text-center py-12">
                     <CheckCircleIcon className="w-12 h-12 text-green-300 mx-auto mb-3" />
-                    <p className="text-sm text-gray-500">No rejections - All claims approved!</p>
+                    <p className="text-sm text-muted-foreground">No rejections - All claims approved!</p>
                 </div>
             )}
         </Card>
@@ -323,13 +323,13 @@ function ExternalLinksTab({ externalLinks }) {
             {externalLinks && externalLinks.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {externalLinks.map((link, idx) => (
-                        <div key={idx} className="bg-gray-50 p-4 rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
+                        <div key={idx} className="bg-muted p-4 rounded-lg border border-border hover:shadow-md transition-shadow">
                             <div className="flex justify-between items-start mb-3">
                                 <div className="flex-1">
-                                    <h4 className="font-semibold text-gray-900">
+                                    <h4 className="font-semibold text-foreground">
                                         {link.subject_name || 'N/A'}
                                     </h4>
-                                    <p className="text-xs text-gray-500 mt-1">
+                                    <p className="text-xs text-muted-foreground mt-1">
                                         Created: {new Date(link.created_at).toLocaleDateString()}
                                     </p>
                                 </div>
@@ -340,7 +340,7 @@ function ExternalLinksTab({ externalLinks }) {
                                     {link.used ? 'Used' : new Date(link.expires_at) < new Date() ? 'Expired' : 'Active'}
                                 </span>
                             </div>
-                            <div className="flex items-center gap-2 text-xs text-gray-600">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <ClockIcon className="w-4 h-4" />
                                 Expires: {new Date(link.expires_at).toLocaleDateString()}
                             </div>
@@ -349,8 +349,8 @@ function ExternalLinksTab({ externalLinks }) {
                 </div>
             ) : (
                 <div className="text-center py-12">
-                    <FileTextIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-sm text-gray-500">No external links generated</p>
+                    <FileTextIcon className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground">No external links generated</p>
                 </div>
             )}
         </Card>
@@ -361,8 +361,8 @@ function ExternalLinksTab({ externalLinks }) {
 function InfoRow({ label, value }) {
     return (
         <div className="flex justify-between py-2 border-b border-gray-100 last:border-0">
-            <span className="text-gray-500">{label}</span>
-            <span className="font-medium text-gray-900">{value}</span>
+            <span className="text-muted-foreground">{label}</span>
+            <span className="font-medium text-foreground">{value}</span>
         </div>
     );
 }
