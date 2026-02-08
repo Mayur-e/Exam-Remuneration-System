@@ -527,8 +527,58 @@ exports.submitExam = async (req, res) => {
       }
     }
 
-    // 5. VALIDATION: For Non-Teaching claims, verify staff members exist
+    // 5. AUTO-CREATE Expert Assistant for Non-Teaching claims
+    // For NON_TEACHING claims, the internal faculty is the Expert Assistant
     if (exam.claim_form_type === 'NON_TEACHING') {
+      // Check if Expert Assistant entry already exists for this faculty
+      const expertCheck = await pool.query(
+        `SELECT id FROM exam_staff_members 
+         WHERE exam_id = $1 AND staff_role = 'Expert Assistant' AND is_internal = true`,
+        [examId]
+      );
+
+      // If no Expert Assistant exists, create one for the internal faculty
+      if (expertCheck.rows.length === 0) {
+        // Get Expert Assistant rate
+        const rateResult = await pool.query(
+          `SELECT rate FROM staff_role_rates WHERE role_name = 'Expert Assistant' LIMIT 1`
+        );
+
+        if (rateResult.rows.length === 0) {
+          return res.status(400).json({
+            message: "Expert Assistant rate not configured. Please contact administrator."
+          });
+        }
+
+        const expertRate = rateResult.rows[0].rate;
+
+        // Get exam_date to calculate examination days
+        const examDateResult = await pool.query(
+          `SELECT exam_date FROM exams WHERE id = $1`,
+          [examId]
+        );
+
+        const examDate = examDateResult.rows[0].exam_date;
+        const examinationDays = examDate ? 1 : 0; // For non-teaching, exam date = 1 examination day
+
+        // Get faculty name
+        const facultyResult = await pool.query(
+          `SELECT name FROM users WHERE id = $1`,
+          [exam.faculty_id]
+        );
+
+        const facultyName = facultyResult.rows[0].name;
+
+        // Create Expert Assistant entry
+        await pool.query(
+          `INSERT INTO exam_staff_members 
+           (exam_id, staff_role, staff_name, is_internal, preparation_days, examination_days, cleaning_days, rate, batches)
+           VALUES ($1, 'Expert Assistant', $2, true, 0, $3, 0, $4, 0)`,
+          [examId, facultyName, examinationDays, expertRate]
+        );
+      }
+
+      // Now check if there are any staff members (including the auto-created Expert Assistant)
       const staffCheck = await pool.query(
         `SELECT COUNT(*) as count FROM exam_staff_members WHERE exam_id = $1`,
         [examId]
