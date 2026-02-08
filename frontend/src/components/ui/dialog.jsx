@@ -1,33 +1,50 @@
 import React from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "../../lib/utils";
 import { XIcon } from "../icons/logo";
 
 export function Dialog({ open, onOpenChange, children }) {
-    if (!open) return null;
-
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-            {/* Backdrop */}
-            <div
-                className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in"
-                onClick={() => onOpenChange(false)}
-            />
-            {/* Content Container */}
-            <div className="relative z-50">
-                {children}
-            </div>
-        </div>
+        <AnimatePresence>
+            {open && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                    {/* Backdrop */}
+                    <motion.div
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        onClick={() => onOpenChange(false)}
+                    />
+                    {/* Content Container */}
+                    <div className="relative z-50">
+                        {children}
+                    </div>
+                </div>
+            )}
+        </AnimatePresence>
     );
 }
 
 export function DialogContent({ className, children }) {
     return (
-        <div className={cn(
-            "bg-white rounded-lg shadow-lg w-full max-w-lg mx-4 p-6 animate-in zoom-in-95 duration-200",
-            className
-        )}>
+        <motion.div
+            className={cn(
+                "bg-card text-card-foreground rounded-lg shadow-lg w-full max-w-lg mx-4 p-6 border border-border",
+                className
+            )}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{
+                type: "spring",
+                stiffness: 200,
+                damping: 25
+            }}
+        >
             {children}
-        </div>
+        </motion.div>
     );
 }
 
