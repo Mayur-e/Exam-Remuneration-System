@@ -249,12 +249,12 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Program *</label>
+            <label className="text-sm font-medium text-foreground">Program *</label>
             <select
               disabled={disabled}
               value={form.program}
               onChange={(e) => update("program", e.target.value)}
-              className={`w-full px-3 py-2 border ${errors.program ? 'border-red-500' : 'border-gray-300'} rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed`}
+              className={`w-full px-3 py-2 border ${errors.program ? 'border-red-500 dark:border-red-400' : 'border-border'} rounded-lg bg-background dark:bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent disabled:bg-muted disabled:cursor-not-allowed`}
             >
               <option value="">Select Program</option>
               {PROGRAMS.map((p) => (
@@ -273,12 +273,12 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
         {/* Row 2: Level & Students Count */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Level *</label>
+            <label className="text-sm font-medium text-foreground">Level *</label>
             <select
               disabled={disabled}
               value={form.level}
               onChange={(e) => update("level", e.target.value)}
-              className={`w-full px-3 py-2 border ${errors.level ? 'border-red-500' : 'border-gray-300'} rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed`}
+              className={`w-full px-3 py-2 border ${errors.level ? 'border-red-500 dark:border-red-400' : 'border-border'} rounded-lg bg-background dark:bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent disabled:bg-muted disabled:cursor-not-allowed`}
             >
               <option value="">Select Level</option>
               {LEVELS.map((l) => (
@@ -297,9 +297,9 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
         {/* Row 3: Subject Details */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative" ref={wrapperRef}>
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
+            <label className="text-sm font-medium text-foreground flex items-center gap-1">
               Course Code *
-              {activeSearchField === 'subject_code' && loading && !showResults && <span className="text-xs text-gray-400">Searching...</span>}
+              {activeSearchField === 'subject_code' && loading && !showResults && <span className="text-xs text-muted-foreground">Searching...</span>}
             </label>
             <div className="relative">
               <Input
@@ -314,7 +314,7 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
                 className={errors.subject_code ? "border-red-500 pr-10" : "pr-10"}
                 autoComplete="off"
               />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                 <SearchIcon className="w-4 h-4" />
               </div>
             </div>
@@ -349,7 +349,7 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
                 className={errors.subject_name ? "border-red-500 pr-10" : "pr-10"}
                 autoComplete="off"
               />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                 <SearchIcon className="w-4 h-4" />
               </div>
             </div>
@@ -369,7 +369,7 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
 
           {/* Search Results Dropdown */}
           {showResults && !disabled && (
-            <div className="absolute z-50 left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto min-w-full">
+            <div className="absolute z-50 left-0 top-full mt-1 bg-card dark:bg-popover border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto min-w-full">
               {searchResults.length > 0 ? (
                 searchResults.map((subject, idx) => (
                   <button
@@ -378,27 +378,27 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
                     className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b last:border-0 border-gray-100 group"
                   >
                     <div className="flex justify-between items-start">
-                      <span className="font-medium text-gray-800 group-hover:text-blue-700">
+                      <span className="font-medium text-foreground group-hover:text-blue-700 dark:group-hover:text-blue-400">
                         {subject.name}
                       </span>
-                      <span className="text-xs font-mono bg-gray-100 text-gray-600 px-2 py-1 rounded ml-2 group-hover:bg-blue-100 group-hover:text-blue-800">
+                      <span className="text-xs font-mono bg-muted text-muted-foreground px-2 py-1 rounded ml-2 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/30 group-hover:text-blue-800 dark:group-hover:text-blue-300">
                         {subject.code}
                       </span>
                     </div>
                     {subject.department && (
-                      <div className="text-xs text-gray-500 mt-1">
+                      <div className="text-xs text-muted-foreground mt-1">
                         {subject.department} • {subject.type}
                       </div>
                     )}
                   </button>
                 ))
               ) : (
-                <div className="px-4 py-3 text-center text-gray-500">
+                <div className="px-4 py-3 text-center text-muted-foreground">
                   <div className="flex items-center justify-center gap-2">
                     <AlertCircleIcon className="w-4 h-4 text-yellow-500" />
                     <span className="text-sm">No subjects found matching your search</span>
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">Try a different course code or name</p>
+                  <p className="text-xs text-muted-foreground mt-1">Try a different course code or name</p>
                 </div>
               )}
             </div>
@@ -437,7 +437,7 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
         {/* Row 3.5: Second Examiner (Optional) - Only for Teaching claims */}
         {claimFormType !== "NON_TEACHING" && (
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">
+            <label className="text-sm font-medium text-foreground">
               Second Examiner Name (if any)
             </label>
             <Input
@@ -446,7 +446,7 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
               value={form.second_examiner}
               onChange={(e) => update("second_examiner", e.target.value)}
             />
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               Leave blank if there is no second examiner
             </p>
           </div>
@@ -455,12 +455,12 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
         {/* Row 4: Semester & Academic Year */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Semester *</label>
+            <label className="text-sm font-medium text-foreground">Semester *</label>
             <select
               disabled={disabled}
               value={form.semester}
               onChange={(e) => update("semester", e.target.value)}
-              className={`w-full px-3 py-2 border ${errors.semester ? 'border-red-500' : 'border-gray-300'} rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed`}
+              className={`w-full px-3 py-2 border ${errors.semester ? 'border-red-500 dark:border-red-400' : 'border-border'} rounded-lg bg-background dark:bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent disabled:bg-muted disabled:cursor-not-allowed`}
             >
               <option value="">Select Semester</option>
               {SEMESTERS.map((s) => (
@@ -476,12 +476,12 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Academic Year *</label>
+            <label className="text-sm font-medium text-foreground">Academic Year *</label>
             <select
               disabled={disabled}
               value={form.academic_year}
               onChange={(e) => update("academic_year", e.target.value)}
-              className={`w-full px-3 py-2 border ${errors.academic_year ? 'border-red-500' : 'border-gray-300'} rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed`}
+              className={`w-full px-3 py-2 border ${errors.academic_year ? 'border-red-500 dark:border-red-400' : 'border-border'} rounded-lg bg-background dark:bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent disabled:bg-muted disabled:cursor-not-allowed`}
             >
               <option value="">Select Academic Year</option>
               {academicYears.map((y) => (
@@ -533,7 +533,7 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
                 onChange={(e) => update("is_backlog", e.target.checked)}
                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
               />
-              <label htmlFor="is_backlog" className="ml-2 text-sm text-gray-700 cursor-pointer">
+              <label htmlFor="is_backlog" className="ml-2 text-sm text-foreground cursor-pointer">
                 Backlog / Re-ETE / Summer Exam
               </label>
             </div>
