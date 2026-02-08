@@ -195,11 +195,11 @@ export default function ExternalExaminerForm({ token }) {
             </li>
             <li className="flex items-start gap-2">
               <span className="text-blue-600 font-bold">•</span>
-              <span>PAN number must be in format: <code className="bg-white px-2 py-0.5 rounded">ABCDE1234F</code></span>
+              <span>PAN number must be in format: <code className="bg-muted dark:bg-muted/50 px-2 py-0.5 rounded">ABCDE1234F</code></span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-blue-600 font-bold">•</span>
-              <span>IFSC code must be in format: <code className="bg-white px-2 py-0.5 rounded">ABCD0123456</code></span>
+              <span>IFSC code must be in format: <code className="bg-muted dark:bg-muted/50 px-2 py-0.5 rounded">ABCD0123456</code></span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-blue-600 font-bold">•</span>
@@ -233,7 +233,7 @@ export default function ExternalExaminerForm({ token }) {
                       <strong>Rejected by:</strong> {rejection.rejected_by} on{' '}
                       {new Date(rejection.action_at).toLocaleString()}
                     </p>
-                    <p className="text-sm text-red-800 bg-white p-3 rounded border border-red-200">
+                    <p className="text-sm text-red-800 dark:text-red-300 bg-red-50 dark:bg-red-900/20 p-3 rounded border border-red-200 dark:border-red-800">
                       {rejection.comment}
                     </p>
                   </div>

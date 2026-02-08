@@ -23,11 +23,11 @@ export default function RejectModal({ isOpen, onClose, onReject, processing }) {
 
     return (
         <Dialog open={isOpen} onClose={handleClose}>
-            <div className="bg-white rounded-lg p-6 max-w-md w-full">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">Reject Claim</h2>
+            <div className="bg-card dark:bg-popover rounded-lg p-6 max-w-md w-full border border-border">
+                <h2 className="text-xl font-bold text-foreground mb-4">Reject Claim</h2>
 
                 <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-foreground mb-2">
                         Reason for Rejection <span className="text-red-500">*</span>
                     </label>
                     <textarea
@@ -36,7 +36,7 @@ export default function RejectModal({ isOpen, onClose, onReject, processing }) {
                             setReason(e.target.value);
                             setError('');
                         }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 min-h-[100px]"
+                        className="w-full px-3 py-2 border border-border bg-background dark:bg-card text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:focus:ring-red-400 min-h-[100px]"
                         placeholder="Please provide a detailed reason for rejecting this claim..."
                     />
                     {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
