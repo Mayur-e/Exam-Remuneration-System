@@ -143,6 +143,48 @@ exports.createExam = async (req, res) => {
 
   const { id } = result.rows[0];
 
+  // AUTO-CREATE Expert Assistant for NON_TEACHING claims
+  // The internal faculty is automatically the Expert Assistant
+  if (claim_form_type === 'NON_TEACHING') {
+    try {
+      // Get Expert Assistant rate (use latest academic year)
+      const rateResult = await pool.query(
+        `SELECT per_batch_rate 
+         FROM staff_role_rates 
+         WHERE staff_role = 'Expert Assistant' 
+         ORDER BY academic_year DESC 
+         LIMIT 1`
+      );
+
+      if (rateResult.rows.length > 0) {
+        const expertRate = rateResult.rows[0].per_batch_rate || 0;
+
+        // For non-teaching, examination_dates = exam_date (they're the same)
+        const examinationDays = exam_date ? 1 : 0;
+
+        // Get faculty name
+        const facultyResult = await pool.query(
+          `SELECT name FROM users WHERE id = $1`,
+          [req.user.id]
+        );
+
+        const facultyName = facultyResult.rows[0]?.name || 'Internal Faculty';
+
+        // Create Expert Assistant entry automatically
+        await pool.query(
+          `INSERT INTO exam_staff_members 
+           (exam_id, staff_role, staff_name, is_internal, preparation_days, examination_days, cleaning_days, rate, batches)
+           VALUES ($1, 'Expert Assistant', $2, true, 0, $3, 0, $4, 0)
+           ON CONFLICT ON CONSTRAINT unique_staff_per_exam DO NOTHING`,
+          [id, facultyName, examinationDays, expertRate]
+        );
+      }
+    } catch (error) {
+      console.error('Failed to auto-create Expert Assistant:', error);
+      // Don't fail the exam creation if Expert Assistant creation fails
+    }
+  }
+
   return res.status(201).json({ id });
 
 };
@@ -242,10 +284,17 @@ exports.updateExam = async (req, res) => {
       }
     }
 
+    // For NON_TEACHING claims: examination_dates = exam_date (they're the same)
+    let finalExamDates = exam_dates;
+    if (claim_form_type === 'NON_TEACHING' && exam_date) {
+      // Automatically set exam_dates to exam_date for non-teaching
+      finalExamDates = exam_date;
+    }
+
     // Date validation for NON_TEACHING claims
-    if (claim_form_type === 'NON_TEACHING' && exam_dates) {
+    if (claim_form_type === 'NON_TEACHING' && finalExamDates) {
       const prepDatesArr = prep_dates ? prep_dates.split(",").map(d => d.trim()).filter(Boolean) : [];
-      const examDatesArr = exam_dates.split(",").map(d => d.trim()).filter(Boolean);
+      const examDatesArr = finalExamDates.split(",").map(d => d.trim()).filter(Boolean);
       const cleanDatesArr = cleaning_dates ? cleaning_dates.split(",").map(d => d.trim()).filter(Boolean) : [];
 
       if (examDatesArr.length === 0) {
@@ -309,7 +358,7 @@ exports.updateExam = async (req, res) => {
         Boolean(is_backlog) || false,
         second_examiner || null,
         prep_dates || null,
-        exam_dates || null,
+        finalExamDates || null,  // Use finalExamDates instead of exam_dates
         cleaning_dates || null,
         students_per_batch ? Number(students_per_batch) : null,
         examId,
@@ -539,9 +588,13 @@ exports.submitExam = async (req, res) => {
 
       // If no Expert Assistant exists, create one for the internal faculty
       if (expertCheck.rows.length === 0) {
-        // Get Expert Assistant rate
+        // Get Expert Assistant rate (use latest academic year)
         const rateResult = await pool.query(
-          `SELECT rate FROM staff_role_rates WHERE role_name = 'Expert Assistant' LIMIT 1`
+          `SELECT preparation_rate, per_batch_rate, cleaning_rate 
+           FROM staff_role_rates 
+           WHERE staff_role = 'Expert Assistant' 
+           ORDER BY academic_year DESC 
+           LIMIT 1`
         );
 
         if (rateResult.rows.length === 0) {
@@ -550,7 +603,8 @@ exports.submitExam = async (req, res) => {
           });
         }
 
-        const expertRate = rateResult.rows[0].rate;
+        // For Expert Assistant, use per_batch_rate as the examination rate
+        const expertRate = rateResult.rows[0].per_batch_rate || 0;
 
         // Get exam_date to calculate examination days
         const examDateResult = await pool.query(
@@ -569,11 +623,12 @@ exports.submitExam = async (req, res) => {
 
         const facultyName = facultyResult.rows[0].name;
 
-        // Create Expert Assistant entry
+        // Create Expert Assistant entry (use ON CONFLICT to handle duplicates)
         await pool.query(
           `INSERT INTO exam_staff_members 
            (exam_id, staff_role, staff_name, is_internal, preparation_days, examination_days, cleaning_days, rate, batches)
-           VALUES ($1, 'Expert Assistant', $2, true, 0, $3, 0, $4, 0)`,
+           VALUES ($1, 'Expert Assistant', $2, true, 0, $3, 0, $4, 0)
+           ON CONFLICT ON CONSTRAINT unique_staff_per_exam DO NOTHING`,
           [examId, facultyName, examinationDays, expertRate]
         );
       }
