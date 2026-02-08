@@ -166,10 +166,12 @@ exports.getClaimDetails = async (req, res) => {
       const staff = await pool.query(
         `SELECT esm.*, srr.preparation_rate, srr.per_batch_rate, srr.cleaning_rate
          FROM exam_staff_members esm
-         LEFT JOIN staff_role_rates srr ON esm.staff_role = srr.staff_role
+         LEFT JOIN staff_role_rates srr 
+           ON esm.staff_role = srr.staff_role 
+           AND srr.academic_year = $2
          WHERE esm.exam_id = $1 
          ORDER BY esm.id`,
-        [examId]
+        [examId, examData.academic_year]
       );
 
       // Calculate amounts for each staff member
