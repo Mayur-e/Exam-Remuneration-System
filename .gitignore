@@ -42,5 +42,7 @@ tmp/
 temp/
 coverage/
 
+# Uploads
+backend/uploads/
 
 TY- PR-OR-TW 2024-25 Updated.xlsx
