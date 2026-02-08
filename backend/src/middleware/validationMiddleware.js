@@ -125,7 +125,7 @@ const idParamValidation = [
  */
 const rejectClaimValidation = [
     body('reason')
-        .isLength({ min: 10, max: 500 }).withMessage('Rejection reason must be between 10 and 500 characters')
+        .isLength({ min: 5, max: 500 }).withMessage('Rejection reason must be between 5 and 500 characters')
         .trim()
         .escape(),
     body('policy_reference')
@@ -138,7 +138,7 @@ const rejectClaimValidation = [
 
 const sendBackClaimValidation = [
     body('instructions')
-        .isLength({ min: 10, max: 500 }).withMessage('Instructions must be between 10 and 500 characters')
+        .isLength({ min: 5, max: 500 }).withMessage('Instructions must be between 5 and 500 characters')
         .trim()
         .escape(),
     validate

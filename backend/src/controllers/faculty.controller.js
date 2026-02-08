@@ -93,11 +93,17 @@ exports.createExam = async (req, res) => {
       );
 
       const totalClaimed = parseInt(existingClaimsResult.rows[0].total_claimed);
-      const newTotal = totalClaimed + safeStudentsCount;
+      const availableSlots = registeredCount - totalClaimed;
 
-      if (newTotal > registeredCount) {
+      if (availableSlots <= 0) {
         return res.status(400).json({
-          message: `Total student count (${newTotal}) exceeds registered count (${registeredCount}) for subject ${subject_code} in ${semester}, ${academic_year}. Already claimed: ${totalClaimed} students.`
+          message: `Student limit reached for ${subject_code} (Sem ${semester}). Registered limit: ${registeredCount}, Already claimed: ${totalClaimed}.`
+        });
+      }
+
+      if (safeStudentsCount > availableSlots) {
+        return res.status(400).json({
+          message: `Only ${availableSlots} student slot(s) available for ${subject_code} (Sem ${semester}). Please reduce count.`
         });
       }
     }
@@ -220,11 +226,17 @@ exports.updateExam = async (req, res) => {
         );
 
         const totalClaimed = parseInt(existingClaimsResult.rows[0].total_claimed);
-        const newTotal = totalClaimed + Number(students_count);
+        const availableSlots = registeredCount - totalClaimed;
 
-        if (newTotal > registeredCount) {
+        if (availableSlots <= 0) {
           return res.status(400).json({
-            message: `Total student count (${newTotal}) exceeds registered count (${registeredCount}) for subject ${subject_code} in ${semester}, ${academic_year}. Already claimed by others: ${totalClaimed} students.`
+            message: `Student limit reached for ${subject_code} (Sem ${semester}). Registered limit: ${registeredCount}, Already claimed: ${totalClaimed}.`
+          });
+        }
+
+        if (Number(students_count) > availableSlots) {
+          return res.status(400).json({
+            message: `Only ${availableSlots} student slot(s) available for ${subject_code} (Sem ${semester}). Please reduce count.`
           });
         }
       }
@@ -637,12 +649,12 @@ exports.getExamDetails = async (req, res) => {
     [examId]
   );
 
-  // Get rejection history if any
-  const rejections = await pool.query(
-    `SELECT ca.comment, ca.action_at, u.name AS rejected_by
+  // Get rejection and sent-back history if any
+  const claimActions = await pool.query(
+    `SELECT ca.comment, ca.action_at, ca.action_type, u.name AS action_by_name
      FROM claim_actions ca
      JOIN users u ON ca.action_by = u.id
-     WHERE ca.exam_id = $1 AND ca.action_type = 'REJECTED'
+     WHERE ca.exam_id = $1 AND ca.action_type IN ('REJECTED', 'SENT_BACK')
      ORDER BY ca.action_at DESC`,
     [examId]
   );
@@ -651,7 +663,7 @@ exports.getExamDetails = async (req, res) => {
     exam: exam.rows[0],
     staff: staff.rows,
     calculation: calculation.rows[0] || null,
-    rejections: rejections.rows
+    claimActions: claimActions.rows
   });
 };
 

@@ -55,7 +55,10 @@ export default function AdminClaimView() {
             setShowRejectModal(false);
             fetchDetails();
         } catch (err) {
-            showToast(err.response?.data?.message || "Failed to reject claim", "error");
+            const errorMessage = err.response?.data?.errors
+                ? err.response.data.errors.map(e => e.msg).join(', ')
+                : (err.response?.data?.message || "Failed to reject claim");
+            showToast(errorMessage, "error");
         } finally {
             setProcessing(false);
         }
@@ -69,7 +72,10 @@ export default function AdminClaimView() {
             setShowSendBackModal(false);
             fetchDetails();
         } catch (err) {
-            showToast(err.response?.data?.message || "Failed to send back claim", "error");
+            const errorMessage = err.response?.data?.errors
+                ? err.response.data.errors.map(e => e.msg).join(', ')
+                : (err.response?.data?.message || "Failed to send back claim");
+            showToast(errorMessage, "error");
         } finally {
             setProcessing(false);
         }
@@ -100,7 +106,7 @@ export default function AdminClaimView() {
                 </Button>
                 <div>
                     <h1 className="text-2xl font-bold">Claim #{exam.id} - Admin Review</h1>
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <span>{exam.claim_form_type}</span>
                         <span>•</span>
                         <span className={`capitalize font-medium ${exam.status === 'paid' ? 'text-green-600' :
@@ -143,13 +149,13 @@ export default function AdminClaimView() {
             </div>
 
             {/* Tabs */}
-            <div className="border-b border-gray-200">
+            <div className="border-b border-border">
                 <nav className="flex gap-4">
                     <button
                         onClick={() => setActiveTab("details")}
                         className={`px-4 py-2 font-medium border-b-2 transition-colors ${activeTab === "details"
                             ? "border-purple-600 text-purple-600"
-                            : "border-transparent text-gray-500 hover:text-gray-700"
+                            : "border-transparent text-muted-foreground hover:text-foreground"
                             }`}
                     >
                         Claim Details
@@ -158,7 +164,7 @@ export default function AdminClaimView() {
                         onClick={() => setActiveTab("calculation")}
                         className={`px-4 py-2 font-medium border-b-2 transition-colors ${activeTab === "calculation"
                             ? "border-purple-600 text-purple-600"
-                            : "border-transparent text-gray-500 hover:text-gray-700"
+                            : "border-transparent text-muted-foreground hover:text-foreground"
                             }`}
                     >
                         Calculation Breakdown
@@ -167,7 +173,7 @@ export default function AdminClaimView() {
                         onClick={() => setActiveTab("audit")}
                         className={`px-4 py-2 font-medium border-b-2 transition-colors ${activeTab === "audit"
                             ? "border-purple-600 text-purple-600"
-                            : "border-transparent text-gray-500 hover:text-gray-700"
+                            : "border-transparent text-muted-foreground hover:text-foreground"
                             }`}
                     >
                         Audit Logs
@@ -218,8 +224,8 @@ export default function AdminClaimView() {
                             )}
                         </div>
 
-                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                            <h4 className="font-medium text-gray-700 mb-3 flex items-center gap-2">
+                        <div className="bg-muted p-4 rounded-lg border border-gray-100">
+                            <h4 className="font-medium text-foreground mb-3 flex items-center gap-2">
                                 <BuildingOfficeIcon className="w-4 h-4" />
                                 Bank Account Details (Read-Only)
                             </h4>
@@ -245,12 +251,12 @@ export default function AdminClaimView() {
                                 <table className="w-full text-sm border-collapse">
                                     <thead>
                                         <tr className="bg-purple-50 border-b-2 border-purple-200">
-                                            <th className="px-4 py-3 text-left font-semibold text-gray-700">Name</th>
-                                            <th className="px-4 py-3 text-left font-semibold text-gray-700">Designation</th>
-                                            <th className="px-4 py-3 text-right font-semibold text-gray-700">Rate (₹)</th>
-                                            <th className="px-4 py-3 text-right font-semibold text-gray-700">Prep & Clean Rs</th>
-                                            <th className="px-4 py-3 text-right font-semibold text-gray-700">Batch Rs</th>
-                                            <th className="px-4 py-3 text-right font-semibold text-gray-700">Total Amount</th>
+                                            <th className="px-4 py-3 text-left font-semibold text-foreground">Name</th>
+                                            <th className="px-4 py-3 text-left font-semibold text-foreground">Designation</th>
+                                            <th className="px-4 py-3 text-right font-semibold text-foreground">Rate (₹)</th>
+                                            <th className="px-4 py-3 text-right font-semibold text-foreground">Prep & Clean Rs</th>
+                                            <th className="px-4 py-3 text-right font-semibold text-foreground">Batch Rs</th>
+                                            <th className="px-4 py-3 text-right font-semibold text-foreground">Total Amount</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-200">
@@ -261,10 +267,10 @@ export default function AdminClaimView() {
                                             const rate = Number(s.rate || 0);
 
                                             return (
-                                                <tr key={idx} className="hover:bg-gray-50">
-                                                    <td className="px-4 py-3 font-medium text-gray-900">{s.staff_name}</td>
-                                                    <td className="px-4 py-3 text-gray-600">{s.staff_role}</td>
-                                                    <td className="px-4 py-3 text-right text-gray-700">₹{rate.toFixed(2)}</td>
+                                                <tr key={idx} className="hover:bg-muted">
+                                                    <td className="px-4 py-3 font-medium text-foreground">{s.staff_name}</td>
+                                                    <td className="px-4 py-3 text-muted-foreground">{s.staff_role}</td>
+                                                    <td className="px-4 py-3 text-right text-foreground">₹{rate.toFixed(2)}</td>
                                                     <td className="px-4 py-3 text-right text-green-600 font-medium">
                                                         {prepClean > 0 ? `₹${prepClean.toFixed(2)}` : 'N/A'}
                                                     </td>
@@ -274,7 +280,7 @@ export default function AdminClaimView() {
                                             );
                                         })}
                                         <tr className="bg-purple-50 border-t-2 border-purple-200 font-bold">
-                                            <td colSpan="5" className="px-4 py-3 text-right text-gray-900">Grand Total:</td>
+                                            <td colSpan="5" className="px-4 py-3 text-right text-foreground">Grand Total:</td>
                                             <td className="px-4 py-3 text-right text-purple-700 text-lg">
                                                 ₹{staff.reduce((sum, s) => sum + Number(s.total_amount || 0), 0).toFixed(2)}
                                             </td>
@@ -302,14 +308,14 @@ export default function AdminClaimView() {
                                 <div key={idx} className={`p-4 rounded-lg border ${log.action_type === 'REJECTED' ? 'bg-red-50 border-red-200' :
                                     log.action_type === 'APPROVED' ? 'bg-green-50 border-green-200' :
                                         log.action_type === 'SENT_BACK' ? 'bg-orange-50 border-orange-200' :
-                                            'bg-gray-50 border-gray-200'
+                                            'bg-muted border-border'
                                     }`}>
                                     <div className="flex justify-between items-start mb-2">
                                         <div>
-                                            <span className="font-medium text-gray-900">{log.action_by_name}</span>
-                                            <span className="text-sm text-gray-500 ml-2">({log.action_by_role})</span>
+                                            <span className="font-medium text-foreground">{log.action_by_name}</span>
+                                            <span className="text-sm text-muted-foreground ml-2">({log.action_by_role})</span>
                                         </div>
-                                        <span className="text-sm text-gray-500">
+                                        <span className="text-sm text-muted-foreground">
                                             {new Date(log.action_at).toLocaleString()}
                                         </span>
                                     </div>
@@ -317,19 +323,19 @@ export default function AdminClaimView() {
                                         <span className={`px-2 py-1 text-xs font-semibold rounded ${log.action_type === 'REJECTED' ? 'bg-red-100 text-red-700' :
                                             log.action_type === 'APPROVED' ? 'bg-green-100 text-green-700' :
                                                 log.action_type === 'SENT_BACK' ? 'bg-orange-100 text-orange-700' :
-                                                    'bg-gray-100 text-gray-700'
+                                                    'bg-accent text-foreground'
                                             }`}>
                                             {log.action_type}
                                         </span>
                                     </div>
                                     {log.comment && (
-                                        <p className="text-gray-700 text-sm mt-2">{log.comment}</p>
+                                        <p className="text-foreground text-sm mt-2">{log.comment}</p>
                                     )}
                                 </div>
                             ))}
                         </div>
                     ) : (
-                        <p className="text-gray-500 text-center py-8">No audit logs available</p>
+                        <p className="text-muted-foreground text-center py-8">No audit logs available</p>
                     )}
                 </Card>
             )}
@@ -356,8 +362,8 @@ export default function AdminClaimView() {
 function InfoRow({ label, value }) {
     return (
         <div className="flex justify-between py-1">
-            <span className="text-gray-500">{label}</span>
-            <span className="font-medium text-gray-900">{value}</span>
+            <span className="text-muted-foreground">{label}</span>
+            <span className="font-medium text-foreground">{value}</span>
         </div>
     );
 }
@@ -380,31 +386,31 @@ function RejectModal({ isOpen, onClose, onReject, processing }) {
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="bg-card rounded-lg p-6 max-w-md w-full mx-4">
                 <h3 className="text-lg font-semibold mb-4 text-red-700">Reject Claim</h3>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-foreground mb-1">
                             Rejection Reason *
                         </label>
                         <textarea
                             value={reason}
                             onChange={(e) => setReason(e.target.value)}
-                            className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                            className="w-full border border-border rounded-lg p-2 text-sm"
                             rows={4}
                             placeholder="Provide a clear reason for rejection..."
                             required
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-foreground mb-1">
                             Policy Reference (Optional)
                         </label>
                         <input
                             type="text"
                             value={policyReference}
                             onChange={(e) => setPolicyReference(e.target.value)}
-                            className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                            className="w-full border border-border rounded-lg p-2 text-sm"
                             placeholder="e.g., Section 4.2, Rule 7.3"
                         />
                     </div>
@@ -439,23 +445,23 @@ function SendBackModal({ isOpen, onClose, onSendBack, processing }) {
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="bg-card rounded-lg p-6 max-w-md w-full mx-4">
                 <h3 className="text-lg font-semibold mb-4 text-orange-700">Send Back for Correction</h3>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-foreground mb-1">
                             Correction Instructions *
                         </label>
                         <textarea
                             value={instructions}
                             onChange={(e) => setInstructions(e.target.value)}
-                            className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                            className="w-full border border-border rounded-lg p-2 text-sm"
                             rows={4}
                             placeholder="Provide clear instructions on what needs to be corrected..."
                             required
                         />
                     </div>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                         The claim will be sent back to draft status. Faculty can edit and resubmit.
                     </p>
                     <div className="flex gap-3 justify-end">

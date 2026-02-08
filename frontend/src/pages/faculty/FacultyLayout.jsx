@@ -3,6 +3,7 @@ import {
   DashboardIcon,
   BillIcon,
   QueryIcon,
+  FlagIcon,
   SettingsIcon,
   UserIcon,
   HomeIcon
@@ -29,7 +30,7 @@ export default function FacultyLayout() {
     {
       to: "/faculty/queries",
       label: "Queries",
-      icon: <QueryIcon className="w-5 h-5" />
+      icon: <FlagIcon className="w-5 h-5" />
     },
     {
       to: "/faculty/settings",

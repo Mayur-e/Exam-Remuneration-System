@@ -15,7 +15,9 @@ import {
   CheckCircleIcon,
   ClockIcon,
   XIcon,
-  QueryIcon
+  QueryIcon,
+  FlagIcon,
+  PdfIcon
 } from "../../components/icons/logo";
 
 export default function MyClaims() {
@@ -66,11 +68,13 @@ export default function MyClaims() {
   };
 
   const handleView = (claim) => {
-    if (claim.claim_form_type === 'TEACHING_EXTERNAL' && claim.external_link_token) {
-      window.open(`/external/claim/${claim.external_link_token}`, '_blank');
-    } else if (claim.claim_form_type === 'NON_TEACHING') {
+    if (claim.claim_form_type === 'NON_TEACHING') {
       navigate(`/faculty/claim/non-teaching?examId=${claim.id}`);
+    } else if (claim.claim_form_type === 'TEACHING_EXTERNAL') {
+      // For external claims, navigate to teaching form with claimType=TEACHING_EXTERNAL
+      navigate(`/faculty/claim/teaching?examId=${claim.id}&claimType=TEACHING_EXTERNAL`);
     } else {
+      // For internal teaching claims
       navigate(`/faculty/claim/teaching?examId=${claim.id}`);
     }
   };
@@ -132,6 +136,11 @@ export default function MyClaims() {
         color: "bg-green-100 text-green-800",
         icon: <CheckCircleIcon className="w-3 h-3" />
       },
+      paid: {
+        label: "Paid",
+        color: "bg-blue-100 text-blue-800",
+        icon: <CheckCircleIcon className="w-3 h-3" />
+      },
       rejected: {
         label: "Rejected",
         color: "bg-red-100 text-red-800",
@@ -172,7 +181,7 @@ export default function MyClaims() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <Card className="p-6 bg-gradient-to-br from-gray-50 to-white border-gray-200">
           <div className="flex items-center justify-between">
             <div>
@@ -205,6 +214,18 @@ export default function MyClaims() {
             </div>
             <div className="p-3 bg-green-100 rounded-full">
               <CheckCircleIcon className="w-8 h-8 text-green-600" />
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6 bg-gradient-to-br from-blue-50 to-white border-blue-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-blue-600 mb-1">Paid</p>
+              <h2 className="text-3xl font-bold text-blue-700">{getStatusCount("paid")}</h2>
+            </div>
+            <div className="p-3 bg-blue-100 rounded-full">
+              <CheckCircleIcon className="w-8 h-8 text-blue-600" />
             </div>
           </div>
         </Card>
@@ -245,6 +266,7 @@ export default function MyClaims() {
               <option value="draft">draft</option>
               <option value="submitted">Submitted</option>
               <option value="approved">Approved</option>
+              <option value="paid">Paid</option>
               <option value="rejected">Rejected</option>
             </select>
 
@@ -317,16 +339,14 @@ export default function MyClaims() {
                         Copy Link
                       </Button>
                     )}
-                    {(c.status === 'submitted' || c.status === 'approved') && (
+                    {(c.status === 'submitted' || c.status === 'approved' || c.status === 'paid') && (
                       <Button
                         size="sm"
                         onClick={() => handleDownloadPDF(c)}
                         className="bg-blue-600 hover:bg-blue-700 text-white"
                         title="Download PDF"
                       >
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
+                        <PdfIcon className="w-4 h-4 mr-1" />
                         PDF
                       </Button>
                     )}
@@ -338,18 +358,22 @@ export default function MyClaims() {
                       <EyeIcon className="w-4 h-4 mr-1" />
                       View
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-dashed"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/faculty/queries?claim_id=${c.id}`);
-                      }}
-                      title="Raise query"
-                    >
-                      <QueryIcon className="w-4 h-4" />
-                    </Button>
+                    {c.status !== 'draft' && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // navigate to queries page with pre-filled claim
+                          navigate(`/faculty/queries?claim_id=${c.id}`);
+                        }}
+                        title="Report an issue"
+                      >
+                        <FlagIcon className="w-4 h-4 mr-1" />
+                        Report
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>

@@ -436,3 +436,24 @@ export function ClipboardIcon({ className = "" }) {
     </svg>
   );
 }
+
+export function FlagIcon({ className = "" }) {
+  return (
+    <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 21v-8a2 2 0 01-2-1.85V5a2 2 0 012-2c.88 0 1.95.83 2.5 1.5C6.25 5.5 8 5 8 5s1.75.5 2.5.5c1.17 0 2.25-.83 2.5-1.5.88-.67 1.95-1.5 2.5-1.5a2 2 0 012 1.85v6.3c0 1.05-.9 1.9-1.95 2.05-.2.03-.4.05-.6.05-.6 0-1.7-.5-2.5-1C11.8 11.25 10 11 10 11s-1.75.5-2.5.5c-1.17 0-2.25.83-2.5 1.5-.25.67-.5 1.25-.5 1.25V21" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 21h2" />
+    </svg>
+  );
+}
+
+export function PdfIcon({ className = "" }) {
+  return (
+    <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <path d="M16 13H8" />
+      <path d="M16 17H8" />
+      <path d="M10 9H8" />
+    </svg>
+  );
+}
