@@ -36,7 +36,7 @@ export default function BillSummary({ examId, refreshKey, billData }) {
   if (loading) {
     return (
       <Card className="p-6">
-        <p className="text-center text-gray-600">Loading bill summary...</p>
+        <p className="text-center text-muted-foreground">Loading bill summary...</p>
       </Card>
     );
   }
@@ -45,7 +45,7 @@ export default function BillSummary({ examId, refreshKey, billData }) {
     return (
       <Card className="p-6 text-center">
         <AlertCircleIcon className="w-6 h-6 text-red-500 mx-auto mb-2" />
-        <p className="text-sm text-gray-600">Bill not generated yet</p>
+        <p className="text-sm text-muted-foreground">Bill not generated yet</p>
       </Card>
     );
   }
@@ -68,13 +68,13 @@ export default function BillSummary({ examId, refreshKey, billData }) {
   const requiresRevenueStamp = finalNet > 5000;
 
   return (
-    <Card className="p-6 bg-white border-gray-200 space-y-6">
+    <Card className="p-6 bg-card border-border space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <ReceiptIcon className="w-5 h-5 text-blue-600" />
         <div>
           <h3 className="text-lg font-semibold">Bill Summary</h3>
-          <p className="text-sm text-gray-600">Remuneration calculation</p>
+          <p className="text-sm text-muted-foreground">Remuneration calculation</p>
         </div>
       </div>
 
@@ -88,7 +88,7 @@ export default function BillSummary({ examId, refreshKey, billData }) {
         {examiner_amount_calculated > 0 && (
           <>
             <div className="flex justify-between">
-              <span className="text-gray-600">Calculated Examiner Amount</span>
+              <span className="text-muted-foreground">Calculated Examiner Amount</span>
               <span className="font-medium">
                 ₹{Number(examiner_amount_calculated).toFixed(2)}
               </span>
@@ -102,7 +102,7 @@ export default function BillSummary({ examId, refreshKey, billData }) {
             )}
 
             <div className="flex justify-between pt-2 border-t">
-              <span className="text-gray-600">Final Examiner Amount</span>
+              <span className="text-muted-foreground">Final Examiner Amount</span>
               <span className="font-medium">
                 ₹{Number(examiner_amount).toFixed(2)}
               </span>
@@ -112,21 +112,21 @@ export default function BillSummary({ examId, refreshKey, billData }) {
 
         {staff_amount > 0 && (
           <div className={`flex justify-between ${examiner_amount_calculated > 0 ? '' : 'pt-2 border-t'}`}>
-            <span className="text-gray-600">Staff Allowance</span>
+            <span className="text-muted-foreground">Staff Allowance</span>
             <span>₹{Number(staff_amount).toFixed(2)}</span>
           </div>
         )}
 
         {chairman_allowance > 0 && (
           <div className="flex justify-between">
-            <span className="text-gray-600">Chairman Allowance</span>
+            <span className="text-muted-foreground">Chairman Allowance</span>
             <span>₹{Number(chairman_allowance).toFixed(2)}</span>
           </div>
         )}
 
         {conveyance_amount > 0 && (
           <div className="flex justify-between">
-            <span className="text-gray-600">Conveyance</span>
+            <span className="text-muted-foreground">Conveyance</span>
             <span>₹{Number(conveyance_amount).toFixed(2)}</span>
           </div>
         )}
@@ -164,8 +164,8 @@ export default function BillSummary({ examId, refreshKey, billData }) {
       )}
 
       <div className="p-3 bg-gray-50 border rounded flex gap-2">
-        <FileTextIcon className="w-5 h-5 text-gray-600" />
-        <p className="text-xs text-gray-600">
+        <FileTextIcon className="w-5 h-5 text-muted-foreground" />
+        <p className="text-xs text-muted-foreground">
           Payment will be processed after approval by accounts department.
         </p>
       </div>
