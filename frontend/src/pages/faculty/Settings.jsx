@@ -6,6 +6,7 @@ import SecuritySettings from "../../components/settings/SecuritySettings";
 import BankSettings from "../../components/settings/BankSettings";
 import { MailIcon } from "../../components/icons/logo";
 import { DEPARTMENTS } from "../../constants/departments";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function Settings() {
   const [user, setUser] = useState(JSON.parse(localStorage.getItem("user")) || {});
@@ -13,6 +14,8 @@ export default function Settings() {
   const [bankData, setBankData] = useState(null);
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState("");
 
   useEffect(() => {
     fetchProfileAndBank();
@@ -37,6 +40,10 @@ export default function Settings() {
       }
     } catch (error) {
       console.error("Failed to fetch profile:", error);
+      // Custom toast animation
+      setToastMessage("Failed to load profile data");
+      setToastType("error");
+      setTimeout(() => setToastMessage(""), 3000);
     } finally {
       setLoading(false);
     }
@@ -51,9 +58,18 @@ export default function Settings() {
       localStorage.setItem("user", JSON.stringify(updatedUser));
       setUser(updatedUser);
 
-      showToast("Profile updated successfully!", "success");
+      // Custom toast animation
+      setToastMessage("Profile updated successfully!");
+      setToastType("success");
+      setTimeout(() => setToastMessage(""), 3000);
+      
+      // Refresh profile data
+      fetchProfileAndBank();
     } catch (error) {
-      showToast(error.response?.data?.message || "Failed to update profile", "error");
+      // Custom toast animation
+      setToastMessage(error.response?.data?.message || "Failed to update profile");
+      setToastType("error");
+      setTimeout(() => setToastMessage(""), 3000);
       throw error;
     }
   };
@@ -61,12 +77,16 @@ export default function Settings() {
   const handleChangePassword = async (passwordData) => {
     // Validation
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setMessage({ type: "error", text: "New passwords do not match" });
+      setToastMessage("New passwords do not match");
+      setToastType("error");
+      setTimeout(() => setToastMessage(""), 3000);
       throw new Error("Passwords do not match");
     }
 
     if (passwordData.newPassword.length < 6) {
-      setMessage({ type: "error", text: "Password must be at least 6 characters" });
+      setToastMessage("Password must be at least 6 characters");
+      setToastType("error");
+      setTimeout(() => setToastMessage(""), 3000);
       throw new Error("Password too short");
     }
 
@@ -76,9 +96,14 @@ export default function Settings() {
         newPassword: passwordData.newPassword
       });
 
-      showToast("Password changed successfully!", "success");
+      // Custom toast animation
+      setToastMessage("Password changed successfully!");
+      setToastType("success");
+      setTimeout(() => setToastMessage(""), 3000);
     } catch (error) {
-      showToast(error.response?.data?.message || "Failed to change password", "error");
+      setToastMessage(error.response?.data?.message || "Failed to change password");
+      setToastType("error");
+      setTimeout(() => setToastMessage(""), 3000);
       throw error;
     }
   };
@@ -90,12 +115,17 @@ export default function Settings() {
         confirmPassword: passwordData.confirmPassword
       });
 
-      showToast("Password set successfully! You can now login with email and password.", "success");
+      // Custom toast animation
+      setToastMessage("Password set successfully! You can now login with email and password.");
+      setToastType("success");
+      setTimeout(() => setToastMessage(""), 3000);
 
       // Refresh profile to update has_set_password flag
       await fetchProfileAndBank();
     } catch (error) {
-      showToast(error.response?.data?.message || "Failed to set password", "error");
+      setToastMessage(error.response?.data?.message || "Failed to set password");
+      setToastType("error");
+      setTimeout(() => setToastMessage(""), 3000);
       throw error;
     }
   };
@@ -103,10 +133,42 @@ export default function Settings() {
   const handleSaveBankDetails = async (data) => {
     try {
       await api.put("/faculty/profile", { bank: data });
-      showToast("Bank details updated successfully!", "success");
+      // Custom toast animation
+      setToastMessage("Bank details updated successfully!");
+      setToastType("success");
+      setTimeout(() => setToastMessage(""), 3000);
+      
+      // Refresh bank data
+      fetchProfileAndBank();
     } catch (error) {
-      showToast(error.response?.data?.message || "Failed to update bank details", "error");
+      setToastMessage(error.response?.data?.message || "Failed to update bank details");
+      setToastType("error");
+      setTimeout(() => setToastMessage(""), 3000);
       throw error;
+    }
+  };
+
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        type: "spring",
+        stiffness: 100,
+        damping: 12
+      }
     }
   };
 
@@ -114,8 +176,12 @@ export default function Settings() {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading settings...</p>
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+            className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full mx-auto mb-4"
+          ></motion.div>
+          <p className="text-muted-foreground">Loading settings...</p>
         </div>
       </div>
     );
@@ -163,33 +229,71 @@ export default function Settings() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-800">Settings</h1>
+      {/* Custom Toast Animation */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 50 }}
+            transition={{ duration: 0.3 }}
+            className={`fixed top-4 right-4 px-4 py-2 rounded shadow-lg z-50 ${
+              toastType === "success" 
+                ? "bg-green-600 text-white" 
+                : "bg-red-600 text-white"
+            }`}
+          >
+            {toastMessage}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <h1 className="text-3xl font-bold text-foreground">Settings</h1>
+      </motion.div>
 
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <motion.div 
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+      >
         {/* Profile Settings */}
-        <ProfileSettings
-          initialData={profileData}
-          onSave={handleSaveProfile}
-          readOnlyFields={['email']}
-          fields={profileFields}
-        />
+        <motion.div variants={itemVariants}>
+          <ProfileSettings
+            initialData={profileData}
+            onSave={handleSaveProfile}
+            readOnlyFields={['email']}
+            fields={profileFields}
+          />
+        </motion.div>
 
         {/* Security Settings */}
-        <SecuritySettings
-          onSave={handleChangePassword}
-          onSetPassword={handleSetPassword}
-          isGoogleUser={profileData?.google_id && !profileData?.has_set_password}
-          primaryColor="blue-600"
-        />
-      </div>
+        <motion.div variants={itemVariants}>
+          <SecuritySettings
+            onSave={handleChangePassword}
+            onSetPassword={handleSetPassword}
+            isGoogleUser={profileData?.google_id && !profileData?.has_set_password}
+            primaryColor="blue-600"
+          />
+        </motion.div>
+      </motion.div>
 
       {/* Bank Details - Full Width */}
-      <BankSettings
-        initialData={bankData}
-        onSave={handleSaveBankDetails}
-      />
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+      >
+        <BankSettings
+          initialData={bankData}
+          onSave={handleSaveBankDetails}
+        />
+      </motion.div>
     </div>
   );
 }
