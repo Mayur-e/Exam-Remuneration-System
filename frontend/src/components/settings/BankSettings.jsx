@@ -3,14 +3,11 @@ import { Card } from "../ui/card";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { BanknotesIcon } from "../icons/logo";
+import { motion, AnimatePresence } from "framer-motion";
 import { validateRequired, validateIFSC, validateAccountNumber, validateName } from "../../utils/validation";
 
 /**
  * Reusable Bank Settings Component
- * 
- * @param {Object} props
- * @param {Object} props.initialData - Initial bank details
- * @param {Function} props.onSave - Callback when save is clicked
  */
 export default function BankSettings({ initialData, onSave }) {
     const [bankDetails, setBankDetails] = useState(initialData || {
@@ -23,6 +20,7 @@ export default function BankSettings({ initialData, onSave }) {
     });
     const [errors, setErrors] = useState({});
     const [saving, setSaving] = useState(false);
+    const [saveSuccess, setSaveSuccess] = useState(false);
 
     const validateField = (fieldName, value) => {
         switch (fieldName) {
@@ -66,6 +64,9 @@ export default function BankSettings({ initialData, onSave }) {
         try {
             await onSave(bankDetails);
             setErrors({});
+            // Show success animation
+            setSaveSuccess(true);
+            setTimeout(() => setSaveSuccess(false), 2000);
         } catch (error) {
             // Error handling is done by parent
         } finally {
@@ -89,115 +90,182 @@ export default function BankSettings({ initialData, onSave }) {
         }
     };
 
+    // Animation variants
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.05
+            }
+        }
+    };
+
+    const itemVariants = {
+        hidden: { opacity: 0, y: 20 },
+        visible: {
+            opacity: 1,
+            y: 0,
+            transition: {
+                type: "spring",
+                stiffness: 100,
+                damping: 12
+            }
+        }
+    };
+
+    const errorVariants = {
+        hidden: { opacity: 0, height: 0 },
+        visible: {
+            opacity: 1,
+            height: "auto",
+            transition: {
+                duration: 0.3
+            }
+        },
+        exit: {
+            opacity: 0,
+            height: 0,
+            transition: {
+                duration: 0.2
+            }
+        }
+    };
+
     return (
-        <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
-                <BanknotesIcon className="w-5 h-5 text-green-600" />
-                Bank Account Details
-            </h2>
-            <p className="text-sm text-gray-600 mb-6">
-                These details will be used for payment disbursements. Please ensure all information is accurate.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Account Holder Name <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                        placeholder="Full name as per bank account"
-                        value={bankDetails.account_holder_name}
-                        onChange={(e) => handleChange("account_holder_name", e.target.value)}
-                        onBlur={() => handleBlur("account_holder_name")}
-                        className={errors.account_holder_name ? "border-red-500" : ""}
-                        maxLength={100}
-                    />
-                    {errors.account_holder_name && (
-                        <p className="text-xs text-red-600 mt-1">{errors.account_holder_name}</p>
-                    )}
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Bank Name <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                        placeholder="e.g., State Bank of India"
-                        value={bankDetails.bank_name}
-                        onChange={(e) => handleChange("bank_name", e.target.value)}
-                        onBlur={() => handleBlur("bank_name")}
-                        className={errors.bank_name ? "border-red-500" : ""}
-                        maxLength={100}
-                    />
-                    {errors.bank_name && (
-                        <p className="text-xs text-red-600 mt-1">{errors.bank_name}</p>
-                    )}
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Branch Name <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                        placeholder="e.g., Mumbai Main Branch"
-                        value={bankDetails.branch_name}
-                        onChange={(e) => handleChange("branch_name", e.target.value)}
-                        onBlur={() => handleBlur("branch_name")}
-                        className={errors.branch_name ? "border-red-500" : ""}
-                        maxLength={100}
-                    />
-                    {errors.branch_name && (
-                        <p className="text-xs text-red-600 mt-1">{errors.branch_name}</p>
-                    )}
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Account Number <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                        placeholder="Enter account number"
-                        value={bankDetails.account_number}
-                        onChange={(e) => handleChange("account_number", e.target.value.replace(/\D/g, ''))}
-                        onBlur={() => handleBlur("account_number")}
-                        className={errors.account_number ? "border-red-500" : ""}
-                        maxLength={18}
-                    />
-                    {errors.account_number && (
-                        <p className="text-xs text-red-600 mt-1">{errors.account_number}</p>
-                    )}
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                        IFSC Code <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                        placeholder="e.g., SBIN0001234"
-                        value={bankDetails.ifsc_code}
-                        onChange={(e) => handleChange("ifsc_code", e.target.value.toUpperCase())}
-                        onBlur={() => handleBlur("ifsc_code")}
-                        className={errors.ifsc_code ? "border-red-500" : ""}
-                        maxLength={11}
-                    />
-                    {errors.ifsc_code && (
-                        <p className="text-xs text-red-600 mt-1">{errors.ifsc_code}</p>
-                    )}
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Account Type <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                        value={bankDetails.account_type}
-                        onChange={(e) => handleChange("account_type", e.target.value)}
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+        >
+            <Card className="p-6 hover:shadow-lg transition-shadow duration-300">
+                <div className="flex items-center gap-3 mb-6">
+                    <motion.div 
+                        whileHover={{ rotate: 360 }}
+                        transition={{ duration: 0.6 }}
+                        className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center"
                     >
-                        <option value="Savings">Savings</option>
-                        <option value="Current">Current</option>
-                    </select>
+                        <BanknotesIcon className="w-5 h-5 text-green-600 dark:text-green-400" />
+                    </motion.div>
+                    <h2 className="text-xl font-semibold text-foreground">Bank Account Details</h2>
                 </div>
-            </div>
-            <div className="mt-6">
-                <Button onClick={handleSave} disabled={saving} className="bg-green-600 hover:bg-green-700">
-                    {saving ? "Saving..." : "Save Bank Details"}
-                </Button>
-            </div>
-        </Card>
+                <p className="text-sm text-muted-foreground mb-6">
+                    These details will be used for payment disbursements. Please ensure all information is accurate.
+                </p>
+                
+                <motion.div 
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="grid grid-cols-1 md:grid-cols-2 gap-6"
+                >
+                    {[
+                        { field: "account_holder_name", label: "Account Holder Name", placeholder: "Full name as per bank account", maxLength: 100 },
+                        { field: "bank_name", label: "Bank Name", placeholder: "e.g., State Bank of India", maxLength: 100 },
+                        { field: "branch_name", label: "Branch Name", placeholder: "e.g., Mumbai Main Branch", maxLength: 100 },
+                        { field: "account_number", label: "Account Number", placeholder: "Enter account number", maxLength: 18 },
+                        { field: "ifsc_code", label: "IFSC Code", placeholder: "e.g., SBIN0001234", maxLength: 11 }
+                    ].map((item, index) => (
+                        <motion.div 
+                            key={item.field}
+                            variants={itemVariants}
+                            transition={{ delay: index * 0.05 }}
+                        >
+                            <label className="block text-sm font-medium text-foreground mb-2">
+                                {item.label} <span className="text-red-500">*</span>
+                            </label>
+                            <motion.div whileHover={{ scale: 1.01 }}>
+                                <Input
+                                    placeholder={item.placeholder}
+                                    value={bankDetails[item.field]}
+                                    onChange={(e) => {
+                                        if (item.field === "account_number") {
+                                            handleChange(item.field, e.target.value.replace(/\D/g, ''));
+                                        } else if (item.field === "ifsc_code") {
+                                            handleChange(item.field, e.target.value.toUpperCase());
+                                        } else {
+                                            handleChange(item.field, e.target.value);
+                                        }
+                                    }}
+                                    onBlur={() => handleBlur(item.field)}
+                                    className={`transition-all duration-200 ${errors[item.field] ? "border-red-500" : ""}`}
+                                    maxLength={item.maxLength}
+                                />
+                            </motion.div>
+                            <AnimatePresence>
+                                {errors[item.field] && (
+                                    <motion.p
+                                        variants={errorVariants}
+                                        initial="hidden"
+                                        animate="visible"
+                                        exit="exit"
+                                        className="text-xs text-red-600 mt-1"
+                                    >
+                                        {errors[item.field]}
+                                    </motion.p>
+                                )}
+                            </AnimatePresence>
+                        </motion.div>
+                    ))}
+                    
+                    {/* Account Type Field */}
+                    <motion.div variants={itemVariants} transition={{ delay: 0.25 }}>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                            Account Type <span className="text-red-500">*</span>
+                        </label>
+                        <motion.div whileHover={{ scale: 1.01 }}>
+                            <select
+                                className="flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-all duration-200"
+                                value={bankDetails.account_type}
+                                onChange={(e) => handleChange("account_type", e.target.value)}
+                            >
+                                <option value="Savings">Savings</option>
+                                <option value="Current">Current</option>
+                            </select>
+                        </motion.div>
+                    </motion.div>
+                </motion.div>
+
+                {/* Success Message */}
+                <AnimatePresence>
+                    {saveSuccess && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="mt-4 p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg border border-green-200 dark:border-green-800"
+                        >
+                            ✓ Bank details updated successfully!
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                <div className="mt-6">
+                    <motion.div
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                    >
+                        <Button 
+                            onClick={handleSave} 
+                            disabled={saving} 
+                            className="bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600"
+                        >
+                            {saving ? (
+                                <span className="flex items-center justify-center gap-2">
+                                    <motion.span
+                                        animate={{ rotate: 360 }}
+                                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                        className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                                    ></motion.span>
+                                    Saving...
+                                </span>
+                            ) : (
+                                "Save Bank Details"
+                            )}
+                        </Button>
+                    </motion.div>
+                </div>
+            </Card>
+        </motion.div>
     );
 }
