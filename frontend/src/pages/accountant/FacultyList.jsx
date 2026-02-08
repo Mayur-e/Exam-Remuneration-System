@@ -60,11 +60,11 @@ export default function FacultyList() {
 
   if (loading) {
     return (
-      <Card className="p-6 bg-white border-gray-200">
+      <Card className="p-6 bg-card border-border">
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
             <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading faculty list...</p>
+            <p className="text-muted-foreground">Loading faculty list...</p>
           </div>
         </div>
       </Card>
@@ -76,8 +76,8 @@ export default function FacultyList() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">Faculty Directory</h1>
-          <p className="text-gray-600">View and manage faculty members</p>
+          <h1 className="text-2xl font-bold text-card-foreground mb-2">Faculty Directory</h1>
+          <p className="text-muted-foreground">View and manage faculty members</p>
         </div>
         <div className="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-full">
           {faculty.length} {faculty.length === 1 ? 'faculty' : 'faculty members'}
@@ -86,11 +86,11 @@ export default function FacultyList() {
 
       {/* Stats Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-4 bg-white border-gray-200">
+        <Card className="p-4 bg-card border-border">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">Total Faculty</p>
-              <p className="text-2xl font-bold text-gray-800">{faculty.length}</p>
+              <p className="text-sm text-muted-foreground">Total Faculty</p>
+              <p className="text-2xl font-bold text-card-foreground">{faculty.length}</p>
             </div>
             <UsersIcon className="w-8 h-8 text-blue-500" />
           </div>
@@ -98,11 +98,11 @@ export default function FacultyList() {
 
 
 
-        <Card className="p-4 bg-white border-gray-200">
+        <Card className="p-4 bg-card border-border">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">Active Claims</p>
-              <p className="text-2xl font-bold text-gray-800">
+              <p className="text-sm text-muted-foreground">Active Claims</p>
+              <p className="text-2xl font-bold text-card-foreground">
                 {faculty.reduce((sum, f) => sum + parseInt(f.active_claims || 0), 0)}
               </p>
             </div>
@@ -112,18 +112,18 @@ export default function FacultyList() {
       </div>
 
       {/* Filters */}
-      <Card className="p-4 bg-white border-gray-200">
+      <Card className="p-4 bg-card border-border">
         <div className="flex flex-col md:flex-row gap-4">
           {/* Search */}
           <div className="flex-1">
             <div className="relative">
-              <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
                 type="text"
                 placeholder="Search by name or email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 border-gray-300"
+                className="pl-10 border-border"
               />
             </div>
           </div>
@@ -142,13 +142,13 @@ export default function FacultyList() {
       {/* Faculty Table */}
       {
         filteredFaculty.length === 0 ? (
-          <Card className="p-8 bg-white border-gray-200">
+          <Card className="p-8 bg-card border-border">
             <div className="text-center py-8">
-              <UsersIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-700 mb-2">
+              <UsersIcon className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-foreground mb-2">
                 {faculty.length === 0 ? "No Faculty Found" : "No Matching Faculty"}
               </h3>
-              <p className="text-gray-500">
+              <p className="text-muted-foreground">
                 {faculty.length === 0
                   ? "No faculty members are registered in the system."
                   : "Try changing your search or filter criteria."}
@@ -156,24 +156,24 @@ export default function FacultyList() {
             </div>
           </Card>
         ) : (
-          <Card className="p-0 overflow-hidden bg-white border-gray-200">
+          <Card className="p-0 overflow-hidden bg-card border-border">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="bg-muted border-b border-border">
                   <tr>
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    <th className="text-left px-6 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">
                       Faculty Member
                     </th>
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    <th className="text-left px-6 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">
                       Department
                     </th>
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    <th className="text-left px-6 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">
                       Contact
                     </th>
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    <th className="text-left px-6 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">
                       Claims
                     </th>
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    <th className="text-left px-6 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -182,7 +182,7 @@ export default function FacultyList() {
                   {filteredFaculty.map((f) => (
                     <tr
                       key={f.id}
-                      className="hover:bg-gray-50 transition-colors duration-150"
+                      className="hover:bg-muted transition-colors duration-150"
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center">
@@ -192,21 +192,21 @@ export default function FacultyList() {
                             </span>
                           </div>
                           <div>
-                            <p className="font-medium text-gray-800">{f.name || "Unnamed Faculty"}</p>
-                            <p className="text-sm text-gray-500">{f.role || "Faculty"}</p>
+                            <p className="font-medium text-card-foreground">{f.name || "Unnamed Faculty"}</p>
+                            <p className="text-sm text-muted-foreground">{f.role || "Faculty"}</p>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <BuildingOfficeIcon className="w-4 h-4 text-gray-400" />
-                          <span className="text-gray-700">{f.department || "No Department"}</span>
+                          <BuildingOfficeIcon className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-foreground">{f.department || "No Department"}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <MailIcon className="w-4 h-4 text-gray-400" />
-                          <span className="text-sm text-gray-600 truncate max-w-xs">
+                          <MailIcon className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground truncate max-w-xs">
                             {f.email || "No Email"}
                           </span>
                         </div>
@@ -216,7 +216,7 @@ export default function FacultyList() {
                           <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
                             {parseInt(f.active_claims || 0)} active
                           </span>
-                          <span className="text-sm text-gray-500">
+                          <span className="text-sm text-muted-foreground">
                             {parseInt(f.total_claims || 0)} total
                           </span>
                         </div>
@@ -244,13 +244,13 @@ export default function FacultyList() {
       {/* Summary */}
       {
         filteredFaculty.length > 0 && (
-          <Card className="p-4 bg-gray-50 border-gray-200">
+          <Card className="p-4 bg-muted border-border">
             <div className="flex justify-between items-center">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-muted-foreground">
                 Showing {filteredFaculty.length} of {faculty.length} faculty members
               </p>
               <div className="flex gap-4">
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-muted-foreground">
                   <span className="font-medium">Total Claims:</span> {faculty.reduce((sum, f) => sum + parseInt(f.total_claims || 0), 0)}
                 </p>
               </div>

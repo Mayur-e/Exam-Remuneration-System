@@ -52,11 +52,11 @@ export default function FacultyProfile() {
 
   if (loading) {
     return (
-      <Card className="p-6 bg-white border-gray-200">
+      <Card className="p-6 bg-card border-border">
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
             <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading faculty profile...</p>
+            <p className="text-muted-foreground">Loading faculty profile...</p>
           </div>
         </div>
       </Card>
@@ -65,13 +65,13 @@ export default function FacultyProfile() {
 
   if (!data) {
     return (
-      <Card className="p-6 bg-white border-gray-200">
+      <Card className="p-6 bg-card border-border">
         <div className="text-center py-12">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <UserIcon className="w-8 h-8 text-red-500" />
           </div>
           <h3 className="text-lg font-medium text-red-700 mb-2">Faculty Not Found</h3>
-          <p className="text-gray-600 mb-4">The requested faculty member could not be found.</p>
+          <p className="text-muted-foreground mb-4">The requested faculty member could not be found.</p>
           <Button onClick={() => navigate("/accountant/faculty")}>
             Back to Faculty List
           </Button>
@@ -97,8 +97,8 @@ export default function FacultyProfile() {
             Back
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Faculty Profile</h1>
-            <p className="text-gray-600">View faculty details and claims</p>
+            <h1 className="text-2xl font-bold text-card-foreground">Faculty Profile</h1>
+            <p className="text-muted-foreground">View faculty details and claims</p>
           </div>
         </div>
       </div>
@@ -107,14 +107,14 @@ export default function FacultyProfile() {
         {/* Left Column: Profile & Bank */}
         <div className="lg:col-span-2 space-y-6">
           {/* Profile Card */}
-          <Card className="p-6 bg-white border-gray-200">
+          <Card className="p-6 bg-card border-border">
             <div className="flex items-start justify-between mb-6">
               <div className="flex items-center gap-4">
                 <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-100 to-blue-50 border-4 border-blue-200 flex items-center justify-center">
                   <UserIcon className="w-10 h-10 text-blue-600" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-gray-800">{faculty.name}</h2>
+                  <h2 className="text-xl font-bold text-card-foreground">{faculty.name}</h2>
                   <div className="flex items-center gap-3 mt-1">
                     <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
                       {faculty.role || "Faculty"}
@@ -129,60 +129,60 @@ export default function FacultyProfile() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-3">
-                <h3 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
                   <UserIcon className="w-4 h-4" />
                   Personal Information
                 </h3>
                 <div className="space-y-2">
                   <div className="flex items-center gap-3">
-                    <MailIcon className="w-4 h-4 text-gray-400" />
+                    <MailIcon className="w-4 h-4 text-muted-foreground" />
                     <div>
-                      <p className="text-xs text-gray-500">Email</p>
-                      <p className="text-sm font-medium text-gray-800">{faculty.email || "N/A"}</p>
+                      <p className="text-xs text-muted-foreground">Email</p>
+                      <p className="text-sm font-medium text-card-foreground">{faculty.email || "N/A"}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <PhoneIcon className="w-4 h-4 text-gray-400" />
+                    <PhoneIcon className="w-4 h-4 text-muted-foreground" />
                     <div>
-                      <p className="text-xs text-gray-500">Phone</p>
-                      <p className="text-sm font-medium text-gray-800">{faculty.phone || "N/A"}</p>
+                      <p className="text-xs text-muted-foreground">Phone</p>
+                      <p className="text-sm font-medium text-card-foreground">{faculty.phone || "N/A"}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <BuildingOfficeIcon className="w-4 h-4 text-gray-400" />
+                    <BuildingOfficeIcon className="w-4 h-4 text-muted-foreground" />
                     <div>
-                      <p className="text-xs text-gray-500">Department</p>
-                      <p className="text-sm font-medium text-gray-800">{faculty.department || "N/A"}</p>
+                      <p className="text-xs text-muted-foreground">Department</p>
+                      <p className="text-sm font-medium text-card-foreground">{faculty.department || "N/A"}</p>
                     </div>
                   </div>
                 </div>
               </div>
 
               <div className="space-y-3">
-                <h3 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
                   <CalendarIcon className="w-4 h-4" />
                   Account Information
                 </h3>
                 <div className="space-y-2">
                   <div className="flex items-center gap-3">
-                    <DocumentTextIcon className="w-4 h-4 text-gray-400" />
+                    <DocumentTextIcon className="w-4 h-4 text-muted-foreground" />
                     <div>
-                      <p className="text-xs text-gray-500">Joined On</p>
-                      <p className="text-sm font-medium text-gray-800">{formatDate(faculty.created_at)}</p>
+                      <p className="text-xs text-muted-foreground">Joined On</p>
+                      <p className="text-sm font-medium text-card-foreground">{formatDate(faculty.created_at)}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <DocumentTextIcon className="w-4 h-4 text-gray-400" />
+                    <DocumentTextIcon className="w-4 h-4 text-muted-foreground" />
                     <div>
-                      <p className="text-xs text-gray-500">Last Updated</p>
-                      <p className="text-sm font-medium text-gray-800">{formatDate(faculty.updated_at)}</p>
+                      <p className="text-xs text-muted-foreground">Last Updated</p>
+                      <p className="text-sm font-medium text-card-foreground">{formatDate(faculty.updated_at)}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <CurrencyRupeeIcon className="w-4 h-4 text-gray-400" />
+                    <CurrencyRupeeIcon className="w-4 h-4 text-muted-foreground" />
                     <div>
-                      <p className="text-xs text-gray-500">Total Claims</p>
-                      <p className="text-sm font-medium text-gray-800">{claims.length}</p>
+                      <p className="text-xs text-muted-foreground">Total Claims</p>
+                      <p className="text-sm font-medium text-card-foreground">{claims.length}</p>
                     </div>
                   </div>
                 </div>
@@ -191,14 +191,14 @@ export default function FacultyProfile() {
           </Card>
 
           {/* Bank Details Card */}
-          <Card className="p-6 bg-white border-gray-200">
+          <Card className="p-6 bg-card border-border">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
                 <BanknotesIcon className="w-5 h-5 text-green-600" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-800">Bank Details</h3>
-                <p className="text-sm text-gray-600">Payment information for disbursements</p>
+                <h3 className="text-lg font-semibold text-card-foreground">Bank Details</h3>
+                <p className="text-sm text-muted-foreground">Payment information for disbursements</p>
               </div>
             </div>
 
@@ -212,11 +212,11 @@ export default function FacultyProfile() {
                   <div className="space-y-3">
                     <div>
                       <p className="text-xs text-green-600">Bank Name</p>
-                      <p className="font-medium text-gray-800">{bank.bank_name}</p>
+                      <p className="font-medium text-card-foreground">{bank.bank_name}</p>
                     </div>
                     <div>
                       <p className="text-xs text-green-600">Branch Name</p>
-                      <p className="font-medium text-gray-800">{bank.branch_name}</p>
+                      <p className="font-medium text-card-foreground">{bank.branch_name}</p>
                     </div>
                   </div>
                 </div>
@@ -229,26 +229,26 @@ export default function FacultyProfile() {
                   <div className="space-y-3">
                     <div>
                       <p className="text-xs text-blue-600">Account Number</p>
-                      <p className="font-medium text-gray-800">{bank.account_number}</p>
+                      <p className="font-medium text-card-foreground">{bank.account_number}</p>
                     </div>
                     <div>
                       <p className="text-xs text-blue-600">IFSC Code</p>
-                      <p className="font-medium text-gray-800">{bank.ifsc_code}</p>
+                      <p className="font-medium text-card-foreground">{bank.ifsc_code}</p>
                     </div>
                     <div>
                       <p className="text-xs text-blue-600">Account Type</p>
-                      <p className="font-medium text-gray-800">{bank.account_type || "Savings"}</p>
+                      <p className="font-medium text-card-foreground">{bank.account_type || "Savings"}</p>
                     </div>
                   </div>
                 </div>
               </div>
             ) : (
               <div className="text-center py-8">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <BanknotesIcon className="w-8 h-8 text-gray-400" />
+                <div className="w-16 h-16 bg-accent rounded-full flex items-center justify-center mx-auto mb-4">
+                  <BanknotesIcon className="w-8 h-8 text-muted-foreground" />
                 </div>
-                <h4 className="text-gray-700 font-medium mb-2">No Bank Details</h4>
-                <p className="text-gray-500 text-sm">Bank details have not been provided by the faculty.</p>
+                <h4 className="text-foreground font-medium mb-2">No Bank Details</h4>
+                <p className="text-muted-foreground text-sm">Bank details have not been provided by the faculty.</p>
               </div>
             )}
           </Card>
@@ -257,36 +257,36 @@ export default function FacultyProfile() {
         {/* Right Column: Stats & Quick Actions */}
         <div className="space-y-6">
           {/* Statistics Card */}
-          <Card className="p-6 bg-white border-gray-200">
-            <h3 className="font-semibold text-gray-800 mb-4">Claim Statistics</h3>
+          <Card className="p-6 bg-card border-border">
+            <h3 className="font-semibold text-card-foreground mb-4">Claim Statistics</h3>
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Total Claims</span>
-                <span className="font-bold text-gray-800">
+                <span className="text-muted-foreground">Total Claims</span>
+                <span className="font-bold text-card-foreground">
                   {claims.filter(c => c.status !== 'draft').length}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Submitted</span>
+                <span className="text-muted-foreground">Submitted</span>
                 <span className="font-bold text-orange-600">
                   {claims.filter(c => c.status === 'submitted').length}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Approved</span>
+                <span className="text-muted-foreground">Approved</span>
                 <span className="font-bold text-blue-600">
                   {claims.filter(c => c.status === 'approved').length}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Paid</span>
+                <span className="text-muted-foreground">Paid</span>
                 <span className="font-bold text-green-600">
                   {claims.filter(c => c.status === 'paid').length}
                 </span>
               </div>
-              <div className="flex justify-between items-center pt-3 border-t border-gray-200">
-                <span className="text-gray-600">Total Payable</span>
-                <span className="font-bold text-gray-800">
+              <div className="flex justify-between items-center pt-3 border-t border-border">
+                <span className="text-muted-foreground">Total Payable</span>
+                <span className="font-bold text-card-foreground">
                   ₹{claims
                     .filter(c => c.status !== 'draft')
                     .reduce((sum, c) => sum + (parseFloat(c.net_amount) || 0), 0)
@@ -297,8 +297,8 @@ export default function FacultyProfile() {
           </Card>
 
           {/* Quick Actions */}
-          <Card className="p-6 bg-white border-gray-200">
-            <h3 className="font-semibold text-gray-800 mb-4">Quick Actions</h3>
+          <Card className="p-6 bg-card border-border">
+            <h3 className="font-semibold text-card-foreground mb-4">Quick Actions</h3>
             <div className="space-y-3">
               <Button
                 variant="outline"
@@ -311,24 +311,24 @@ export default function FacultyProfile() {
           </Card>
 
           {/* Recent Activity */}
-          <Card className="p-6 bg-white border-gray-200">
-            <h3 className="font-semibold text-gray-800 mb-4">Recent Activity</h3>
+          <Card className="p-6 bg-card border-border">
+            <h3 className="font-semibold text-card-foreground mb-4">Recent Activity</h3>
             <div className="space-y-3">
               {claims.slice(0, 3).map((claim, index) => (
-                <div key={index} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded">
-                  <DocumentTextIcon className="w-4 h-4 text-gray-400" />
+                <div key={index} className="flex items-center gap-3 p-2 hover:bg-muted rounded">
+                  <DocumentTextIcon className="w-4 h-4 text-muted-foreground" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-800 truncate">
+                    <p className="text-sm font-medium text-card-foreground truncate">
                       {claim.subject_name || "Untitled Claim"}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                       {formatDate(claim.created_at)} • ₹{claim.total_amount || "0.00"}
                     </p>
                   </div>
                 </div>
               ))}
               {claims.length === 0 && (
-                <p className="text-sm text-gray-500 text-center py-2">No recent activity</p>
+                <p className="text-sm text-muted-foreground text-center py-2">No recent activity</p>
               )}
             </div>
           </Card>

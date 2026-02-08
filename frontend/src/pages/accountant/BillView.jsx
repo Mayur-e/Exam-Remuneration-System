@@ -152,7 +152,7 @@ export default function BillView() {
         </Button>
         <div>
           <h1 className="text-2xl font-bold">Claim #{exam.id} Details</h1>
-          <div className="flex items-center gap-2 text-sm text-gray-500">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>{exam.claim_form_type}</span>
             <span>•</span>
             <span className={`capitalize font-medium ${exam.status === 'paid' ? 'text-green-600' :
@@ -218,29 +218,29 @@ export default function BillView() {
             </h3>
             <div className="grid grid-cols-2 gap-y-4 text-sm">
               <div>
-                <p className="text-gray-500">Subject</p>
+                <p className="text-muted-foreground">Subject</p>
                 <p className="font-medium">{exam.subject_name || 'N/A'}</p>
               </div>
               <div>
-                <p className="text-gray-500">Exam Type</p>
+                <p className="text-muted-foreground">Exam Type</p>
                 <p className="font-medium">{exam.exam_type}</p>
               </div>
               <div>
-                <p className="text-gray-500">Date</p>
+                <p className="text-muted-foreground">Date</p>
                 <p className="font-medium">{new Date(exam.exam_date).toLocaleDateString()}</p>
               </div>
               <div>
-                <p className="text-gray-500">Students</p>
+                <p className="text-muted-foreground">Students</p>
                 <p className="font-medium">{exam.students_count}</p>
               </div>
               <div>
-                <p className="text-gray-500">Program</p>
+                <p className="text-muted-foreground">Program</p>
                 <p className="font-medium">{exam.program}</p>
               </div>
               {exam.second_examiner && (
                 <div className="col-span-2 mt-2 pt-2 border-t border-gray-100">
-                  <p className="text-gray-500">Second Examiner</p>
-                  <p className="font-medium text-gray-800">{exam.second_examiner}</p>
+                  <p className="text-muted-foreground">Second Examiner</p>
+                  <p className="font-medium text-card-foreground">{exam.second_examiner}</p>
                 </div>
               )}
             </div>
@@ -255,47 +255,47 @@ export default function BillView() {
 
             <div className="grid grid-cols-2 gap-y-4 text-sm mb-6">
               <div>
-                <p className="text-gray-500">Name</p>
+                <p className="text-muted-foreground">Name</p>
                 <p className="font-medium">{examinerName}</p>
               </div>
               <div>
-                <p className="text-gray-500">Email</p>
+                <p className="text-muted-foreground">Email</p>
                 <p className="font-medium">{examinerEmail}</p>
               </div>
               <div>
-                <p className="text-gray-500">Mobile</p>
+                <p className="text-muted-foreground">Mobile</p>
                 <p className="font-medium">
                   {isExternal ? (exam.external_examiner_mobile || 'N/A') : (exam.faculty_mobile || 'N/A')}
                 </p>
               </div>
               {isExternal && (
                 <div>
-                  <p className="text-gray-500">Institute</p>
+                  <p className="text-muted-foreground">Institute</p>
                   <p className="font-medium">{exam.parent_institute}</p>
                 </div>
               )}
             </div>
 
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-              <h4 className="font-medium text-gray-700 mb-3 flex items-center gap-2">
+            <div className="bg-muted p-4 rounded-lg border border-gray-100">
+              <h4 className="font-medium text-foreground mb-3 flex items-center gap-2">
                 <BuildingOfficeIcon className="w-4 h-4" />
                 Bank Account Details
               </h4>
               <div className="grid grid-cols-2 gap-y-3 text-sm">
                 <div>
-                  <p className="text-gray-500">Bank Name</p>
+                  <p className="text-muted-foreground">Bank Name</p>
                   <p className="font-medium">{bankName || 'Not provided'}</p>
                 </div>
                 <div>
-                  <p className="text-gray-500">Account Number</p>
+                  <p className="text-muted-foreground">Account Number</p>
                   <p className="font-medium">{accNumber || 'Not provided'}</p>
                 </div>
                 <div>
-                  <p className="text-gray-500">IFSC Code</p>
+                  <p className="text-muted-foreground">IFSC Code</p>
                   <p className="font-medium">{ifsc || 'Not provided'}</p>
                 </div>
                 <div>
-                  <p className="text-gray-500">PAN Number</p>
+                  <p className="text-muted-foreground">PAN Number</p>
                   <p className="font-medium">
                     {isExternal
                       ? (exam.external_pan_number || 'Not provided')
@@ -318,23 +318,6 @@ export default function BillView() {
                 )}
               </div>
             </div>
-
-            {/* Travel Proofs for External */}
-            {isExternal && !exam.is_local && (
-              <div className="mt-4 bg-amber-50 p-4 rounded-lg border border-amber-100">
-                <h4 className="font-medium text-amber-800 mb-2">Travel Allowance Proof</h4>
-                <p className="text-sm text-amber-900 mb-2">
-                  Examiner is creating claim for &gt; 25km travel amount: <b>₹{exam.travel_allowance}</b>
-                </p>
-                {exam.travel_proof_url ? (
-                  <a href={`http://localhost:5000${exam.travel_proof_url}`} target="_blank" rel="noreferrer" className="text-sm text-blue-600 hover:underline font-medium">
-                    View Travel Tickets/Bills
-                  </a>
-                ) : (
-                  <span className="text-sm text-red-500">No travel proof uploaded</span>
-                )}
-              </div>
-            )}
           </Card>
 
           {/* Staff Table for Non-Teaching Claims */}
@@ -350,12 +333,12 @@ export default function BillView() {
                 <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr className="bg-blue-50 border-b-2 border-blue-200">
-                      <th className="px-4 py-3 text-left font-semibold text-gray-700">Name</th>
-                      <th className="px-4 py-3 text-left font-semibold text-gray-700">Designation</th>
-                      <th className="px-4 py-3 text-right font-semibold text-gray-700">Rate (₹)</th>
-                      <th className="px-4 py-3 text-right font-semibold text-gray-700">Prep & Clean Rs</th>
-                      <th className="px-4 py-3 text-right font-semibold text-gray-700">Batch Rs</th>
-                      <th className="px-4 py-3 text-right font-semibold text-gray-700">Total Amount</th>
+                      <th className="px-4 py-3 text-left font-semibold text-foreground">Name</th>
+                      <th className="px-4 py-3 text-left font-semibold text-foreground">Designation</th>
+                      <th className="px-4 py-3 text-right font-semibold text-foreground">Rate (₹)</th>
+                      <th className="px-4 py-3 text-right font-semibold text-foreground">Prep & Clean Rs</th>
+                      <th className="px-4 py-3 text-right font-semibold text-foreground">Batch Rs</th>
+                      <th className="px-4 py-3 text-right font-semibold text-foreground">Total Amount</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -366,10 +349,10 @@ export default function BillView() {
                       const rate = Number(s.rate || 0);
 
                       return (
-                        <tr key={idx} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 font-medium text-gray-900">{s.staff_name}</td>
-                          <td className="px-4 py-3 text-gray-600">{s.staff_role}</td>
-                          <td className="px-4 py-3 text-right text-gray-700">₹{rate.toFixed(2)}</td>
+                        <tr key={idx} className="hover:bg-muted">
+                          <td className="px-4 py-3 font-medium text-foreground">{s.staff_name}</td>
+                          <td className="px-4 py-3 text-muted-foreground">{s.staff_role}</td>
+                          <td className="px-4 py-3 text-right text-foreground">₹{rate.toFixed(2)}</td>
                           <td className="px-4 py-3 text-right text-green-600 font-medium">
                             {prepClean > 0 ? `₹${prepClean.toFixed(2)}` : 'N/A'}
                           </td>
@@ -379,7 +362,7 @@ export default function BillView() {
                       );
                     })}
                     <tr className="bg-blue-50 border-t-2 border-blue-200 font-bold">
-                      <td colSpan="5" className="px-4 py-3 text-right text-gray-900">Grand Total:</td>
+                      <td colSpan="5" className="px-4 py-3 text-right text-foreground">Grand Total:</td>
                       <td className="px-4 py-3 text-right text-blue-700 text-lg">
                         ₹{staff.reduce((sum, s) => sum + Number(s.total_amount || 0), 0).toFixed(2)}
                       </td>
@@ -433,7 +416,7 @@ export default function BillView() {
           {!isPaid && (
             <Card className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                <h3 className="font-semibold text-card-foreground flex items-center gap-2">
                   <CurrencyRupeeIcon className="w-5 h-5 text-blue-600" />
                   Manage Allowances
                 </h3>
@@ -455,7 +438,7 @@ export default function BillView() {
               <div className="space-y-4">
                 {/* Chairman Allowance */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <label className="text-sm font-medium text-foreground flex items-center gap-2">
                     Chairman Allowance (₹)
                     {['PR', 'OR', 'TW'].includes(exam.exam_type) && (
                       <span className="relative group cursor-help">
@@ -475,12 +458,12 @@ export default function BillView() {
                       onChange={(e) => setAllowances({ ...allowances, chairman_allowance: e.target.value })}
                       placeholder="0"
                       min="0"
-                      className={`bg-white ${['PR', 'OR', 'TW'].includes(exam.exam_type) ? 'border-2 border-red-400 bg-red-50 cursor-not-allowed' : ''}`}
+                      className={`bg-card ${['PR', 'OR', 'TW'].includes(exam.exam_type) ? 'border-2 border-red-400 bg-red-50 cursor-not-allowed' : ''}`}
                       disabled={['PR', 'OR', 'TW'].includes(exam.exam_type)}
                     />
                   ) : (
-                    <div className={`p-3 rounded-lg border ${['PR', 'OR', 'TW'].includes(exam.exam_type) ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200'}`}>
-                      <p className="font-semibold text-gray-900">
+                    <div className={`p-3 rounded-lg border ${['PR', 'OR', 'TW'].includes(exam.exam_type) ? 'bg-red-50 border-red-200' : 'bg-card border-border'}`}>
+                      <p className="font-semibold text-foreground">
                         {['PR', 'OR', 'TW'].includes(exam.exam_type)
                           ? 'N/A'
                           : `₹${Number(allowances.chairman_allowance).toFixed(2)}`
@@ -492,7 +475,7 @@ export default function BillView() {
 
                 {/* Conveyance Amount */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
+                  <label className="text-sm font-medium text-foreground">
                     Conveyance Amount (₹)
                     {isExternal && (
                       <span className="ml-2 text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded">
@@ -507,11 +490,11 @@ export default function BillView() {
                       onChange={(e) => setAllowances({ ...allowances, conveyance_amount: e.target.value })}
                       placeholder="0"
                       min="0"
-                      className="bg-white"
+                      className="bg-card"
                     />
                   ) : (
-                    <div className="p-3 bg-white rounded-lg border border-gray-200">
-                      <p className="font-semibold text-gray-900">
+                    <div className="p-3 bg-card rounded-lg border border-border">
+                      <p className="font-semibold text-foreground">
                         ₹{Number(allowances.conveyance_amount).toFixed(2)}
                       </p>
                     </div>
@@ -566,14 +549,14 @@ export default function BillView() {
           <h3 className="font-semibold text-red-900 mb-3">Rejection History</h3>
           <div className="space-y-3">
             {actions.filter(a => a.action_type === 'REJECTED').map((action, idx) => (
-              <div key={idx} className="bg-white p-4 rounded-lg border border-red-200">
+              <div key={idx} className="bg-card p-4 rounded-lg border border-red-200">
                 <div className="flex justify-between items-start mb-2">
-                  <span className="font-medium text-gray-900">{action.action_by_name}</span>
-                  <span className="text-sm text-gray-500">
+                  <span className="font-medium text-foreground">{action.action_by_name}</span>
+                  <span className="text-sm text-muted-foreground">
                     {new Date(action.action_at).toLocaleString()}
                   </span>
                 </div>
-                <p className="text-gray-700 text-sm">{action.comment}</p>
+                <p className="text-foreground text-sm">{action.comment}</p>
               </div>
             ))}
           </div>
