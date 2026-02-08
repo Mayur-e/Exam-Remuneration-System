@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict ojmndrIg6MAAz7m9pYAWCN8blzGkkg5otDojXnCHpLfJqaswVltja6BXeuzpS2K
+\restrict zTFbQpqvpnsGuAfW9ERpYcFoo3vsOyn6F0XglVAzLThEYIuwuIHEEQtLP3QMvNz
 
 -- Dumped from database version 18.1
 -- Dumped by pg_dump version 18.1
@@ -49,10 +49,18 @@ BEGIN
   SELECT * INTO v_exam FROM exams WHERE id = p_exam_id;
   IF NOT FOUND THEN RAISE EXCEPTION 'Exam not found'; END IF;
 
-  SELECT * INTO v_rates FROM remuneration_rates WHERE exam_type = v_exam.exam_type;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Rates not found'; END IF;
+  -- UPDATED: Fetch rates based on exam's academic year
+  SELECT * INTO v_rates 
+  FROM remuneration_rates 
+  WHERE exam_type = v_exam.exam_type 
+    AND academic_year = COALESCE(v_exam.academic_year, '2024-25');
+  IF NOT FOUND THEN RAISE EXCEPTION 'Rates not found for exam type % and year %', v_exam.exam_type, v_exam.academic_year; END IF;
 
-  SELECT * INTO v_batch FROM batch_sizes WHERE program = v_exam.program;
+  -- UPDATED: Fetch batch sizes based on exam's academic year
+  SELECT * INTO v_batch 
+  FROM batch_sizes 
+  WHERE program = v_exam.program 
+    AND academic_year = COALESCE(v_exam.academic_year, '2024-25');
 
   -- 1. Calculate Examiner Amount (for TEACHING claims ONLY)
   IF v_exam.claim_form_type IN ('TEACHING_INTERNAL', 'TEACHING_EXTERNAL') THEN
@@ -111,20 +119,23 @@ BEGIN
   v_conveyance_amount := COALESCE(v_conveyance_amount, 0);
 
   -- 3. Calculate Staff Amount from exam_staff_members
-  -- FIXED: Now correctly multiplies batch rate by examination_days for non-Expert Assistants
+  -- UPDATED: Fetch staff role rates based on exam's academic year
   FOR v_staff_member IN SELECT * FROM exam_staff_members WHERE exam_id = p_exam_id LOOP
-    SELECT * INTO v_role FROM staff_role_rates WHERE staff_role = v_staff_member.staff_role;
+    SELECT * INTO v_role 
+    FROM staff_role_rates 
+    WHERE staff_role = v_staff_member.staff_role 
+      AND academic_year = COALESCE(v_exam.academic_year, '2024-25');
     IF FOUND THEN
       -- RULE: Expert Assistants cannot claim preparation or cleaning days
       IF v_staff_member.staff_role = 'Expert Assistant' THEN
         v_prep_days := 0;
         v_clean_days := 0;
-        -- Expert Assistant: Rate Ã— Batches (no exam days multiplier)
+        -- Expert Assistant: Rate ?? Batches (no exam days multiplier)
         v_staff := v_staff + (v_role.per_batch_rate * v_batches);
       ELSE
         v_prep_days := v_staff_member.preparation_days;
         v_clean_days := v_staff_member.cleaning_days;
-        -- Others: (Prep Rate Ã— Prep Days) + (Batch Rate Ã— Batches Ã— Exam Days) + (Clean Rate Ã— Clean Days)
+        -- Others: (Prep Rate ?? Prep Days) + (Batch Rate ?? Batches ?? Exam Days) + (Clean Rate ?? Clean Days)
         v_staff := v_staff + (
           v_role.preparation_rate * v_prep_days +
           v_role.per_batch_rate * v_batches * v_staff_member.examination_days +
@@ -162,6 +173,22 @@ $$;
 
 ALTER FUNCTION public.calculate_exam(p_exam_id integer) OWNER TO postgres;
 
+--
+-- Name: update_query_timestamp(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.update_query_timestamp() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION public.update_query_timestamp() OWNER TO postgres;
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -177,11 +204,19 @@ CREATE TABLE public.batch_sizes (
     oral_size integer,
     termwork_size integer,
     project_oral_size integer,
-    dissertation_size integer
+    dissertation_size integer,
+    academic_year character varying(20) DEFAULT '2024-25'::character varying NOT NULL
 );
 
 
 ALTER TABLE public.batch_sizes OWNER TO postgres;
+
+--
+-- Name: COLUMN batch_sizes.academic_year; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.batch_sizes.academic_year IS 'Academic year for these batch sizes (e.g., 2024-25)';
+
 
 --
 -- Name: batch_sizes_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -773,6 +808,117 @@ ALTER SEQUENCE public.payments_id_seq OWNED BY public.payments.id;
 
 
 --
+-- Name: queries; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.queries (
+    id integer NOT NULL,
+    faculty_id integer NOT NULL,
+    claim_id integer,
+    subject character varying(255) NOT NULL,
+    description text NOT NULL,
+    category character varying(50) NOT NULL,
+    status character varying(50) DEFAULT 'OPEN'::character varying NOT NULL,
+    priority character varying(20) DEFAULT 'MEDIUM'::character varying NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT queries_category_check CHECK (((category)::text = ANY ((ARRAY['PAYMENT_ISSUE'::character varying, 'CLAIM_REJECTION'::character varying, 'TECHNICAL'::character varying, 'RATE_INQUIRY'::character varying, 'OTHER'::character varying])::text[]))),
+    CONSTRAINT queries_priority_check CHECK (((priority)::text = ANY ((ARRAY['LOW'::character varying, 'MEDIUM'::character varying, 'HIGH'::character varying])::text[]))),
+    CONSTRAINT queries_status_check CHECK (((status)::text = ANY ((ARRAY['OPEN'::character varying, 'IN_PROGRESS'::character varying, 'RESOLVED'::character varying, 'CLOSED'::character varying])::text[])))
+);
+
+
+ALTER TABLE public.queries OWNER TO postgres;
+
+--
+-- Name: TABLE queries; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON TABLE public.queries IS 'Faculty support queries for claims and payments';
+
+
+--
+-- Name: COLUMN queries.claim_id; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.queries.claim_id IS 'Optional reference to specific claim';
+
+
+--
+-- Name: queries_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.queries_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.queries_id_seq OWNER TO postgres;
+
+--
+-- Name: queries_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.queries_id_seq OWNED BY public.queries.id;
+
+
+--
+-- Name: query_responses; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.query_responses (
+    id integer NOT NULL,
+    query_id integer NOT NULL,
+    responder_id integer NOT NULL,
+    message text NOT NULL,
+    is_internal_note boolean DEFAULT false,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.query_responses OWNER TO postgres;
+
+--
+-- Name: TABLE query_responses; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON TABLE public.query_responses IS 'Responses to faculty queries from accountants/admins';
+
+
+--
+-- Name: COLUMN query_responses.is_internal_note; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.query_responses.is_internal_note IS 'True if note is only visible to staff, not faculty';
+
+
+--
+-- Name: query_responses_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.query_responses_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.query_responses_id_seq OWNER TO postgres;
+
+--
+-- Name: query_responses_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.query_responses_id_seq OWNED BY public.query_responses.id;
+
+
+--
 -- Name: remuneration_calculations; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -827,11 +973,19 @@ CREATE TABLE public.remuneration_rates (
     ty_final_rate numeric(10,2),
     mtech_mca_rate numeric(10,2),
     min_per_day numeric(10,2) NOT NULL,
+    academic_year character varying(20) DEFAULT '2024-25'::character varying NOT NULL,
     CONSTRAINT remuneration_rates_min_per_day_check CHECK ((min_per_day >= (0)::numeric))
 );
 
 
 ALTER TABLE public.remuneration_rates OWNER TO postgres;
+
+--
+-- Name: COLUMN remuneration_rates.academic_year; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.remuneration_rates.academic_year IS 'Academic year for these rates (e.g., 2024-25)';
+
 
 --
 -- Name: remuneration_rates_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -863,11 +1017,57 @@ CREATE TABLE public.staff_role_rates (
     staff_role character varying(100) NOT NULL,
     preparation_rate numeric(10,2) DEFAULT 0 NOT NULL,
     per_batch_rate numeric(10,2) DEFAULT 0 NOT NULL,
-    cleaning_rate numeric(10,2) DEFAULT 0 NOT NULL
+    cleaning_rate numeric(10,2) DEFAULT 0 NOT NULL,
+    academic_year character varying(20) DEFAULT '2024-25'::character varying NOT NULL
 );
 
 
 ALTER TABLE public.staff_role_rates OWNER TO postgres;
+
+--
+-- Name: COLUMN staff_role_rates.academic_year; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.staff_role_rates.academic_year IS 'Academic year for these rates (e.g., 2024-25)';
+
+
+--
+-- Name: subjects; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.subjects (
+    id integer NOT NULL,
+    code character varying(20) NOT NULL,
+    name character varying(255) NOT NULL,
+    department character varying(100),
+    type character varying(50),
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.subjects OWNER TO postgres;
+
+--
+-- Name: subjects_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.subjects_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.subjects_id_seq OWNER TO postgres;
+
+--
+-- Name: subjects_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.subjects_id_seq OWNED BY public.subjects.id;
+
 
 --
 -- Name: users; Type: TABLE; Schema: public; Owner: postgres
@@ -1028,6 +1228,20 @@ ALTER TABLE ONLY public.payments ALTER COLUMN id SET DEFAULT nextval('public.pay
 
 
 --
+-- Name: queries id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.queries ALTER COLUMN id SET DEFAULT nextval('public.queries_id_seq'::regclass);
+
+
+--
+-- Name: query_responses id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.query_responses ALTER COLUMN id SET DEFAULT nextval('public.query_responses_id_seq'::regclass);
+
+
+--
 -- Name: remuneration_calculations id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -1042,6 +1256,13 @@ ALTER TABLE ONLY public.remuneration_rates ALTER COLUMN id SET DEFAULT nextval('
 
 
 --
+-- Name: subjects id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.subjects ALTER COLUMN id SET DEFAULT nextval('public.subjects_id_seq'::regclass);
+
+
+--
 -- Name: users id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -1053,15 +1274,15 @@ ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_
 --
 
 ALTER TABLE ONLY public.batch_sizes
-    ADD CONSTRAINT batch_sizes_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT batch_sizes_pkey PRIMARY KEY (program, academic_year);
 
 
 --
--- Name: batch_sizes batch_sizes_program_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: batch_sizes batch_sizes_program_year_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.batch_sizes
-    ADD CONSTRAINT batch_sizes_program_key UNIQUE (program);
+    ADD CONSTRAINT batch_sizes_program_year_key UNIQUE (program, academic_year);
 
 
 --
@@ -1177,6 +1398,22 @@ ALTER TABLE ONLY public.payments
 
 
 --
+-- Name: queries queries_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.queries
+    ADD CONSTRAINT queries_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: query_responses query_responses_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.query_responses
+    ADD CONSTRAINT query_responses_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: remuneration_calculations remuneration_calculations_exam_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1193,11 +1430,11 @@ ALTER TABLE ONLY public.remuneration_calculations
 
 
 --
--- Name: remuneration_rates remuneration_rates_exam_type_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: remuneration_rates remuneration_rates_exam_type_year_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.remuneration_rates
-    ADD CONSTRAINT remuneration_rates_exam_type_key UNIQUE (exam_type);
+    ADD CONSTRAINT remuneration_rates_exam_type_year_key UNIQUE (exam_type, academic_year);
 
 
 --
@@ -1205,7 +1442,7 @@ ALTER TABLE ONLY public.remuneration_rates
 --
 
 ALTER TABLE ONLY public.remuneration_rates
-    ADD CONSTRAINT remuneration_rates_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT remuneration_rates_pkey PRIMARY KEY (exam_type, academic_year);
 
 
 --
@@ -1213,7 +1450,31 @@ ALTER TABLE ONLY public.remuneration_rates
 --
 
 ALTER TABLE ONLY public.staff_role_rates
-    ADD CONSTRAINT staff_role_rates_pkey PRIMARY KEY (staff_role);
+    ADD CONSTRAINT staff_role_rates_pkey PRIMARY KEY (staff_role, academic_year);
+
+
+--
+-- Name: staff_role_rates staff_role_rates_role_year_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.staff_role_rates
+    ADD CONSTRAINT staff_role_rates_role_year_key UNIQUE (staff_role, academic_year);
+
+
+--
+-- Name: subjects subjects_code_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.subjects
+    ADD CONSTRAINT subjects_code_key UNIQUE (code);
+
+
+--
+-- Name: subjects subjects_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.subjects
+    ADD CONSTRAINT subjects_pkey PRIMARY KEY (id);
 
 
 --
@@ -1238,6 +1499,13 @@ ALTER TABLE ONLY public.users
 
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: idx_batch_sizes_year; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_batch_sizes_year ON public.batch_sizes USING btree (academic_year);
 
 
 --
@@ -1304,6 +1572,69 @@ CREATE INDEX idx_payments_payment_date ON public.payments USING btree (payment_d
 
 
 --
+-- Name: idx_queries_category; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_queries_category ON public.queries USING btree (category);
+
+
+--
+-- Name: idx_queries_created_at; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_queries_created_at ON public.queries USING btree (created_at DESC);
+
+
+--
+-- Name: idx_queries_faculty_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_queries_faculty_id ON public.queries USING btree (faculty_id);
+
+
+--
+-- Name: idx_queries_status; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_queries_status ON public.queries USING btree (status);
+
+
+--
+-- Name: idx_query_responses_query_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_query_responses_query_id ON public.query_responses USING btree (query_id);
+
+
+--
+-- Name: idx_remuneration_rates_year; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_remuneration_rates_year ON public.remuneration_rates USING btree (academic_year);
+
+
+--
+-- Name: idx_staff_role_rates_year; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_staff_role_rates_year ON public.staff_role_rates USING btree (academic_year);
+
+
+--
+-- Name: idx_subjects_code; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_subjects_code ON public.subjects USING btree (code);
+
+
+--
+-- Name: idx_subjects_name; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_subjects_name ON public.subjects USING btree (name);
+
+
+--
 -- Name: idx_users_google_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1322,6 +1653,13 @@ CREATE INDEX idx_users_role ON public.users USING btree (role);
 --
 
 CREATE UNIQUE INDEX users_prn_unique ON public.users USING btree (prn) WHERE (prn IS NOT NULL);
+
+
+--
+-- Name: queries trigger_update_query_timestamp; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER trigger_update_query_timestamp BEFORE UPDATE ON public.queries FOR EACH ROW EXECUTE FUNCTION public.update_query_timestamp();
 
 
 --
@@ -1362,22 +1700,6 @@ ALTER TABLE ONLY public.exam_staff
 
 ALTER TABLE ONLY public.exam_staff_members
     ADD CONSTRAINT exam_staff_members_exam_id_fkey FOREIGN KEY (exam_id) REFERENCES public.exams(id) ON DELETE CASCADE;
-
-
---
--- Name: exam_staff_members exam_staff_members_staff_role_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.exam_staff_members
-    ADD CONSTRAINT exam_staff_members_staff_role_fkey FOREIGN KEY (staff_role) REFERENCES public.staff_role_rates(staff_role);
-
-
---
--- Name: exam_staff exam_staff_staff_role_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.exam_staff
-    ADD CONSTRAINT exam_staff_staff_role_fkey FOREIGN KEY (staff_role) REFERENCES public.staff_role_rates(staff_role);
 
 
 --
@@ -1429,6 +1751,38 @@ ALTER TABLE ONLY public.payments
 
 
 --
+-- Name: queries queries_claim_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.queries
+    ADD CONSTRAINT queries_claim_id_fkey FOREIGN KEY (claim_id) REFERENCES public.exams(id) ON DELETE SET NULL;
+
+
+--
+-- Name: queries queries_faculty_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.queries
+    ADD CONSTRAINT queries_faculty_id_fkey FOREIGN KEY (faculty_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: query_responses query_responses_query_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.query_responses
+    ADD CONSTRAINT query_responses_query_id_fkey FOREIGN KEY (query_id) REFERENCES public.queries(id) ON DELETE CASCADE;
+
+
+--
+-- Name: query_responses query_responses_responder_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.query_responses
+    ADD CONSTRAINT query_responses_responder_id_fkey FOREIGN KEY (responder_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: remuneration_calculations remuneration_calculations_exam_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1440,5 +1794,5 @@ ALTER TABLE ONLY public.remuneration_calculations
 -- PostgreSQL database dump complete
 --
 
-\unrestrict ojmndrIg6MAAz7m9pYAWCN8blzGkkg5otDojXnCHpLfJqaswVltja6BXeuzpS2K
+\unrestrict zTFbQpqvpnsGuAfW9ERpYcFoo3vsOyn6F0XglVAzLThEYIuwuIHEEQtLP3QMvNz
 

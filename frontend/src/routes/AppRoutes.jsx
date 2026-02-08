@@ -25,6 +25,7 @@ import MyClaims from "../pages/faculty/MyClaims";
 import Queries from "../pages/faculty/Queries";
 import Settings from "../pages/faculty/Settings";
 import ExternalTeachingForm from "../pages/external/ExternalTeachingForm"
+import ExternalSuccess from "../pages/external/ExternalSuccess"
 
 
 
@@ -104,6 +105,7 @@ export default function AppRoutes() {
       </Route>
 
       <Route path="/external/claim/:token" element={<ExternalTeachingForm />} />
+      <Route path="/external/success" element={<ExternalSuccess />} />
       {/* ================= FALLBACK ================= */}
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>

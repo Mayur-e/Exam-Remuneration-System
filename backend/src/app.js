@@ -16,6 +16,15 @@ const app = express();
 
 const FRONTEND_ORIGIN = process.env.FRONTEND_URL || "http://localhost:5173";
 
+app.use(
+  cors({
+    origin: FRONTEND_ORIGIN,
+    allowedHeaders: ["Content-Type", "Authorization"],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    credentials: true
+  })
+);
+
 // Security: Helmet - sets various HTTP headers for security
 app.use(helmet({
   contentSecurityPolicy: false, // Disable CSP for now to avoid breaking the app
@@ -34,13 +43,7 @@ const limiter = rateLimit({
 // Apply rate limiting to all API routes
 app.use("/api/", limiter);
 
-app.use(
-  cors({
-    origin: FRONTEND_ORIGIN,
-    allowedHeaders: ["Content-Type", "Authorization"],
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"]
-  })
-);
+
 
 app.use(express.json());
 

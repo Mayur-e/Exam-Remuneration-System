@@ -6,7 +6,7 @@ const { logoBase64 } = require('../utils/logo');
 class PDFService {
     async fetchClaimData(examId) {
         try {
-            // Get exam details with rates
+            // Get exam details with rates and external examiner if applicable
             const examResult = await pool.query(
                 `SELECT 
           e.*,
@@ -14,8 +14,8 @@ class PDFService {
           u.email as faculty_email,
           u.department,
           u.prn,
-          u.mobile,
-          u.pan_card,
+          u.mobile as faculty_mobile,
+          u.pan_card as faculty_pan,
           fb.account_holder_name,
           fb.bank_name,
           fb.branch_name,
@@ -24,11 +24,17 @@ class PDFService {
           fb.account_type,
           rr.fy_sy_rate,
           rr.ty_final_rate,
-          rr.mtech_mca_rate
+          rr.mtech_mca_rate,
+          ee.full_name as external_name,
+          ee.email as external_email,
+          ee.mobile as external_mobile,
+          ee.parent_institute as external_institute,
+          ee.pan_number as external_pan
         FROM exams e
         JOIN users u ON e.faculty_id = u.id
         LEFT JOIN faculty_bank_accounts fb ON fb.faculty_id = u.id
         LEFT JOIN remuneration_rates rr ON rr.exam_type = e.exam_type
+        LEFT JOIN external_examiners ee ON ee.id = e.external_examiner_id
         WHERE e.id = $1`,
                 [examId]
             );
@@ -38,6 +44,9 @@ class PDFService {
             }
 
             const exam = examResult.rows[0];
+
+            // Determine if this is an external claim
+            const isExternal = exam.claim_form_type === 'TEACHING_EXTERNAL';
 
             // Get remuneration calculations
             const calcResult = await pool.query(
@@ -89,14 +98,14 @@ class PDFService {
                 // Header fields
                 logo: logoBase64, // PCCOE logo as base64
 
-                // Basic details
+                // Basic details - use external examiner details if external claim
                 year: exam.level || '',
                 program: exam.program || '',
-                examinerName: exam.faculty_name || exam.account_holder_name || '',
-                collegeName: 'Pimpri Chinchwad College of Engineering',
-                mobile: exam.mobile || exam.prn || '', // Fallback to PRN if mobile not available
-                pan: exam.pan_card || exam.prn || '', // Fallback to PRN if PAN not available
-                email: exam.faculty_email || '',
+                examinerName: isExternal ? (exam.external_name || '') : (exam.faculty_name || exam.account_holder_name || ''),
+                collegeName: isExternal ? (exam.external_institute || 'External Institute') : 'Pimpri Chinchwad College of Engineering',
+                mobile: isExternal ? (exam.external_mobile || '') : (exam.faculty_mobile || exam.prn || ''),
+                pan: isExternal ? (exam.external_pan || '') : (exam.faculty_pan || exam.prn || ''),
+                email: isExternal ? (exam.external_email || '') : (exam.faculty_email || ''),
 
                 // Exam details
                 examName: exam.exam_type || '',
