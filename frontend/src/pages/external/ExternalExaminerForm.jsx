@@ -132,12 +132,8 @@ export default function ExternalExaminerForm({ token }) {
         }
       });
 
-      const successMessage = isResubmission
-        ? "Claim resubmitted successfully! The accountant will review it again."
-        : "Claim submitted successfully!";
-
-      alert(successMessage);
-      window.location.reload();
+      // Redirect to success page instead of reloading
+      window.location.href = `/external/success`;
     } catch (err) {
       alert(err.response?.data?.message || "Submission failed. Please try again.");
       console.error(err);
