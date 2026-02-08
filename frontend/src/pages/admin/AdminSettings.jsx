@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "../../hooks/useToast";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
@@ -93,74 +94,139 @@ export default function AdminSettings() {
         }
     ];
 
+    const tabVariants = {
+        hidden: { opacity: 0, x: -20 },
+        visible: {
+            opacity: 1,
+            x: 0,
+            transition: {
+                duration: 0.3,
+                ease: "easeOut"
+            }
+        },
+        exit: {
+            opacity: 0,
+            x: 20,
+            transition: {
+                duration: 0.2
+            }
+        }
+    };
+
     return (
-        <div className="space-y-6">
+        <motion.div
+            className="space-y-6"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+        >
             {/* Header */}
-            <div className="space-y-2">
-                <h1 className="text-3xl font-bold text-gray-800">Admin Settings</h1>
-                <p className="text-gray-600">Manage your profile and system preferences</p>
-            </div>
+            <motion.div
+                className="space-y-2"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+            >
+                <h1 className="text-3xl font-bold text-card-foreground">Admin Settings</h1>
+                <p className="text-muted-foreground">Manage your profile and system preferences</p>
+            </motion.div>
 
             {/* Tabs */}
-            <div className="border-b border-gray-200">
+            <motion.div
+                className="border-b border-border"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+            >
                 <nav className="flex gap-4">
-                    <button
+                    <motion.button
                         onClick={() => setActiveTab("profile")}
                         className={`px-4 py-2 font-medium border-b-2 transition-colors ${activeTab === "profile"
                             ? "border-purple-600 text-purple-600"
-                            : "border-transparent text-gray-500 hover:text-gray-700"
+                            : "border-transparent text-muted-foreground hover:text-card-foreground"
                             }`}
+                        whileHover={{ y: -2 }}
+                        whileTap={{ scale: 0.98 }}
                     >
                         Profile
-                    </button>
-                    <button
+                    </motion.button>
+                    <motion.button
                         onClick={() => setActiveTab("system")}
                         className={`px-4 py-2 font-medium border-b-2 transition-colors ${activeTab === "system"
                             ? "border-purple-600 text-purple-600"
-                            : "border-transparent text-gray-500 hover:text-gray-700"
+                            : "border-transparent text-muted-foreground hover:text-card-foreground"
                             }`}
+                        whileHover={{ y: -2 }}
+                        whileTap={{ scale: 0.98 }}
                     >
                         System Configuration
-                    </button>
-                    <button
+                    </motion.button>
+                    <motion.button
                         onClick={() => setActiveTab("counts")}
                         className={`px-4 py-2 font-medium border-b-2 transition-colors ${activeTab === "counts"
                             ? "border-purple-600 text-purple-600"
-                            : "border-transparent text-gray-500 hover:text-gray-700"
+                            : "border-transparent text-muted-foreground hover:text-card-foreground"
                             }`}
+                        whileHover={{ y: -2 }}
+                        whileTap={{ scale: 0.98 }}
                     >
                         Student Counts
-                    </button>
+                    </motion.button>
                 </nav>
-            </div>
+            </motion.div>
 
 
 
             {/* Tab Content */}
-            {activeTab === "profile" && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <ProfileSettings
-                        initialData={profileData}
-                        onSave={handleSaveProfile}
-                        readOnlyFields={['email']}
-                        fields={profileFields}
-                    />
+            <AnimatePresence mode="wait">
+                {activeTab === "profile" && (
+                    <motion.div
+                        key="profile"
+                        className="grid grid-cols-1 lg:grid-cols-2 gap-8"
+                        variants={tabVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit="exit"
+                    >
+                        <ProfileSettings
+                            initialData={profileData}
+                            onSave={handleSaveProfile}
+                            readOnlyFields={['email']}
+                            fields={profileFields}
+                        />
 
-                    <SecuritySettings
-                        onSave={handleChangePassword}
-                        primaryColor="purple-600"
-                    />
-                </div>
-            )}
+                        <SecuritySettings
+                            onSave={handleChangePassword}
+                            primaryColor="purple-600"
+                        />
+                    </motion.div>
+                )}
 
-            {activeTab === "system" && (
-                <RatesManagement />
-            )}
+                {activeTab === "system" && (
+                    <motion.div
+                        key="system"
+                        variants={tabVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit="exit"
+                    >
+                        <RatesManagement />
+                    </motion.div>
+                )}
 
-            {activeTab === "counts" && (
-                <StudentCountManagement />
-            )}
-        </div>
+                {activeTab === "counts" && (
+                    <motion.div
+                        key="counts"
+                        variants={tabVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit="exit"
+                    >
+                        <StudentCountManagement />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </motion.div>
     );
 }
 
