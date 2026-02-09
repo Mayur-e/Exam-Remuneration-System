@@ -1074,13 +1074,40 @@ exports.generateExternalLink = async (req, res) => {
     return res.status(400).json({ message: "Invalid external exam" });
   }
 
-  if (exam.rows[0].status !== "draft") {
+  if (exam.rows[0].status !== "draft" && exam.rows[0].status !== "rejected") {
     return res.status(400).json({
       message: "Cannot generate link after submission"
     });
   }
 
-  // 2. Revoke existing unused links
+  // 2. Check for existing valid (non-expired, unused) link
+  const existingLink = await pool.query(
+    `
+    SELECT token, expires_at
+    FROM external_exam_links
+    WHERE exam_id = $1
+      AND used = false
+      AND expires_at > NOW()
+    ORDER BY created_at DESC
+    LIMIT 1
+    `,
+    [examId]
+  );
+
+  // If valid link exists, return it
+  if (existingLink.rows.length > 0) {
+    const token = existingLink.rows[0].token;
+    const expiresAt = existingLink.rows[0].expires_at;
+
+    return res.json({
+      link: `${process.env.FRONTEND_URL}/external/claim/${token}`,
+      message: "Existing valid link returned",
+      expiresAt: expiresAt,
+      isExisting: true
+    });
+  }
+
+  // 3. Revoke existing unused links (expired or otherwise)
   await pool.query(
     `
     UPDATE external_exam_links
@@ -1091,20 +1118,23 @@ exports.generateExternalLink = async (req, res) => {
     [examId]
   );
 
-  // 3. Generate fresh token
+  // 4. Generate fresh token
   const token = crypto.randomBytes(32).toString("hex");
 
-  await pool.query(
+  const newLink = await pool.query(
     `
     INSERT INTO external_exam_links (exam_id, token, expires_at)
     VALUES ($1, $2, NOW() + INTERVAL '7 days')
+    RETURNING expires_at
     `,
     [examId, token]
   );
 
   res.json({
     link: `${process.env.FRONTEND_URL}/external/claim/${token}`,
-    message: "New external link generated (old links revoked)"
+    message: "New external link generated",
+    expiresAt: newLink.rows[0].expires_at,
+    isExisting: false
   });
 };
 
