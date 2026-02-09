@@ -28,6 +28,8 @@ export default function TeachingBillForm() {
   const [exam, setExam] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [externalLink, setExternalLink] = useState("");
+  const [linkExpiration, setLinkExpiration] = useState(null);
+  const [isExistingLink, setIsExistingLink] = useState(false);
 
 
   useEffect(() => {
@@ -183,7 +185,14 @@ export default function TeachingBillForm() {
                     `/faculty/exams/${examId}/external-link`
                   );
                   setExternalLink(res.data.link);
-                  showToast("New link generated successfully!", "success");
+                  setLinkExpiration(res.data.expiresAt);
+                  setIsExistingLink(res.data.isExisting);
+
+                  if (res.data.isExisting) {
+                    showToast("Existing valid link retrieved!", "success");
+                  } else {
+                    showToast("New link generated successfully!", "success");
+                  }
                 } catch {
                   showToast("Failed to generate external link", "error");
                 }
@@ -191,14 +200,20 @@ export default function TeachingBillForm() {
             >
               {status === "submitted" || status === "approved" || status === "paid"
                 ? "External Claim Submitted"
-                : "Generate External Examiner Link"}
+                : externalLink ? "Regenerate Link" : "Generate External Examiner Link"}
 
             </Button>
 
             {externalLink && (
               <div className="space-y-3">
-                <div className="p-3 bg-green-50 text-green-700 border border-green-200 rounded text-sm font-medium">
-                  ✅ Link generated successfully! Please share this link with the external examiner.
+                <div className={`p-3 border rounded text-sm font-medium ${isExistingLink
+                  ? 'bg-blue-50 text-blue-700 border-blue-200'
+                  : 'bg-green-50 text-green-700 border-green-200'
+                  }`}>
+                  {isExistingLink
+                    ? '🔗 Existing valid link retrieved!'
+                    : '✅ New link generated successfully!'}
+                  {' '}Please share this link with the external examiner.
                 </div>
                 <div className="flex gap-2 items-center">
                   <Input
@@ -233,6 +248,17 @@ export default function TeachingBillForm() {
                     Copy
                   </Button>
                 </div>
+                {linkExpiration && (
+                  <p className="text-xs text-muted-foreground">
+                    ⏰ Expires on: {new Date(linkExpiration).toLocaleString('en-IN', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                )}
                 <p className="text-xs text-muted-foreground">
                   Note: This link is valid for 7 days. Once the examiner submits, it cannot be used again.
                 </p>
