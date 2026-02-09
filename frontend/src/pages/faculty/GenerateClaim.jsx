@@ -1,5 +1,5 @@
-import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "../../hooks/useToast";
 import api from "../../services/api";
@@ -57,7 +57,7 @@ export default function GenerateClaim() {
         >
           <Card className="p-6 bg-card border-border hover:shadow-lg transition-shadow duration-300">
             <div className="flex items-center gap-3 mb-6">
-              <motion.div 
+              <motion.div
                 whileHover={{ rotate: 360 }}
                 transition={{ duration: 0.6 }}
                 className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center"
@@ -193,13 +193,51 @@ function DraftList({ onEdit }) {
   const { showToast } = useToast();
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("");
+  const fetchingRef = useRef(false);
 
-  useEffect(() => {
+  const fetchDrafts = () => {
+    // Prevent multiple simultaneous fetches
+    if (fetchingRef.current) {
+      console.log('Already fetching drafts, skipping...');
+      return;
+    }
+
+    fetchingRef.current = true;
+    setLoading(true);
+
     api
       .get("/faculty/drafts")
-      .then((res) => setDrafts(res.data))
-      .catch(() => setDrafts([]))
-      .finally(() => setLoading(false));
+      .then((res) => {
+        console.log('Fetched drafts:', res.data);
+        // Ensure we're setting a fresh array, not appending
+        setDrafts(Array.isArray(res.data) ? res.data : []);
+      })
+      .catch((err) => {
+        console.error('Error fetching drafts:', err);
+        setDrafts([]);
+      })
+      .finally(() => {
+        setLoading(false);
+        fetchingRef.current = false;
+      });
+  };
+
+  useEffect(() => {
+    fetchDrafts();
+
+    // Refetch when page becomes visible (user navigates back)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('Page visible, refetching drafts...');
+        fetchDrafts();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const remove = async (id) => {
@@ -208,7 +246,7 @@ function DraftList({ onEdit }) {
     try {
       await api.delete(`/faculty/drafts/${id}`);
       setDrafts((prev) => prev.filter((d) => d.id !== id));
-      
+
       // Custom toast animation
       setToastMessage("Draft deleted successfully");
       setToastType("success");
@@ -253,7 +291,7 @@ function DraftList({ onEdit }) {
   if (loading) {
     return (
       <Card className="p-6 bg-card border-border">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           className="flex items-center justify-center py-12"
@@ -281,11 +319,10 @@ function DraftList({ onEdit }) {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 50 }}
             transition={{ duration: 0.3 }}
-            className={`fixed top-4 right-4 px-4 py-2 rounded shadow-lg z-50 ${
-              toastType === "success" 
-                ? "bg-green-600 text-white" 
-                : "bg-red-600 text-white"
-            }`}
+            className={`fixed top-4 right-4 px-4 py-2 rounded shadow-lg z-50 ${toastType === "success"
+              ? "bg-green-600 text-white"
+              : "bg-red-600 text-white"
+              }`}
           >
             {toastMessage}
           </motion.div>
@@ -295,7 +332,7 @@ function DraftList({ onEdit }) {
       <Card className="p-6 bg-card border-border hover:shadow-lg transition-shadow duration-300 h-full">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <motion.div 
+            <motion.div
               whileHover={{ rotate: 360 }}
               transition={{ duration: 0.6 }}
               className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center"
@@ -304,7 +341,7 @@ function DraftList({ onEdit }) {
             </motion.div>
             <h2 className="text-xl font-semibold text-foreground">Saved Drafts</h2>
           </div>
-          <motion.span 
+          <motion.span
             key={drafts.length}
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -316,7 +353,7 @@ function DraftList({ onEdit }) {
 
         {/* Search Bar */}
         <div className="mb-6">
-          <motion.div 
+          <motion.div
             whileHover={{ scale: 1.02 }}
             className="relative"
           >
@@ -332,7 +369,7 @@ function DraftList({ onEdit }) {
         </div>
 
         {drafts.length === 0 ? (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-center py-12"
@@ -344,7 +381,7 @@ function DraftList({ onEdit }) {
             <p className="text-muted-foreground">Create a new claim to get started</p>
           </motion.div>
         ) : filteredDrafts.length === 0 ? (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="text-center py-12"
@@ -352,7 +389,7 @@ function DraftList({ onEdit }) {
             <p className="text-muted-foreground">No drafts match your search</p>
           </motion.div>
         ) : (
-          <motion.div 
+          <motion.div
             variants={containerVariants}
             initial="hidden"
             animate="visible"
@@ -369,14 +406,14 @@ function DraftList({ onEdit }) {
                   <div>
                     <h4 className="font-semibold text-foreground">{draft.subject_name}</h4>
                     <div className="flex items-center gap-2 mt-1">
-                      <motion.span 
+                      <motion.span
                         whileHover={{ scale: 1.1 }}
                         className="px-2 py-1 bg-muted text-foreground text-xs font-medium rounded"
                       >
                         {draft.exam_type}
                       </motion.span>
                       {draft.claim_form_type === 'NON_TEACHING' && (
-                        <motion.span 
+                        <motion.span
                           whileHover={{ scale: 1.1 }}
                           className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-xs font-medium rounded"
                         >
@@ -384,7 +421,7 @@ function DraftList({ onEdit }) {
                         </motion.span>
                       )}
                       {draft.claim_form_type === 'TEACHING_EXTERNAL' && (
-                        <motion.span 
+                        <motion.span
                           whileHover={{ scale: 1.1 }}
                           className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium rounded"
                         >
@@ -392,7 +429,7 @@ function DraftList({ onEdit }) {
                         </motion.span>
                       )}
                       {draft.claim_form_type === 'TEACHING_INTERNAL' && (
-                        <motion.span 
+                        <motion.span
                           whileHover={{ scale: 1.1 }}
                           className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-medium rounded"
                         >
@@ -447,7 +484,7 @@ function DraftList({ onEdit }) {
         )}
 
         {drafts.length > 0 && filteredDrafts.length > 0 && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
