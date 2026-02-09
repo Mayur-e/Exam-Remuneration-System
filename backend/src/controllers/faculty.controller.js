@@ -928,19 +928,24 @@ exports.getExamById = async (req, res) => {
     return res.status(404).json({ message: "Exam not found" });
   }
 
-  // Get rejection history if any
-  const rejections = await pool.query(
-    `SELECT ca.comment, ca.action_at, u.name AS rejected_by
+  // Get claim actions (rejections and sent-back) if any
+  const actions = await pool.query(
+    `SELECT 
+      ca.action_type,
+      ca.comment,
+      ca.action_at,
+      u.name AS action_by_name
      FROM claim_actions ca
      JOIN users u ON ca.action_by = u.id
-     WHERE ca.exam_id = $1 AND ca.action_type = 'REJECTED'
+     WHERE ca.exam_id = $1 
+       AND (ca.action_type = 'REJECTED' OR ca.action_type = 'SENT_BACK')
      ORDER BY ca.action_at DESC`,
     [id]
   );
 
   return res.json({
     ...result.rows[0],
-    rejections: rejections.rows
+    claimActions: actions.rows
   });
 };
 
