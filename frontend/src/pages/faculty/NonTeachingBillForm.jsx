@@ -62,24 +62,24 @@ export default function NonTeachingBillForm() {
 
             {/* Rejection/Sent-Back Notice */}
             {exam && exam.claimActions && exam.claimActions.length > 0 && (
-                <Card className={`p-6 ${exam.claimActions[0].action_type === 'REJECTED' ? 'bg-red-50 border-red-200' : 'bg-orange-50 border-orange-200'}`}>
+                <Card className={`p-6 ${['REJECTED', 'REJECT'].includes(exam.claimActions[0].action_type) ? 'bg-red-50 border-red-200' : 'bg-orange-50 border-orange-200'}`}>
                     <div className="flex items-start gap-3">
                         <div className="flex-shrink-0">
-                            <svg className={`w-6 h-6 ${exam.claimActions[0].action_type === 'REJECTED' ? 'text-red-600' : 'text-orange-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className={`w-6 h-6 ${['REJECTED', 'REJECT'].includes(exam.claimActions[0].action_type) ? 'text-red-600' : 'text-orange-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                             </svg>
                         </div>
                         <div className="flex-1">
-                            <h3 className={`font-semibold mb-2 ${exam.claimActions[0].action_type === 'REJECTED' ? 'text-red-900' : 'text-orange-900'}`}>
-                                {exam.claimActions[0].action_type === 'REJECTED' ? 'Claim Rejected' : 'Claim Sent Back for Correction'}
+                            <h3 className={`font-semibold mb-2 ${['REJECTED', 'REJECT'].includes(exam.claimActions[0].action_type) ? 'text-red-900' : 'text-orange-900'}`}>
+                                {['REJECTED', 'REJECT'].includes(exam.claimActions[0].action_type) ? 'Claim Rejected' : 'Claim Sent Back for Correction'}
                             </h3>
                             {exam.claimActions.map((action, idx) => (
                                 <div key={idx} className="mb-3 last:mb-0">
-                                    <p className={`text-sm mb-1 ${action.action_type === 'REJECTED' ? 'text-red-700' : 'text-orange-700'}`}>
-                                        <strong>{action.action_type === 'REJECTED' ? 'Rejected by:' : 'Sent back by:'}</strong> {action.action_by_name} on{' '}
+                                    <p className={`text-sm mb-1 ${['REJECTED', 'REJECT'].includes(action.action_type) ? 'text-red-700' : 'text-orange-700'}`}>
+                                        <strong>{['REJECTED', 'REJECT'].includes(action.action_type) ? (action.action_type === 'REJECT' ? 'Rejected by Coordinator:' : 'Rejected by Billing:') : 'Sent back by:'}</strong> {action.action_by_name} on{' '}
                                         {new Date(action.action_at).toLocaleString()}
                                     </p>
-                                    <p className={`text-sm p-3 rounded border bg-card ${action.action_type === 'REJECTED' ? 'text-red-800 border-red-200' : 'text-orange-800 border-orange-200'}`}>
+                                    <p className={`text-sm p-3 rounded border bg-card ${['REJECTED', 'REJECT'].includes(action.action_type) ? 'text-red-800 border-red-200' : 'text-orange-800 border-orange-200'}`}>
                                         {action.comment}
                                     </p>
                                 </div>
@@ -96,7 +96,7 @@ export default function NonTeachingBillForm() {
             <Card className="p-6">
                 <ExamDetails
                     examId={examId}
-                    disabled={examId && status !== "draft" && status !== "rejected"}
+                    disabled={examId && status !== "draft" && status !== "rejected" && status !== "COORDINATOR_REJECTED"}
                     onCreated={(id) => {
                         setExamId(id);
                         fetchExam(id);
@@ -111,7 +111,7 @@ export default function NonTeachingBillForm() {
                 <NonTeachingInfo
                     examId={examId}
                     refreshKey={refreshKey}
-                    disabled={status !== "draft" && status !== "rejected"}
+                    disabled={status !== "draft" && status !== "rejected" && status !== "COORDINATOR_REJECTED"}
                     onUpdated={fetchExam}
                 />
             )}
@@ -121,7 +121,7 @@ export default function NonTeachingBillForm() {
                 <StaffClaimsSection
                     examId={examId}
                     refreshKey={refreshKey}
-                    disabled={status !== "draft" && status !== "rejected"}
+                    disabled={status !== "draft" && status !== "rejected" && status !== "COORDINATOR_REJECTED"}
                 />
             )}
 
@@ -217,8 +217,8 @@ export default function NonTeachingBillForm() {
                 </Card>
             )}
 
-            {/* RESUBMIT BUTTON (For Rejected Claims) */}
-            {examId && status === "rejected" && (
+            {/* RESUBMIT BUTTON (For Rejected Claims *) */}
+            {examId && (status === "rejected" || status === "COORDINATOR_REJECTED") && (
                 <Card className="p-6 bg-orange-50 border-orange-200">
                     <div className="space-y-4">
                         <div className="flex items-start gap-3">

@@ -105,10 +105,11 @@ export default function BillView() {
   const handleUpdateAllowances = async () => {
     setProcessing(true);
     try {
-      // Force chairman allowance to 0 for practical exams
+      // Force chairman allowance to 0 for practical exams or non-coordinators
+      const isPractical = ['PR', 'OR', 'TW'].includes(exam.exam_type);
       const updatedAllowances = {
         ...allowances,
-        chairman_allowance: ['PR', 'OR', 'TW'].includes(exam.exam_type) ? 0 : allowances.chairman_allowance
+        chairman_allowance: (isPractical || !exam.is_coordinator) ? 0 : allowances.chairman_allowance
       };
 
       await api.put(`/accountant/claims/${id}/allowances`, updatedAllowances);
@@ -166,7 +167,7 @@ export default function BillView() {
 
         <div className="ml-auto flex gap-3">
           {/* Approve button for submitted claims */}
-          {exam.status === 'submitted' && (
+          {(exam.status === 'submitted' || exam.status === 'SENT_TO_BILLING') && (
             <Button
               onClick={() => setShowApproveConfirm(true)}
               className="bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all"
@@ -188,7 +189,7 @@ export default function BillView() {
           )}
 
           {/* Reject button for submitted/approved claims */}
-          {(exam.status === 'submitted' || exam.status === 'approved') && (
+          {(exam.status === 'submitted' || exam.status === 'SENT_TO_BILLING' || exam.status === 'approved') && (
             <Button
               onClick={() => setShowRejectModal(true)}
               className="bg-red-600 hover:bg-red-700 text-white shadow-md hover:shadow-lg transition-all"
@@ -440,13 +441,15 @@ export default function BillView() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground flex items-center gap-2">
                     Chairman Allowance (₹)
-                    {['PR', 'OR', 'TW'].includes(exam.exam_type) && (
+                    {(['PR', 'OR', 'TW'].includes(exam.exam_type) || !exam.is_coordinator) && (
                       <span className="relative group cursor-help">
                         <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                         </svg>
-                        <span className="absolute left-6 top-0 w-48 bg-gray-900 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
-                          Not applicable for Practical exams
+                        <span className="absolute left-6 top-0 w-48 bg-gray-900 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none font-normal">
+                          {['PR', 'OR', 'TW'].includes(exam.exam_type)
+                            ? 'Not applicable for Practical/Oral/TW exams'
+                            : 'Only allowed for assigned Course Coordinators'}
                         </span>
                       </span>
                     )}
@@ -458,13 +461,13 @@ export default function BillView() {
                       onChange={(e) => setAllowances({ ...allowances, chairman_allowance: e.target.value })}
                       placeholder="0"
                       min="0"
-                      className={`bg-card ${['PR', 'OR', 'TW'].includes(exam.exam_type) ? 'border-2 border-red-400 bg-red-50 cursor-not-allowed' : ''}`}
-                      disabled={['PR', 'OR', 'TW'].includes(exam.exam_type)}
+                      className={`bg-card ${(['PR', 'OR', 'TW'].includes(exam.exam_type) || !exam.is_coordinator) ? 'border-2 border-red-400 bg-red-50 cursor-not-allowed' : ''}`}
+                      disabled={['PR', 'OR', 'TW'].includes(exam.exam_type) || !exam.is_coordinator}
                     />
                   ) : (
-                    <div className={`p-3 rounded-lg border ${['PR', 'OR', 'TW'].includes(exam.exam_type) ? 'bg-red-50 border-red-200' : 'bg-card border-border'}`}>
+                    <div className={`p-3 rounded-lg border ${(['PR', 'OR', 'TW'].includes(exam.exam_type) || !exam.is_coordinator) ? 'bg-red-50 border-red-200' : 'bg-card border-border'}`}>
                       <p className="font-semibold text-foreground">
-                        {['PR', 'OR', 'TW'].includes(exam.exam_type)
+                        {(['PR', 'OR', 'TW'].includes(exam.exam_type) || !exam.is_coordinator)
                           ? 'N/A'
                           : `₹${Number(allowances.chairman_allowance).toFixed(2)}`
                         }
@@ -477,9 +480,18 @@ export default function BillView() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">
                     Conveyance Amount (₹)
-                    {isExternal && (
+                    {isExternal ? (
                       <span className="ml-2 text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded">
                         For External Examiner
+                      </span>
+                    ) : (
+                      <span className="relative group cursor-help ml-2">
+                        <svg className="w-4 h-4 text-red-500 inline" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        <span className="absolute left-6 top-0 w-48 bg-gray-900 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none font-normal">
+                          Only applicable for External claims
+                        </span>
                       </span>
                     )}
                   </label>
@@ -490,12 +502,16 @@ export default function BillView() {
                       onChange={(e) => setAllowances({ ...allowances, conveyance_amount: e.target.value })}
                       placeholder="0"
                       min="0"
-                      className="bg-card"
+                      className={`bg-card ${!isExternal ? 'border-2 border-red-400 bg-red-50 cursor-not-allowed' : ''}`}
+                      disabled={!isExternal}
                     />
                   ) : (
-                    <div className="p-3 bg-card rounded-lg border border-border">
+                    <div className={`p-3 rounded-lg border ${!isExternal ? 'bg-red-50 border-red-200' : 'bg-card border-border'}`}>
                       <p className="font-semibold text-foreground">
-                        ₹{Number(allowances.conveyance_amount).toFixed(2)}
+                        {!isExternal
+                          ? 'N/A'
+                          : `₹${Number(allowances.conveyance_amount).toFixed(2)}`
+                        }
                       </p>
                     </div>
                   )}

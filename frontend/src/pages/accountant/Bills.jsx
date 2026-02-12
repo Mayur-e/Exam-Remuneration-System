@@ -325,7 +325,7 @@ export default function Bills() {
                                 }`}
                               whileHover={{ scale: 1.1 }}
                             >
-                              {claim.status === 'submitted' ? 'Pending' :
+                              {claim.status === 'submitted' || claim.status === 'SENT_TO_BILLING' ? 'Pending' :
                                 claim.status === 'approved' ? 'Approved' :
                                   'Paid'}
                             </motion.span>

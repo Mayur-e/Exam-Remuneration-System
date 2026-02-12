@@ -4,6 +4,7 @@ import api from "../../services/api";
 import ProfileSettings from "../../components/settings/ProfileSettings";
 import SecuritySettings from "../../components/settings/SecuritySettings";
 import BankSettings from "../../components/settings/BankSettings";
+import CourseCoordinationSettings from "../../components/settings/CourseCoordinationSettings";
 import { MailIcon } from "../../components/icons/logo";
 import { DEPARTMENTS } from "../../constants/departments";
 import { motion, AnimatePresence } from "framer-motion";
@@ -62,7 +63,7 @@ export default function Settings() {
       setToastMessage("Profile updated successfully!");
       setToastType("success");
       setTimeout(() => setToastMessage(""), 3000);
-      
+
       // Refresh profile data
       fetchProfileAndBank();
     } catch (error) {
@@ -137,7 +138,7 @@ export default function Settings() {
       setToastMessage("Bank details updated successfully!");
       setToastType("success");
       setTimeout(() => setToastMessage(""), 3000);
-      
+
       // Refresh bank data
       fetchProfileAndBank();
     } catch (error) {
@@ -237,11 +238,10 @@ export default function Settings() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 50 }}
             transition={{ duration: 0.3 }}
-            className={`fixed top-4 right-4 px-4 py-2 rounded shadow-lg z-50 ${
-              toastType === "success" 
-                ? "bg-green-600 text-white" 
+            className={`fixed top-4 right-4 px-4 py-2 rounded shadow-lg z-50 ${toastType === "success"
+                ? "bg-green-600 text-white"
                 : "bg-red-600 text-white"
-            }`}
+              }`}
           >
             {toastMessage}
           </motion.div>
@@ -256,7 +256,7 @@ export default function Settings() {
         <h1 className="text-3xl font-bold text-foreground">Settings</h1>
       </motion.div>
 
-      <motion.div 
+      <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="visible"
@@ -281,6 +281,15 @@ export default function Settings() {
             primaryColor="blue-600"
           />
         </motion.div>
+      </motion.div>
+
+      {/* Course Coordination - Full Width */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+      >
+        <CourseCoordinationSettings />
       </motion.div>
 
       {/* Bank Details - Full Width */}

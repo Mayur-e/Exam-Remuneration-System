@@ -136,16 +136,16 @@ export default function TeachingBillForm() {
               </svg>
             </div>
             <div className="flex-1">
-              <h3 className={`font-semibold mb-2 ${exam.claimActions[0].action_type === 'REJECTED' ? 'text-red-900' : 'text-orange-900'}`}>
-                {exam.claimActions[0].action_type === 'REJECTED' ? 'Claim Rejected' : 'Claim Sent Back for Correction'}
+              <h3 className={`font-semibold mb-2 ${['REJECTED', 'REJECT'].includes(exam.claimActions[0].action_type) ? 'text-red-900' : 'text-orange-900'}`}>
+                {['REJECTED', 'REJECT'].includes(exam.claimActions[0].action_type) ? 'Claim Rejected' : 'Claim Sent Back for Correction'}
               </h3>
               {exam.claimActions.map((action, idx) => (
                 <div key={idx} className="mb-3 last:mb-0">
-                  <p className={`text-sm mb-1 ${action.action_type === 'REJECTED' ? 'text-red-700' : 'text-orange-700'}`}>
-                    <strong>{action.action_type === 'REJECTED' ? 'Rejected by:' : 'Sent back by:'}</strong> {action.action_by_name} on{' '}
+                  <p className={`text-sm mb-1 ${['REJECTED', 'REJECT'].includes(action.action_type) ? 'text-red-700' : 'text-orange-700'}`}>
+                    <strong>{['REJECTED', 'REJECT'].includes(action.action_type) ? (action.action_type === 'REJECT' ? 'Rejected by Coordinator:' : 'Rejected by Billing:') : 'Sent back by:'}</strong> {action.action_by_name} on{' '}
                     {new Date(action.action_at).toLocaleString()}
                   </p>
-                  <p className={`text-sm p-3 rounded border bg-card ${action.action_type === 'REJECTED' ? 'text-red-800 border-red-200' : 'text-orange-800 border-orange-200'}`}>
+                  <p className={`text-sm p-3 rounded border bg-card ${['REJECTED', 'REJECT'].includes(action.action_type) ? 'text-red-800 border-red-200' : 'text-orange-800 border-orange-200'}`}>
                     {action.comment}
                   </p>
                 </div>
@@ -162,7 +162,7 @@ export default function TeachingBillForm() {
       <Card className="p-6">
         <ExamDetails
           examId={examId}
-          disabled={examId && status !== "draft" && status !== "rejected"}
+          disabled={examId && status !== "draft" && status !== "rejected" && status !== "COORDINATOR_REJECTED"}
           onCreated={(id) => {
             setExamId(id);
             fetchExam(id); // load immediately after create
@@ -178,7 +178,7 @@ export default function TeachingBillForm() {
         (status === "draft" || status === "rejected") && (
           <Card className="p-4 space-y-4">
             <Button
-              disabled={status !== "draft" && status !== "rejected"}
+              disabled={status !== "draft" && status !== "rejected" && status !== "COORDINATOR_REJECTED"}
               onClick={async () => {
                 try {
                   const res = await api.post(
@@ -321,7 +321,7 @@ export default function TeachingBillForm() {
       )}
 
       {/* RESUBMIT for Rejected Claims */}
-      {examId && status === "rejected" && claimTypeFromUrl === "TEACHING_INTERNAL" && (
+      {examId && (status === "rejected" || status === "COORDINATOR_REJECTED") && claimTypeFromUrl === "TEACHING_INTERNAL" && (
         <Card className="p-6 bg-orange-50 border-orange-200">
           <div className="space-y-4">
             <div className="flex items-start gap-3">

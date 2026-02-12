@@ -85,7 +85,7 @@ export default function MyClaims() {
       if (claim.external_link_token) {
         const link = `${window.location.origin}/external/claim/${claim.external_link_token}`;
         await navigator.clipboard.writeText(link);
-        
+
         // Custom toast animation
         setToastMessage("External examiner link copied to clipboard! Share this link with the external examiner to resubmit the claim.");
         setToastType("success");
@@ -140,6 +140,21 @@ export default function MyClaims() {
         color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
         icon: <ClockIcon className="w-3 h-3" />
       },
+      UNDER_COORDINATOR_REVIEW: {
+        label: "Under Review (Coord)",
+        color: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
+        icon: <ClockIcon className="w-3 h-3" />
+      },
+      COORDINATOR_VERIFIED: {
+        label: "Verified",
+        color: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
+        icon: <ClockIcon className="w-3 h-3" />
+      },
+      SENT_TO_BILLING: {
+        label: "Sent to Billing",
+        color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+        icon: <ClockIcon className="w-3 h-3" />
+      },
       approved: {
         label: "Approved",
         color: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
@@ -154,13 +169,18 @@ export default function MyClaims() {
         label: "Rejected",
         color: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
         icon: <XIcon className="w-3 h-3" />
+      },
+      COORDINATOR_REJECTED: {
+        label: "Rejected (Coord)",
+        color: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+        icon: <XIcon className="w-3 h-3" />
       }
     };
 
     const s = config[status] || config.submitted;
 
     return (
-      <motion.span 
+      <motion.span
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         whileHover={{ scale: 1.1 }}
@@ -172,8 +192,15 @@ export default function MyClaims() {
     );
   };
 
-  const getStatusCount = (status) =>
-    claims.filter(c => c.status === status).length;
+  const getStatusCount = (status) => {
+    if (status === 'submitted') {
+      return claims.filter(c => ['submitted', 'UNDER_COORDINATOR_REVIEW', 'COORDINATOR_VERIFIED', 'SENT_TO_BILLING'].includes(c.status)).length;
+    }
+    if (status === 'rejected') {
+      return claims.filter(c => ['rejected', 'COORDINATOR_REJECTED'].includes(c.status)).length;
+    }
+    return claims.filter(c => c.status === status).length;
+  };
 
   // Animation variants
   const containerVariants = {
@@ -229,7 +256,7 @@ export default function MyClaims() {
   if (loading) {
     return (
       <Card className="p-6">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           className="text-center py-10"
@@ -255,13 +282,12 @@ export default function MyClaims() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 50 }}
             transition={{ duration: 0.3 }}
-            className={`fixed top-4 right-4 px-4 py-2 rounded shadow-lg z-50 ${
-              toastType === "success" 
-                ? "bg-green-600 text-white" 
+            className={`fixed top-4 right-4 px-4 py-2 rounded shadow-lg z-50 ${toastType === "success"
+                ? "bg-green-600 text-white"
                 : toastType === "error"
-                ? "bg-red-600 text-white"
-                : "bg-blue-600 text-white"
-            }`}
+                  ? "bg-red-600 text-white"
+                  : "bg-blue-600 text-white"
+              }`}
           >
             {toastMessage}
           </motion.div>
@@ -295,7 +321,7 @@ export default function MyClaims() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground mb-1">Total Claims</p>
-                  <motion.h2 
+                  <motion.h2
                     key={claims.length}
                     variants={statNumberVariants}
                     initial="hidden"
@@ -305,7 +331,7 @@ export default function MyClaims() {
                     {claims.length}
                   </motion.h2>
                 </div>
-                <motion.div 
+                <motion.div
                   whileHover={{ rotate: 360 }}
                   transition={{ duration: 0.6 }}
                   className="p-3 bg-muted rounded-full"
@@ -327,7 +353,7 @@ export default function MyClaims() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-orange-600 dark:text-orange-400 mb-1">Submitted</p>
-                  <motion.h2 
+                  <motion.h2
                     key={getStatusCount("submitted")}
                     variants={statNumberVariants}
                     initial="hidden"
@@ -337,7 +363,7 @@ export default function MyClaims() {
                     {getStatusCount("submitted")}
                   </motion.h2>
                 </div>
-                <motion.div 
+                <motion.div
                   animate={{ rotate: [0, 10, 0, -10, 0] }}
                   transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
                   className="p-3 bg-orange-100 dark:bg-orange-900/30 rounded-full"
@@ -359,7 +385,7 @@ export default function MyClaims() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-green-600 dark:text-green-400 mb-1">Approved</p>
-                  <motion.h2 
+                  <motion.h2
                     key={getStatusCount("approved")}
                     variants={statNumberVariants}
                     initial="hidden"
@@ -369,7 +395,7 @@ export default function MyClaims() {
                     {getStatusCount("approved")}
                   </motion.h2>
                 </div>
-                <motion.div 
+                <motion.div
                   whileHover={{ scale: 1.1, rotate: 15 }}
                   className="p-3 bg-green-100 dark:bg-green-900/30 rounded-full"
                 >
@@ -390,7 +416,7 @@ export default function MyClaims() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-1">Paid</p>
-                  <motion.h2 
+                  <motion.h2
                     key={getStatusCount("paid")}
                     variants={statNumberVariants}
                     initial="hidden"
@@ -400,7 +426,7 @@ export default function MyClaims() {
                     {getStatusCount("paid")}
                   </motion.h2>
                 </div>
-                <motion.div 
+                <motion.div
                   animate={{ scale: [1, 1.05, 1] }}
                   transition={{ duration: 2, repeat: Infinity }}
                   className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-full"
@@ -422,7 +448,7 @@ export default function MyClaims() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-1">Rejected</p>
-                  <motion.h2 
+                  <motion.h2
                     key={getStatusCount("rejected")}
                     variants={statNumberVariants}
                     initial="hidden"
@@ -432,7 +458,7 @@ export default function MyClaims() {
                     {getStatusCount("rejected")}
                   </motion.h2>
                 </div>
-                <motion.div 
+                <motion.div
                   whileHover={{ x: [-2, 2, -2, 2, 0] }}
                   transition={{ duration: 0.5 }}
                   className="p-3 bg-red-100 dark:bg-red-900/30 rounded-full"
@@ -453,7 +479,7 @@ export default function MyClaims() {
       >
         <Card className="p-4">
           <div className="flex flex-col md:flex-row gap-4">
-            <motion.div 
+            <motion.div
               whileHover={{ scale: 1.02 }}
               className="flex-1 relative"
             >
@@ -473,8 +499,10 @@ export default function MyClaims() {
                 className="border border-border rounded px-3 py-2 bg-background text-foreground focus:outline-none focus:border-blue-500"
               >
                 <option value="ALL">All</option>
-                <option value="draft">draft</option>
+                <option value="draft">Draft</option>
                 <option value="submitted">Submitted</option>
+                <option value="UNDER_COORDINATOR_REVIEW">Under Review (Coord)</option>
+                <option value="SENT_TO_BILLING">Sent to Billing</option>
                 <option value="approved">Approved</option>
                 <option value="paid">Paid</option>
                 <option value="rejected">Rejected</option>
@@ -533,7 +561,7 @@ export default function MyClaims() {
                         {c.subject_name || "Unnamed Subject"}
                       </h3>
                       {c.claim_form_type === 'TEACHING_EXTERNAL' && (
-                        <motion.span 
+                        <motion.span
                           whileHover={{ scale: 1.1 }}
                           className="px-2 py-1 text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-full border border-purple-200 dark:border-purple-700"
                         >
@@ -549,7 +577,7 @@ export default function MyClaims() {
                         <span className="font-medium">Program:</span> {c.program} - {c.level}
                       </p>
                       {c.status === 'rejected' && c.claim_form_type === 'TEACHING_EXTERNAL' && (
-                        <motion.p 
+                        <motion.p
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: "auto" }}
                           className="text-xs text-red-600 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded mt-2 border border-red-200 dark:border-red-800"
@@ -557,7 +585,7 @@ export default function MyClaims() {
                           ⚠️ Share the link with external examiner to resubmit
                         </motion.p>
                       )}
-                      <motion.p 
+                      <motion.p
                         initial={{ scale: 0.9, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         className="text-base font-semibold text-green-700 dark:text-green-400 mt-2"
@@ -581,11 +609,11 @@ export default function MyClaims() {
                             className="bg-purple-600 hover:bg-purple-700 text-white"
                             title="Copy link to share with external examiner"
                           >
-                            <motion.svg 
+                            <motion.svg
                               whileHover={{ rotate: 180 }}
-                              className="w-4 h-4 mr-1" 
-                              fill="none" 
-                              stroke="currentColor" 
+                              className="w-4 h-4 mr-1"
+                              fill="none"
+                              stroke="currentColor"
                               viewBox="0 0 24 24"
                             >
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -594,7 +622,7 @@ export default function MyClaims() {
                           </Button>
                         </motion.div>
                       )}
-                      {(c.status === 'submitted' || c.status === 'approved' || c.status === 'paid') && (
+                      {(['submitted', 'UNDER_COORDINATOR_REVIEW', 'COORDINATOR_VERIFIED', 'SENT_TO_BILLING', 'approved', 'paid'].includes(c.status)) && (
                         <motion.div
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
