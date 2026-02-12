@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import {
   DashboardIcon,
@@ -5,10 +6,33 @@ import {
   FlagIcon,
   SettingsIcon,
   UserIcon,
-  GraduationCapIcon
+  GraduationCapIcon,
+  BookOpenIcon
 } from "../../components/icons/logo";
+import api from "../../services/api";
 
 export default function FacultyLayout() {
+  const [isCoordinator, setIsCoordinator] = useState(false);
+
+  useEffect(() => {
+    const checkCoordinatorStatus = async () => {
+      try {
+        const res = await api.get('/coordinator/assignments');
+        if (res.data && res.data.length > 0) {
+          setIsCoordinator(true);
+        } else {
+          setIsCoordinator(false);
+        }
+      } catch (error) {
+        console.error("Failed to check coordinator status:", error);
+        // Default to false on error to be safe
+        setIsCoordinator(false);
+      }
+    };
+
+    checkCoordinatorStatus();
+  }, []);
+
   const navItems = [
     {
       to: "/faculty",
@@ -37,6 +61,15 @@ export default function FacultyLayout() {
       icon: <SettingsIcon className="w-5 h-5" />
     }
   ];
+
+  // Only add Coordinator Dashboard if user is a coordinator
+  if (isCoordinator) {
+    navItems.push({
+      to: "/faculty/coordinator/dashboard",
+      label: "Coordinator",
+      icon: <BookOpenIcon className="w-5 h-5" />
+    });
+  }
 
   const branding = {
     title: "Faculty Portal",

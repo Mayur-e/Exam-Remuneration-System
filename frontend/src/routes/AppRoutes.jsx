@@ -24,6 +24,7 @@ import NonTeachingBillForm from "../pages/faculty/NonTeachingBillForm";
 import MyClaims from "../pages/faculty/MyClaims";
 import Queries from "../pages/faculty/Queries";
 import Settings from "../pages/faculty/Settings";
+import CoordinatorDashboard from "../pages/coordinator/CoordinatorDashboard";
 import ExternalTeachingForm from "../pages/external/ExternalTeachingForm"
 import ExternalSuccess from "../pages/external/ExternalSuccess"
 
@@ -102,6 +103,7 @@ export default function AppRoutes() {
         <Route path="myclaims" element={<MyClaims />} />
         <Route path="queries" element={<Queries />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="coordinator/dashboard" element={<CoordinatorDashboard />} />
       </Route>
 
       <Route path="/external/claim/:token" element={<ExternalTeachingForm />} />

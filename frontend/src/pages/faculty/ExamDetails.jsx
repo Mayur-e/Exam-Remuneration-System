@@ -14,7 +14,8 @@ import {
   GraduationCapIcon,
   ClockIcon,
   AlertCircleIcon,
-  SearchIcon
+  SearchIcon,
+  XIcon
 } from "../../components/icons/logo";
 
 const EXAM_TYPES = [
@@ -45,6 +46,7 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
     students_count: "",
     subject_name: "",
     subject_code: "",
+    course_id: "",
     semester: "",
     academic_year: "",
     exam_date: "",
@@ -52,18 +54,17 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
     second_examiner: ""
   });
 
+  const [courses, setCourses] = useState([]);
+  const [filteredCourses, setFilteredCourses] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showResults, setShowResults] = useState(false);
+  const wrapperRef = useRef(null);
+
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const { showToast } = useToast();
 
-  // Search State
-  const [searchResults, setSearchResults] = useState([]);
-  const [showResults, setShowResults] = useState(false);
-  const [activeSearchField, setActiveSearchField] = useState(null); // 'code' or 'name'
-  const searchTimeoutRef = useRef(null);
-  const wrapperRef = useRef(null);
-
-  /** Load exam if editing existing draft */
+  // Load Exam Data
   useEffect(() => {
     if (!examId) return;
 
@@ -72,21 +73,31 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
       setForm({
         ...data,
         exam_date: data.exam_date ? data.exam_date.split("T")[0] : "",
-        second_examiner: data.second_examiner || "", // Ensure not null
+        second_examiner: data.second_examiner || "",
         students_count: data.students_count || "",
         subject_code: data.subject_code || "",
         subject_name: data.subject_name || "",
+        course_id: data.course_id || "",
       });
-      // Mark subject as validated since it came from database
-      if (data.subject_code) {
-        setSubjectValidated(true);
+      // Set initial search term for display
+      if (data.subject_code && data.subject_name) {
+        setSearchTerm(`${data.subject_code} - ${data.subject_name}`);
       }
     }).catch(err => {
       console.error("Failed to load exam:", err);
     });
   }, [examId]);
 
-  // Close results on click outside
+  // Fetch Courses
+  useEffect(() => {
+    api.get('/coordinator/courses')
+      .then(res => {
+        setCourses(res.data);
+      })
+      .catch(err => console.error("Failed to fetch courses:", err));
+  }, []);
+
+  // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -99,48 +110,49 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
 
   const update = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }));
-    // Clear error for this field if it exists
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: "" }));
     }
   };
 
-  const [subjectValidated, setSubjectValidated] = useState(false);
+  const handleSearch = (e) => {
+    const term = e.target.value;
+    setSearchTerm(term);
+    setShowResults(true);
 
-  const handleSearch = (query, field) => {
-    update(field, query);
-    setActiveSearchField(field);
-
-    // Mark subject as not validated when manually typing
-    if (field === 'subject_code' || field === 'subject_name') {
-      setSubjectValidated(false);
-    }
-
-    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-
-    if (!query || query.length < 2) {
-      setSearchResults([]);
-      setShowResults(false);
+    if (!term.trim()) {
+      setFilteredCourses([]);
       return;
     }
 
-    searchTimeoutRef.current = setTimeout(async () => {
-      try {
-        const res = await api.get(`/faculty/subjects?query=${encodeURIComponent(query)}`);
-        setSearchResults(res.data);
-        setShowResults(true);
-      } catch (err) {
-        console.error("Search failed:", err);
-      }
-    }, 300);
+    const lowerTerm = term.toLowerCase().trim();
+    const filtered = courses.filter(course =>
+      course.code?.toLowerCase().includes(lowerTerm) ||
+      course.name?.toLowerCase().includes(lowerTerm)
+    );
+    setFilteredCourses(filtered);
+
+    // Clear selection if typing
+    update("course_id", "");
+    update("subject_code", "");
+    update("subject_name", "");
   };
 
-  const selectSubject = (subject) => {
-    update("subject_code", subject.code);
-    update("subject_name", subject.name);
+  const selectCourse = (course) => {
+    update("course_id", course.id);
+    update("subject_code", course.code);
+    update("subject_name", course.name);
+    setSearchTerm(`${course.code} - ${course.name}`);
     setShowResults(false);
-    setSearchResults([]);
-    setSubjectValidated(true); // Mark as validated when selected from dropdown
+    setFilteredCourses([]);
+  };
+
+  const clearSelection = () => {
+    update("course_id", "");
+    update("subject_code", "");
+    update("subject_name", "");
+    setSearchTerm("");
+    setFilteredCourses([]);
   };
 
   const validateForm = () => {
@@ -153,10 +165,12 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
     if (!form.semester) newErrors.semester = "Semester is required";
     if (!form.academic_year) newErrors.academic_year = "Academic year is required";
     if (!form.exam_date) newErrors.exam_date = "Exam date is required";
-    if (!form.subject_name) newErrors.subject_name = "Subject name is required";
-    else if (!subjectValidated) newErrors.subject_name = "Please select a subject from the dropdown";
-    if (!form.subject_code) newErrors.subject_code = "Subject code is required";
-    else if (!subjectValidated) newErrors.subject_code = "Please select a subject from the dropdown";
+
+    // Validate Course
+    if (!form.course_id && !form.subject_code) newErrors.course_id = "Please select a course from the list";
+    // Also check if user typed but didn't select
+    if (searchTerm && !form.course_id) newErrors.course_id = "Please select a valid course from the list";
+
     if (!form.students_count) newErrors.students_count = "Students count is required";
     else if (studentsCount <= 0) newErrors.students_count = "Students count must be greater than 0";
 
@@ -168,6 +182,7 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
 
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
+      showToast("Please fix the errors before saving", "error");
       return;
     }
 
@@ -292,120 +307,7 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
               </p>
             )}
           </div>
-        </div>
 
-        {/* Row 3: Subject Details */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative" ref={wrapperRef}>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground flex items-center gap-1">
-              Course Code *
-              {activeSearchField === 'subject_code' && loading && !showResults && <span className="text-xs text-muted-foreground">Searching...</span>}
-            </label>
-            <div className="relative">
-              <Input
-                disabled={disabled}
-                placeholder="Enter subject code"
-                value={form.subject_code}
-                onChange={(e) => handleSearch(e.target.value, "subject_code")}
-                onFocus={() => {
-                  setActiveSearchField("subject_code");
-                  if (form.subject_code?.length >= 2) handleSearch(form.subject_code, "subject_code");
-                }}
-                className={errors.subject_code ? "border-red-500 pr-10" : "pr-10"}
-                autoComplete="off"
-              />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                <SearchIcon className="w-4 h-4" />
-              </div>
-            </div>
-            {errors.subject_code && (
-              <p className="text-xs text-red-600 flex items-center gap-1">
-                <AlertCircleIcon className="w-3 h-3" />
-                {errors.subject_code}
-              </p>
-            )}
-            {!subjectValidated && form.subject_code && !errors.subject_code && (
-              <p className="text-xs text-amber-600 flex items-center gap-1">
-                <AlertCircleIcon className="w-3 h-3" />
-                Please select a subject from the dropdown to ensure it exists in the system
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
-              Course Name *
-            </label>
-            <div className="relative">
-              <Input
-                disabled={disabled}
-                placeholder="Enter subject name"
-                value={form.subject_name}
-                onChange={(e) => handleSearch(e.target.value, "subject_name")}
-                onFocus={() => {
-                  setActiveSearchField("subject_name");
-                  if (form.subject_name?.length >= 2) handleSearch(form.subject_name, "subject_name");
-                }}
-                className={errors.subject_name ? "border-red-500 pr-10" : "pr-10"}
-                autoComplete="off"
-              />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                <SearchIcon className="w-4 h-4" />
-              </div>
-            </div>
-            {errors.subject_name && (
-              <p className="text-xs text-red-600 flex items-center gap-1">
-                <AlertCircleIcon className="w-3 h-3" />
-                {errors.subject_name}
-              </p>
-            )}
-            {!subjectValidated && form.subject_name && !errors.subject_name && (
-              <p className="text-xs text-amber-600 flex items-center gap-1">
-                <AlertCircleIcon className="w-3 h-3" />
-                Please select a subject from the dropdown to ensure it exists in the system
-              </p>
-            )}
-          </div>
-
-          {/* Search Results Dropdown */}
-          {showResults && !disabled && (
-            <div className="absolute z-50 left-0 top-full mt-1 bg-card dark:bg-popover border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto min-w-full">
-              {searchResults.length > 0 ? (
-                searchResults.map((subject, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => selectSubject(subject)}
-                    className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b last:border-0 border-gray-100 group"
-                  >
-                    <div className="flex justify-between items-start">
-                      <span className="font-medium text-foreground group-hover:text-blue-700 dark:group-hover:text-blue-400">
-                        {subject.name}
-                      </span>
-                      <span className="text-xs font-mono bg-muted text-muted-foreground px-2 py-1 rounded ml-2 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/30 group-hover:text-blue-800 dark:group-hover:text-blue-300">
-                        {subject.code}
-                      </span>
-                    </div>
-                    {subject.department && (
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {subject.department} • {subject.type}
-                      </div>
-                    )}
-                  </button>
-                ))
-              ) : (
-                <div className="px-4 py-3 text-center text-muted-foreground">
-                  <div className="flex items-center justify-center gap-2">
-                    <AlertCircleIcon className="w-4 h-4 text-yellow-500" />
-                    <span className="text-sm">No subjects found matching your search</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">Try a different course code or name</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div>
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
               <UsersIcon className="w-4 h-4" />
@@ -426,9 +328,77 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
                 {errors.students_count}
               </p>
             )}
-            {!errors.students_count && form.students_count && form.subject_code && form.semester && form.academic_year && (
-              <p className="text-xs text-blue-600 bg-blue-50 px-2 py-1.5 rounded border border-blue-200">
-                ℹ️ <strong>Note:</strong> Ensure this count doesn't exceed the registered student limit for <strong>{form.subject_code}</strong> in Semester <strong>{form.semester}</strong>, {form.academic_year}. The system will validate this when you save.
+          </div>
+        </div>
+
+        {/* Row 3: Course Selection (Searchable) */}
+        <div className="grid grid-cols-1 gap-6" ref={wrapperRef}>
+          <div className="space-y-2 relative">
+            <label className="text-sm font-medium text-foreground flex items-center gap-1">
+              Course / Subject *
+            </label>
+            <div className="relative">
+              <Input
+                disabled={disabled}
+                placeholder="Search course by code or name..."
+                value={searchTerm}
+                onChange={handleSearch}
+                onFocus={() => {
+                  if (!searchTerm && courses.length > 0) {
+                    setFilteredCourses(courses);
+                    setShowResults(true);
+                  }
+                }}
+                className={`pr-10 ${errors.course_id ? "border-red-500" : ""}`}
+                autoComplete="off"
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground flex items-center gap-2">
+                {searchTerm && !disabled && (
+                  <button onClick={clearSelection} type="button" className="hover:text-foreground">
+                    <span className="sr-only">Clear</span>
+                    ✕
+                  </button>
+                )}
+                {!searchTerm && <SearchIcon className="w-4 h-4" />}
+              </div>
+            </div>
+
+            {/* Dropdown Results */}
+            {showResults && !disabled && (
+              <div className="absolute z-50 left-0 top-full mt-1 bg-card dark:bg-popover border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto min-w-full">
+                {filteredCourses.length > 0 ? (
+                  filteredCourses.map((course) => (
+                    <button
+                      key={course.id}
+                      onClick={() => selectCourse(course)}
+                      type="button"
+                      className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b last:border-0 border-gray-100 group"
+                    >
+                      <div className="flex justify-between items-start">
+                        <span className="font-medium text-foreground group-hover:text-blue-700 dark:group-hover:text-blue-400">
+                          {course.name}
+                        </span>
+                        <span className="text-xs font-mono bg-muted text-muted-foreground px-2 py-1 rounded ml-2 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/30 group-hover:text-blue-800 dark:group-hover:text-blue-300">
+                          {course.code}
+                        </span>
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-4 py-3 text-center text-muted-foreground">
+                    <div className="flex items-center justify-center gap-2">
+                      <AlertCircleIcon className="w-4 h-4 text-yellow-500" />
+                      <span className="text-sm">No courses found</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {errors.course_id && (
+              <p className="text-xs text-red-600 flex items-center gap-1">
+                <AlertCircleIcon className="w-3 h-3" />
+                {errors.course_id}
               </p>
             )}
           </div>
