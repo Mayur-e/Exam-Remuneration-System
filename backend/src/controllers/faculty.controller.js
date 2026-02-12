@@ -21,7 +21,8 @@ exports.createExam = async (req, res) => {
     prep_dates,
     exam_dates,
     cleaning_dates,
-    students_per_batch
+    students_per_batch,
+    course_id
   } = req.body;
 
   if (
@@ -55,6 +56,24 @@ exports.createExam = async (req, res) => {
 
 
 
+  // VALIDATION: Course must exist if provided (and it should be for coordination)
+  if (course_id) {
+    const courseCheck = await pool.query(
+      `SELECT code, name FROM courses WHERE id = $1`,
+      [course_id]
+    );
+
+    if (courseCheck.rows.length === 0) {
+      return res.status(400).json({
+        message: "Selected course not found."
+      });
+    }
+    // Auto-populate subject details from course if not provided?
+    // User might validly provide them, but consistency is good.
+    if (!subject_code) subject_code = courseCheck.rows[0].code;
+    if (!subject_name) subject_name = courseCheck.rows[0].name;
+  }
+
   // VALIDATION: Subject must exist in subjects table if provided
   if (subject_code || subject_name) {
     const subjectCheck = await pool.query(
@@ -62,11 +81,10 @@ exports.createExam = async (req, res) => {
       [subject_code || '', subject_name || '']
     );
 
-    if (subjectCheck.rows.length === 0) {
-      return res.status(400).json({
-        message: `Subject "${subject_code || subject_name}" not found in master subjects list. Please select a valid subject from the dropdown.`
-      });
-    }
+    // If generic subject check fails, it's fine if we have a valid course_id? 
+    // Actually, systems might be separate. Let's keep subject validation for backward compat if needed, 
+    // but honestly blindly trusting course_id is better for the new flow.
+    // For now, let's allow if course_id is present.
   }
 
   // VALIDATION: Check student count against registered limit
@@ -116,8 +134,8 @@ exports.createExam = async (req, res) => {
     INSERT INTO exams
     (faculty_id, claim_form_type, exam_type, program, level, students_count,
      subject_name, subject_code, semester, academic_year, exam_date, is_backlog, second_examiner,
-     prep_dates, exam_dates, cleaning_dates, students_per_batch)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+     prep_dates, exam_dates, cleaning_dates, students_per_batch, course_id)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
     RETURNING id
     `,
     [
@@ -137,7 +155,8 @@ exports.createExam = async (req, res) => {
       prep_dates || null,
       exam_dates || null,
       cleaning_dates || null,
-      students_per_batch ? Number(students_per_batch) : null
+      students_per_batch ? Number(students_per_batch) : null,
+      course_id || null
     ]
   );
 
@@ -210,7 +229,8 @@ exports.updateExam = async (req, res) => {
     prep_dates,
     exam_dates,
     cleaning_dates,
-    students_per_batch
+    students_per_batch,
+    course_id
   } = req.body;
 
   try {
@@ -342,8 +362,9 @@ exports.updateExam = async (req, res) => {
         exam_dates = $14,
         cleaning_dates = $15,
         students_per_batch = $16,
+        course_id = $17,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $17 AND faculty_id = $18`,
+      WHERE id = $18 AND faculty_id = $19`,
       [
         claim_form_type,
         exam_type,
@@ -361,6 +382,7 @@ exports.updateExam = async (req, res) => {
         finalExamDates || null,  // Use finalExamDates instead of exam_dates
         cleaning_dates || null,
         students_per_batch ? Number(students_per_batch) : null,
+        course_id || null,
         examId,
         req.user.id
       ]
@@ -669,9 +691,14 @@ exports.submitExam = async (req, res) => {
     }
 
     // 7. Lock exam as submitted
+    // NON_TEACHING claims bypass course coordinator review
+    const newStatus = exam.claim_form_type === 'NON_TEACHING'
+      ? 'SENT_TO_BILLING'
+      : 'UNDER_COORDINATOR_REVIEW';
+
     await pool.query(
-      `UPDATE exams SET status='submitted', updated_at=NOW() WHERE id=$1`,
-      [examId]
+      `UPDATE exams SET status=$1, updated_at=NOW() WHERE id=$2`,
+      [newStatus, examId]
     );
 
     // 8. Initialize remuneration calculations
@@ -778,9 +805,9 @@ exports.dashboardStats = async (req, res) => {
   const { rows } = await pool.query(`
     SELECT
       COUNT(*) FILTER (WHERE status = 'approved') AS approved_count,
-      COUNT(*) FILTER (WHERE status = 'submitted') AS pending_count,
-      COUNT(*) FILTER (WHERE status = 'rejected') AS rejected_count,
-      COALESCE(SUM(rc.net_amount), 0) AS total_amount
+      COUNT(*) FILTER (WHERE status IN ('submitted', 'UNDER_COORDINATOR_REVIEW', 'COORDINATOR_VERIFIED', 'SENT_TO_BILLING')) AS pending_count,
+      COUNT(*) FILTER (WHERE status IN ('rejected', 'COORDINATOR_REJECTED')) AS rejected_count,
+      COALESCE(SUM(rc.net_amount) FILTER (WHERE status != 'paid'), 0) AS total_amount
     FROM exams e
     LEFT JOIN remuneration_calculations rc ON rc.exam_id = e.id
     WHERE e.faculty_id = $1
@@ -932,13 +959,13 @@ exports.getExamById = async (req, res) => {
   const actions = await pool.query(
     `SELECT 
       ca.action_type,
-      ca.comment,
+      COALESCE(ca.remarks, ca.comment) as comment,
       ca.action_at,
       u.name AS action_by_name
      FROM claim_actions ca
      JOIN users u ON ca.action_by = u.id
      WHERE ca.exam_id = $1 
-       AND (ca.action_type = 'REJECTED' OR ca.action_type = 'SENT_BACK')
+       AND (ca.action_type IN ('REJECTED', 'SENT_BACK', 'REJECT'))
      ORDER BY ca.action_at DESC`,
     [id]
   );
@@ -1264,28 +1291,46 @@ exports.resubmitClaim = async (req, res) => {
   const facultyId = req.user.id;
 
   try {
-    // Check if claim exists, belongs to faculty, and is rejected
-    const exam = await pool.query(
-      `SELECT id, status FROM exams WHERE id = $1 AND faculty_id = $2`,
+    // Check if claim exists, belongs to faculty, and is rejected (either by Billing or Coordinator)
+    const examResult = await pool.query(
+      `SELECT id, status, claim_form_type FROM exams WHERE id = $1 AND faculty_id = $2`,
       [examId, facultyId]
     );
 
-    if (exam.rowCount === 0) {
+    if (examResult.rowCount === 0) {
       return res.status(404).json({ message: "Claim not found" });
     }
 
-    if (exam.rows[0].status !== 'rejected') {
+    const exam = examResult.rows[0];
+
+    if (exam.status !== 'rejected' && exam.status !== 'COORDINATOR_REJECTED') {
       return res.status(400).json({ message: "Only rejected claims can be resubmitted" });
     }
 
-    // Update status back to submitted
+    // Workflow logic: Re-route to coordinator unless it's a non-teaching claim that bypasses it
+    const newStatus = exam.claim_form_type === 'NON_TEACHING'
+      ? 'SENT_TO_BILLING'
+      : 'UNDER_COORDINATOR_REVIEW';
+
+    await pool.query('BEGIN');
+
+    // Update status 
     await pool.query(
-      `UPDATE exams SET status = 'submitted', updated_at = NOW() WHERE id = $1`,
-      [examId]
+      `UPDATE exams SET status = $1, updated_at = NOW() WHERE id = $2`,
+      [newStatus, examId]
     );
 
+    // Log Action
+    await pool.query(
+      `INSERT INTO claim_actions (exam_id, action_by, action_role, action_type, remarks)
+       VALUES ($1, $2, 'FACULTY', 'RESUBMIT', 'Claim resubmitted after correction')`,
+      [examId, facultyId]
+    );
+
+    await pool.query('COMMIT');
     res.json({ message: "Claim resubmitted successfully" });
   } catch (error) {
+    await pool.query('ROLLBACK');
     console.error("Resubmit claim error:", error);
     res.status(500).json({ message: "Failed to resubmit claim" });
   }

@@ -8,10 +8,10 @@ exports.dashboardStats = async (req, res) => {
 
   const { rows } = await pool.query(`
     SELECT
-      COUNT(*) FILTER (WHERE status IN ('submitted', 'approved')) AS pending_count,
+      COUNT(*) FILTER (WHERE status IN ('submitted', 'SENT_TO_BILLING', 'approved')) AS pending_count,
       COUNT(*) FILTER (WHERE status = 'paid') AS paid_count,
       COALESCE(
-        SUM(rc.net_amount) FILTER (WHERE e.status IN ('submitted', 'approved')),
+        SUM(rc.net_amount) FILTER (WHERE e.status IN ('submitted', 'SENT_TO_BILLING', 'approved')),
         0
       ) AS pending_amount,
       COALESCE(
@@ -25,7 +25,7 @@ exports.dashboardStats = async (req, res) => {
     FROM exams e
     JOIN users u ON u.id = e.faculty_id
     LEFT JOIN remuneration_calculations rc ON rc.exam_id = e.id
-    WHERE e.status IN ('submitted', 'approved', 'paid')
+    WHERE e.status IN ('submitted', 'SENT_TO_BILLING', 'approved', 'paid')
       AND u.department = $1
   `, [userDepartment]);
 
@@ -45,12 +45,12 @@ exports.listSubmittedClaims = async (req, res) => {
   // - 'approved' shows only approved claims (ready for payment)
   // - 'paid' shows only paid claims
   // - no status shows all
-  let where = `WHERE e.status IN ('submitted','approved','paid')`;
+  let where = `WHERE e.status IN ('submitted','SENT_TO_BILLING','approved','paid')`;
   let params = [];
   let paramIndex = 1;
 
   if (status === 'submitted') {
-    where = `WHERE e.status = 'submitted'`;
+    where = `WHERE e.status IN ('submitted', 'SENT_TO_BILLING')`;
   } else if (status === 'approved') {
     where = `WHERE e.status = 'approved'`;
   } else if (status === 'paid') {
@@ -140,7 +140,15 @@ exports.getClaimDetails = async (req, res) => {
         ee.travel_allowance,
         u.mobile AS faculty_mobile,
         u.pan_card AS faculty_pan_card,
-        e.second_examiner
+        e.second_examiner,
+        EXISTS(
+          SELECT 1 FROM course_assignments ca 
+          WHERE ca.course_id = e.course_id 
+          AND ca.faculty_id = e.faculty_id 
+          AND ca.academic_year = e.academic_year 
+          AND ca.semester = e.semester
+          AND ca.is_active = true
+        ) as is_coordinator
       FROM exams e
       JOIN users u ON u.id = e.faculty_id
       LEFT JOIN faculty_bank_accounts fb ON u.id = fb.faculty_id
@@ -293,7 +301,7 @@ exports.approveClaim = async (req, res) => {
     }
 
     const result = await pool.query(
-      `UPDATE exams SET status='approved' WHERE id=$1 AND status='submitted' RETURNING id`,
+      `UPDATE exams SET status='approved' WHERE id=$1 AND status IN ('submitted', 'SENT_TO_BILLING') RETURNING id`,
       [examId]
     );
 
@@ -356,7 +364,7 @@ exports.rejectClaim = async (req, res) => {
     }
 
     const result = await pool.query(
-      `UPDATE exams SET status='rejected' WHERE id=$1 AND status IN ('submitted', 'approved') RETURNING id`,
+      `UPDATE exams SET status='rejected' WHERE id=$1 AND status IN ('submitted', 'SENT_TO_BILLING', 'approved') RETURNING id`,
       [examId]
     );
 
@@ -425,7 +433,7 @@ exports.markAsPaid = async (req, res) => {
       return res.status(403).json({ message: "Access denied: This claim belongs to a different department" });
     }
 
-    if (exam.status !== 'submitted' && exam.status !== 'approved') {
+    if (exam.status !== 'submitted' && exam.status !== 'SENT_TO_BILLING' && exam.status !== 'approved') {
       await client.query("ROLLBACK");
       return res.status(400).json({
         message: `Cannot process payment. Current status: ${exam.status}`
@@ -498,7 +506,8 @@ exports.listFaculty = async (req, res) => {
       u.email, 
       u.department,
       u.created_at,
-      COUNT(e.id) FILTER (WHERE e.status IN ('submitted', 'approved')) AS active_claims,
+      u.created_at,
+      COUNT(e.id) FILTER (WHERE e.status IN ('submitted', 'SENT_TO_BILLING', 'approved')) AS active_claims,
       COUNT(e.id) AS total_claims
     FROM users u
     LEFT JOIN exams e ON e.faculty_id = u.id
@@ -588,9 +597,19 @@ exports.updateAllowances = async (req, res) => {
   try {
     await pool.query("BEGIN");
 
-    // Verify department access
+    // Verify department access and Coordinator status
     const examCheck = await pool.query(
-      `SELECT e.id, u.department, e.status 
+      `SELECT 
+        e.id, u.department, e.status, e.claim_form_type, e.exam_type, e.faculty_id,
+        e.course_id, e.academic_year, e.semester,
+        EXISTS(
+          SELECT 1 FROM course_assignments ca 
+          WHERE ca.course_id = e.course_id 
+          AND ca.faculty_id = e.faculty_id 
+          AND ca.academic_year = e.academic_year 
+          AND ca.semester = e.semester
+          AND ca.is_active = true
+        ) as is_coordinator
        FROM exams e 
        JOIN users u ON u.id = e.faculty_id 
        WHERE e.id = $1`,
@@ -602,10 +621,19 @@ exports.updateAllowances = async (req, res) => {
       return res.status(404).json({ message: "Claim not found" });
     }
 
-    if (examCheck.rows[0].department !== req.user.department) {
+    const claim = examCheck.rows[0];
+
+    if (claim.department !== req.user.department) {
       await pool.query("ROLLBACK");
       return res.status(403).json({ message: "Access denied: This claim belongs to a different department" });
     }
+
+    // Force conveyance to 0 for non-external claims
+    const finalConveyance = claim.claim_form_type === 'TEACHING_EXTERNAL' ? (conveyance_amount || 0) : 0;
+
+    // Force chairman allowance to 0 if not coordinator OR if it's a practical-style exam
+    const isPractical = ['PR', 'OR', 'TW'].includes(claim.exam_type);
+    const finalChairman = (claim.is_coordinator && !isPractical) ? (chairman_allowance || 0) : 0;
 
     // Update allowances
     await pool.query(
@@ -614,7 +642,7 @@ exports.updateAllowances = async (req, res) => {
        ON CONFLICT (exam_id) DO UPDATE SET
          chairman_allowance = EXCLUDED.chairman_allowance,
          conveyance_amount = EXCLUDED.conveyance_amount`,
-      [examId, chairman_allowance || 0, conveyance_amount || 0]
+      [examId, finalChairman, finalConveyance]
     );
 
     // Trigger recalculation

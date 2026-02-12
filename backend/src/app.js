@@ -11,6 +11,7 @@ const accountantroutes = require("./routes/accountant/accountantRoutes");
 const adminRoutes = require("./routes/admin/adminRoutes");
 const pdfRoutes = require("./routes/pdf.routes");
 const queryRoutes = require("./routes/query.routes");
+const coordinatorRoutes = require("./routes/coordinator.routes");
 
 const app = express();
 
@@ -55,6 +56,7 @@ app.use("/api/accountant", accountantroutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/pdf", pdfRoutes);
 app.use("/api", queryRoutes);
+app.use("/api/coordinator", coordinatorRoutes);
 app.use("/uploads", express.static("uploads"));
 
 // Health check
