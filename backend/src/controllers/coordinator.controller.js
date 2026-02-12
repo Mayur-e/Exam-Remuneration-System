@@ -1,0 +1,307 @@
+const pool = require("../config/db");
+
+/**
+ * Assign Self as Course Coordinator
+ */
+exports.assignCoordinator = async (req, res) => {
+    const { course_id, academic_year, semester } = req.body;
+    const faculty_id = req.user.id;
+
+    if (!course_id || !academic_year || !semester) {
+        return res.status(400).json({ message: "Course, Academic Year and Semester are required" });
+    }
+
+    try {
+        // 1. Check if course exists
+        const courseCheck = await pool.query("SELECT id FROM courses WHERE id = $1", [course_id]);
+        if (courseCheck.rows.length === 0) {
+            return res.status(404).json({ message: "Course not found" });
+        }
+
+        // 2. Check if Faculty is already assigned as coordinator for any subject in this term
+        // Restriction: A faculty can be Course Coordinator for only ONE subject at a time per term
+        const facultyCheck = await pool.query(
+            `SELECT id FROM course_assignments 
+       WHERE faculty_id = $1 AND academic_year = $2 AND semester = $3 AND is_active = true`,
+            [faculty_id, academic_year, semester]
+        );
+
+        if (facultyCheck.rows.length > 0) {
+            return res.status(400).json({
+                message: "You are already assigned as a Course Coordinator for another subject in this semester."
+            });
+        }
+
+        // 3. Check if Course already has a coordinator for this term
+        const courseAssignCheck = await pool.query(
+            `SELECT u.name FROM course_assignments ca
+       JOIN users u ON ca.faculty_id = u.id
+       WHERE ca.course_id = $1 AND ca.academic_year = $2 AND ca.semester = $3 AND ca.is_active = true`,
+            [course_id, academic_year, semester]
+        );
+
+        if (courseAssignCheck.rows.length > 0) {
+            const currentCoordinator = courseAssignCheck.rows[0].name;
+            return res.status(400).json({
+                message: `This course is already assigned to ${currentCoordinator} for this semester.`
+            });
+        }
+
+        // 4. Assign
+        await pool.query(
+            `INSERT INTO course_assignments (course_id, faculty_id, academic_year, semester)
+       VALUES ($1, $2, $3, $4)`,
+            [course_id, faculty_id, academic_year, semester]
+        );
+
+        res.status(201).json({ message: "Successfully assigned as Course Coordinator" });
+
+    } catch (error) {
+        console.error("Assign Coordinator Error:", error);
+        res.status(500).json({ message: "Failed to assign coordinator" });
+    }
+};
+
+/**
+ * Get Coordinator Assignments (Active)
+ */
+exports.getMyAssignments = async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT ca.id, c.code, c.name, ca.academic_year, ca.semester, ca.created_at
+       FROM course_assignments ca
+       JOIN courses c ON ca.course_id = c.id
+       WHERE ca.faculty_id = $1 AND ca.is_active = true
+       ORDER BY ca.created_at DESC`,
+            [req.user.id]
+        );
+        res.json(result.rows);
+    } catch (error) {
+        console.error("Get Assignments Error:", error);
+        res.status(500).json({ message: "Failed to fetch assignments" });
+    }
+};
+
+/**
+ * Get Claims for Review (Coordinator View)
+ */
+exports.getCoordinatorClaims = async (req, res) => {
+    try {
+        // Fetch claims where the exam's course, year, and semester match an active assignment of the logged-in user
+        const result = await pool.query(
+            `SELECT 
+        e.id, 
+        e.exam_type, 
+        e.subject_code, 
+        e.subject_name, 
+        e.students_count, 
+        e.exam_date,
+        e.status,
+        e.created_at,
+        u.name as faculty_name,
+        c.name as course_name,
+        (SELECT COALESCE(remarks, comment) 
+         FROM claim_actions 
+         WHERE exam_id = e.id 
+           AND action_type IN ('REJECT', 'REJECTED') 
+         ORDER BY action_at DESC LIMIT 1) as rejection_reason
+       FROM exams e
+       JOIN users u ON e.faculty_id = u.id
+       LEFT JOIN courses c ON e.course_id = c.id
+       JOIN course_assignments ca ON 
+          ca.course_id = e.course_id AND 
+          ca.academic_year = e.academic_year AND 
+          ca.semester = e.semester
+        WHERE ca.faculty_id = $1 
+          AND ca.is_active = true
+          AND e.status IN ('UNDER_COORDINATOR_REVIEW', 'COORDINATOR_VERIFIED', 'SENT_TO_BILLING', 'approved', 'paid', 'rejected', 'COORDINATOR_REJECTED')
+        ORDER BY 
+          CASE 
+            WHEN e.status = 'UNDER_COORDINATOR_REVIEW' THEN 1
+            WHEN e.status = 'COORDINATOR_VERIFIED' THEN 2
+            ELSE 3
+          END,
+          e.created_at ASC`,
+            [req.user.id]
+        );
+
+        res.json(result.rows);
+    } catch (error) {
+        console.error("Get Coordinator Claims Error:", error);
+        res.status(500).json({ message: "Failed to fetch claims" });
+    }
+};
+
+/**
+ * Verify Claim (Approve)
+ */
+exports.verifyClaim = async (req, res) => {
+    const { examId } = req.body; // or params
+    const coordinatorId = req.user.id;
+
+    if (!examId) return res.status(400).json({ message: "Exam ID is required" });
+
+    try {
+        // Verify permission (Double check)
+        const accessCheck = await pool.query(
+            `SELECT e.id FROM exams e
+       JOIN course_assignments ca ON 
+          ca.course_id = e.course_id AND 
+          ca.academic_year = e.academic_year AND 
+          ca.semester = e.semester
+       WHERE e.id = $1 AND ca.faculty_id = $2 AND e.status = 'UNDER_COORDINATOR_REVIEW'`,
+            [examId, coordinatorId]
+        );
+
+        if (accessCheck.rows.length === 0) {
+            return res.status(403).json({ message: "Not authorized or claim not in review" });
+        }
+
+        await pool.query('BEGIN');
+
+        // Update Status to intermediate verified state
+        await pool.query(
+            `UPDATE exams SET status = 'COORDINATOR_VERIFIED', updated_at = NOW() WHERE id = $1`,
+            [examId]
+        );
+
+        // Log Action
+        await pool.query(
+            `INSERT INTO claim_actions (exam_id, action_by, action_role, action_type, remarks)
+       VALUES ($1, $2, 'COORDINATOR', 'VERIFY', 'Verified by Coordinator')`,
+            [examId, coordinatorId]
+        );
+
+        await pool.query('COMMIT');
+        res.json({ message: "Claim verified locally" });
+
+    } catch (error) {
+        await pool.query('ROLLBACK');
+        console.error("Verify Claim Error:", error);
+        res.status(500).json({ message: "Failed to verify claim" });
+    }
+};
+
+/**
+ * Batch Submit Verified Claims to Billing
+ */
+exports.submitToBilling = async (req, res) => {
+    const coordinatorId = req.user.id;
+
+    try {
+        await pool.query('BEGIN');
+
+        // Update all COORDINATOR_VERIFIED claims for this coordinator to SENT_TO_BILLING
+        const result = await pool.query(
+            `UPDATE exams e
+             SET status = 'SENT_TO_BILLING', updated_at = NOW()
+             FROM course_assignments ca
+             WHERE ca.course_id = e.course_id 
+               AND ca.academic_year = e.academic_year 
+               AND ca.semester = e.semester
+               AND ca.faculty_id = $1
+               AND e.status = 'COORDINATOR_VERIFIED'
+             RETURNING e.id`,
+            [coordinatorId]
+        );
+
+        if (result.rows.length === 0) {
+            await pool.query('ROLLBACK');
+            return res.status(400).json({ message: "No verified claims found to submit" });
+        }
+
+        // Log batch action
+        for (const row of result.rows) {
+            await pool.query(
+                `INSERT INTO claim_actions (exam_id, action_by, action_role, action_type, remarks)
+                 VALUES ($1, $2, 'COORDINATOR', 'SUBMIT_TO_BILLING', 'Submitted to Billing Incharge')`,
+                [row.id, coordinatorId]
+            );
+        }
+
+        await pool.query('COMMIT');
+        res.json({ message: `Successfully submitted ${result.rows.length} claims to Billing Incharge` });
+
+    } catch (error) {
+        await pool.query('ROLLBACK');
+        console.error("Submit to Billing Error:", error);
+        res.status(500).json({ message: "Failed to submit claims to billing" });
+    }
+};
+
+/**
+ * Reject Claim
+ */
+exports.rejectClaim = async (req, res) => {
+    const { examId, reason } = req.body;
+    const coordinatorId = req.user.id;
+
+    if (!examId || !reason) return res.status(400).json({ message: "Exam ID and rejection reason are required" });
+
+    try {
+        // Verify permission
+        const accessCheck = await pool.query(
+            `SELECT e.id FROM exams e
+       JOIN course_assignments ca ON 
+          ca.course_id = e.course_id AND 
+          ca.academic_year = e.academic_year AND 
+          ca.semester = e.semester
+       WHERE e.id = $1 AND ca.faculty_id = $2 AND e.status = 'UNDER_COORDINATOR_REVIEW'`,
+            [examId, coordinatorId]
+        );
+
+        if (accessCheck.rows.length === 0) {
+            return res.status(403).json({ message: "Not authorized or claim not in review" });
+        }
+
+        await pool.query('BEGIN');
+
+        // Update Status
+        await pool.query(
+            `UPDATE exams SET status = 'COORDINATOR_REJECTED', updated_at = NOW() WHERE id = $1`,
+            [examId]
+        );
+
+        // Log Action
+        await pool.query(
+            `INSERT INTO claim_actions (exam_id, action_by, action_role, action_type, remarks)
+       VALUES ($1, $2, 'COORDINATOR', 'REJECT', $3)`,
+            [examId, coordinatorId, reason]
+        );
+
+        await pool.query('COMMIT');
+        res.json({ message: "Claim rejected" });
+
+    } catch (error) {
+        await pool.query('ROLLBACK');
+        console.error("Reject Claim Error:", error);
+        res.status(500).json({ message: "Failed to reject claim" });
+    }
+};
+
+/**
+ * Get Available Courses for Assignment (Department based)
+ */
+exports.getDepartmentCourses = async (req, res) => {
+    try {
+        const { department } = req.query; // Optional filter? Or use user's department?
+        const userDept = req.user.department;
+
+        // If user has department, filter by it. Else return all? or return all for now.
+        let query = "SELECT id, code, name, department FROM courses";
+        let params = [];
+
+        if (userDept && userDept !== 'Admin') { // Assuming 'Admin' can see all
+            query += " WHERE department = $1";
+            params.push(userDept);
+        }
+
+        query += " ORDER BY code ASC";
+
+        const result = await pool.query(query, params);
+        res.json(result.rows);
+    } catch (error) {
+        console.error("Get Courses Error:", error);
+        res.status(500).json({ message: "Failed to fetch courses" });
+    }
+}
