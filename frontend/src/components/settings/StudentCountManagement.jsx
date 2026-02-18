@@ -186,6 +186,7 @@ export default function StudentCountManagement() {
                         <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b">
                             <tr>
                                 <th className="px-6 py-3">Academic Year</th>
+                                <th className="px-6 py-3">Year</th>
                                 <th className="px-6 py-3">Semester</th>
                                 <th className="px-6 py-3">Subject Code</th>
                                 <th className="px-6 py-3">Subject Name</th>
@@ -203,6 +204,7 @@ export default function StudentCountManagement() {
                                 counts.map((item, idx) => (
                                     <tr key={idx} className={`border-b hover:bg-gray-50 ${!item.is_set ? 'bg-gray-50/50' : 'bg-white'}`}>
                                         <td className="px-6 py-4 text-gray-500">{item.academic_year || '-'}</td>
+                                        <td className="px-6 py-4 text-gray-500 font-medium">{item.year || '-'}</td>
                                         <td className="px-6 py-4 text-gray-500">{item.semester || '-'}</td>
                                         <td className="px-6 py-4 font-mono text-purple-600 font-medium">{item.subject_code}</td>
                                         <td className="px-6 py-4 max-w-xs truncate" title={item.subject_name}>{item.subject_name || '-'}</td>

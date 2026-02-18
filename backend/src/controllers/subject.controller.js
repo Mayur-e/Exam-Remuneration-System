@@ -9,7 +9,7 @@ exports.searchSubjects = async (req, res) => {
 
         const searchQuery = `%${query}%`;
         const result = await pool.query(
-            `SELECT code, name, department, type 
+            `SELECT code, name, department, type, year 
        FROM subjects 
        WHERE code ILIKE $1 OR name ILIKE $1 
        ORDER BY code ASC 
@@ -93,6 +93,7 @@ exports.getSubjectCounts = async (req, res) => {
                 s.code as subject_code, 
                 s.name as subject_name, 
                 s.department,
+                s.year,
                 COALESCE(ssc.registered_count, 0) as registered_count,
                 ssc.academic_year,
                 ssc.semester,
