@@ -14,6 +14,7 @@ import AdminFacultyProfile from "../pages/admin/AdminFacultyProfile";
 import AdminAuditLogs from "../pages/admin/AdminAuditLogs";
 import AdminExternalSupervision from "../pages/admin/AdminExternalSupervision";
 import AdminSettings from "../pages/admin/AdminSettings";
+import UserManagement from "../components/admin/UserManagement";
 
 // Faculty
 import FacultyLayout from "../pages/faculty/FacultyLayout";
@@ -39,6 +40,7 @@ import FacultyList from "../pages/accountant/FacultyList";
 import FacultyProfile from "../pages/accountant/FacultyProfile";
 import QueryManagement from "../pages/accountant/QueryManagement";
 import Settingsacc from "../pages/accountant/Settings";
+import CoordinatorManagement from "../components/billing/CoordinatorManagement";
 
 // Protection
 import ProtectedRoute from "./ProtectedRoutes";
@@ -67,6 +69,7 @@ export default function AppRoutes() {
         <Route path="faculty/:id" element={<AdminFacultyProfile />} />
         <Route path="external" element={<AdminExternalSupervision />} />
         <Route path="audit-logs" element={<AdminAuditLogs />} />
+        <Route path="users" element={<UserManagement />} />
         <Route path="queries" element={<QueryManagement />} />
         <Route path="settings" element={<AdminSettings />} />
       </Route>
@@ -82,6 +85,7 @@ export default function AppRoutes() {
         <Route path="bills/:id" element={<BillView />} />
         <Route path="faculty" element={<FacultyList />} />
         <Route path="faculty/:id" element={<FacultyProfile />} />
+        <Route path="coordinators" element={<CoordinatorManagement />} />
         <Route path="queries" element={<QueryManagement />} />
         <Route path="settings" element={<Settingsacc />} />
       </Route>
