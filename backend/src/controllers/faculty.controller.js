@@ -99,15 +99,16 @@ exports.createExam = async (req, res) => {
     if (registeredCountResult.rows.length > 0) {
       const registeredCount = registeredCountResult.rows[0].registered_count;
 
-      // Calculate total claimed students for this subject/semester (excluding rejected claims)
+      // Calculate total claimed students for this subject/semester/exam_type (excluding rejected claims)
       const existingClaimsResult = await pool.query(
         `SELECT COALESCE(SUM(students_count), 0) as total_claimed
          FROM exams
          WHERE subject_code = $1 
            AND academic_year = $2 
            AND semester = $3
+           AND exam_type = $4
            AND status != 'rejected'`,
-        [subject_code, academic_year, semester]
+        [subject_code, academic_year, semester, exam_type]
       );
 
       const totalClaimed = parseInt(existingClaimsResult.rows[0].total_claimed);
@@ -275,16 +276,17 @@ exports.updateExam = async (req, res) => {
       if (registeredCountResult.rows.length > 0) {
         const registeredCount = registeredCountResult.rows[0].registered_count;
 
-        // Calculate total claimed students for this subject/semester (excluding rejected claims and THIS exam)
+        // Calculate total claimed students for this subject/semester/exam_type (excluding rejected claims and THIS exam)
         const existingClaimsResult = await pool.query(
           `SELECT COALESCE(SUM(students_count), 0) as total_claimed
            FROM exams
            WHERE subject_code = $1 
              AND academic_year = $2 
              AND semester = $3
+             AND exam_type = $4
              AND status != 'rejected'
-             AND id != $4`,
-          [subject_code, academic_year, semester, examId]
+             AND id != $5`,
+          [subject_code, academic_year, semester, exam_type, examId]
         );
 
         const totalClaimed = parseInt(existingClaimsResult.rows[0].total_claimed);
