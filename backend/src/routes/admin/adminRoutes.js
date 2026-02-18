@@ -45,5 +45,10 @@ router.get("/subjects/counts", auth, role(["ADMIN"]), subjectController.getSubje
 const exportController = require("../../controllers/export.controller");
 router.get("/export/billing-sheet", auth, role(["ADMIN", "BILLING_INCHARGE"]), exportController.exportBillingSheet);
 
+// User Management
+router.post("/users", auth, role(["ADMIN"]), adminController.createUser);
+router.get("/users", auth, role(["ADMIN"]), adminController.getUsersByRole);
+router.patch("/users/:userId/status", auth, role(["ADMIN"]), adminController.toggleUserStatus);
+
 module.exports = router;
 

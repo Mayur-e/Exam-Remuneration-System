@@ -912,3 +912,109 @@ exports.cloneRatesToNewYear = async (req, res) => {
         res.status(500).json({ message: "Failed to clone rates to new year" });
     }
 };
+
+/* ==============================
+   USER MANAGEMENT (ADMIN)
+================================ */
+exports.createUser = async (req, res) => {
+    const { name, email, password, role, department } = req.body;
+
+    // Validation
+    if (!name || !email || !password || !role || !department) {
+        return res.status(400).json({ message: "All fields are required" });
+    }
+
+    if (!['FACULTY', 'BILLING_INCHARGE'].includes(role)) {
+        return res.status(400).json({ message: "Invalid role. Only FACULTY and BILLING_INCHARGE can be created by Admin" });
+    }
+
+    if (!email.endsWith('@pccoepune.org')) {
+        return res.status(400).json({ message: "Email must be from @pccoepune.org domain" });
+    }
+
+    try {
+        // Check if user already exists
+        const existingUser = await pool.query(
+            'SELECT id FROM users WHERE email = $1',
+            [email]
+        );
+
+        if (existingUser.rows.length > 0) {
+            return res.status(409).json({ message: "User with this email already exists" });
+        }
+
+        // Hash password
+        const bcrypt = require('bcrypt');
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Create user
+        await pool.query(
+            `INSERT INTO users (name, email, password, role, department, is_active, has_set_password)
+             VALUES ($1, $2, $3, $4, $5, true, true)`,
+            [name, email, hashedPassword, role, department]
+        );
+
+        res.status(201).json({ message: `${role} user created successfully` });
+    } catch (error) {
+        console.error("Create user error:", error);
+        res.status(500).json({ message: "Failed to create user" });
+    }
+};
+
+exports.getUsersByRole = async (req, res) => {
+    try {
+        const { role } = req.query;
+
+        let query = `
+            SELECT 
+                u.id, 
+                u.name, 
+                u.email, 
+                u.role, 
+                u.department, 
+                u.is_active, 
+                u.created_at,
+                COUNT(e.id) FILTER (WHERE e.status != 'draft') AS total_claims
+            FROM users u
+            LEFT JOIN exams e ON e.faculty_id = u.id
+        `;
+
+        const params = [];
+        if (role) {
+            query += ` WHERE u.role = $1`;
+            params.push(role);
+        } else {
+            query += ` WHERE u.role IN ('FACULTY', 'BILLING_INCHARGE', 'ADMIN')`;
+        }
+
+        query += ` GROUP BY u.id, u.name, u.email, u.role, u.department, u.is_active, u.created_at
+                   ORDER BY u.created_at DESC`;
+
+        const result = await pool.query(query, params);
+        res.json(result.rows);
+    } catch (error) {
+        console.error("Get users error:", error);
+        res.status(500).json({ message: "Failed to fetch users" });
+    }
+};
+
+exports.toggleUserStatus = async (req, res) => {
+    const { userId } = req.params;
+    const { is_active } = req.body;
+
+    try {
+        const result = await pool.query(
+            `UPDATE users SET is_active = $1 WHERE id = $2 AND role IN ('FACULTY', 'BILLING_INCHARGE') RETURNING id`,
+            [is_active, userId]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: "User not found or cannot be modified" });
+        }
+
+        res.json({ message: `User ${is_active ? 'activated' : 'deactivated'} successfully` });
+    } catch (error) {
+        console.error("Toggle user status error:", error);
+        res.status(500).json({ message: "Failed to update user status" });
+    }
+};

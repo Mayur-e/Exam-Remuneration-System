@@ -37,6 +37,11 @@ export default function AdminLayout() {
             icon: <ClipboardIcon className="w-5 h-5" />
         },
         {
+            to: "/admin/users",
+            label: "User Management",
+            icon: <UsersIcon className="w-5 h-5" />
+        },
+        {
             to: "/admin/queries",
             label: "Support Queries",
             icon: <QueryIcon className="w-5 h-5" />
