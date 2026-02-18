@@ -26,6 +26,11 @@ export default function AccountantLayout() {
       icon: <UsersIcon className="w-5 h-5" />
     },
     {
+      to: "/accountant/coordinators",
+      label: "Coordinators",
+      icon: <UsersIcon className="w-5 h-5" />
+    },
+    {
       to: "/accountant/queries",
       label: "Queries",
       icon: <QueryIcon className="w-5 h-5" />

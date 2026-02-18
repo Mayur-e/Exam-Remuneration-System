@@ -22,5 +22,11 @@ router.get("/payments", ctrl.listPayments);
 
 router.put("/profile", ctrl.updateProfile);
 
+// Coordinator Management
+const coordinatorCtrl = require("../../controllers/coordinator.controller");
+router.get("/coordinators", coordinatorCtrl.getAllCoordinatorAssignments);
+router.post("/coordinators/:assignmentId/revoke", coordinatorCtrl.revokeCoordinator);
+router.post("/coordinators/reassign", coordinatorCtrl.reassignCoordinator);
+
 
 module.exports = router;

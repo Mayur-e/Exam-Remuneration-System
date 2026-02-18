@@ -305,3 +305,173 @@ exports.getDepartmentCourses = async (req, res) => {
         res.status(500).json({ message: "Failed to fetch courses" });
     }
 }
+
+/* ==============================
+   BILLING INCHARGE: COORDINATOR MANAGEMENT
+================================ */
+/**
+ * Get All Coordinator Assignments (for Billing Incharge)
+ */
+exports.getAllCoordinatorAssignments = async (req, res) => {
+    try {
+        const userDepartment = req.user.department;
+
+        const result = await pool.query(
+            `SELECT 
+                ca.id,
+                ca.academic_year,
+                ca.semester,
+                ca.created_at,
+                c.code as course_code,
+                c.name as course_name,
+                c.department,
+                u.id as faculty_id,
+                u.name as faculty_name,
+                u.email as faculty_email,
+                COUNT(e.id) FILTER (WHERE e.status IN ('UNDER_COORDINATOR_REVIEW', 'COORDINATOR_VERIFIED')) as pending_claims
+            FROM course_assignments ca
+            JOIN courses c ON ca.course_id = c.id
+            JOIN users u ON ca.faculty_id = u.id
+            LEFT JOIN exams e ON e.course_id = ca.course_id 
+                AND e.academic_year = ca.academic_year 
+                AND e.semester = ca.semester
+            WHERE ca.is_active = true AND c.department = $1
+            GROUP BY ca.id, ca.academic_year, ca.semester, ca.created_at, c.code, c.name, c.department, u.id, u.name, u.email
+            ORDER BY ca.created_at DESC`,
+            [userDepartment]
+        );
+
+        res.json(result.rows);
+    } catch (error) {
+        console.error("Get All Coordinator Assignments Error:", error);
+        res.status(500).json({ message: "Failed to fetch coordinator assignments" });
+    }
+};
+
+/**
+ * Revoke Coordinator Assignment (for Billing Incharge)
+ */
+exports.revokeCoordinator = async (req, res) => {
+    const { assignmentId } = req.params;
+    const { reason } = req.body;
+
+    try {
+        await pool.query('BEGIN');
+
+        // Verify department access
+        const assignmentCheck = await pool.query(
+            `SELECT ca.id, c.department, u.name as faculty_name
+             FROM course_assignments ca
+             JOIN courses c ON ca.course_id = c.id
+             JOIN users u ON ca.faculty_id = u.id
+             WHERE ca.id = $1 AND ca.is_active = true`,
+            [assignmentId]
+        );
+
+        if (assignmentCheck.rows.length === 0) {
+            await pool.query('ROLLBACK');
+            return res.status(404).json({ message: "Coordinator assignment not found or already revoked" });
+        }
+
+        const assignment = assignmentCheck.rows[0];
+
+        if (assignment.department !== req.user.department) {
+            await pool.query('ROLLBACK');
+            return res.status(403).json({ message: "Access denied: This assignment belongs to a different department" });
+        }
+
+        // Revoke assignment
+        await pool.query(
+            `UPDATE course_assignments SET is_active = false, updated_at = NOW() WHERE id = $1`,
+            [assignmentId]
+        );
+
+        // Log the action (optional - you can create a separate audit table if needed)
+        console.log(`Billing Incharge ${req.user.name} revoked coordinator assignment ${assignmentId} for ${assignment.faculty_name}. Reason: ${reason || 'Not specified'}`);
+
+        await pool.query('COMMIT');
+        res.json({ message: "Coordinator assignment revoked successfully" });
+
+    } catch (error) {
+        await pool.query('ROLLBACK');
+        console.error("Revoke Coordinator Error:", error);
+        res.status(500).json({ message: "Failed to revoke coordinator assignment" });
+    }
+};
+
+/**
+ * Reassign Coordinator (for Billing Incharge)
+ */
+exports.reassignCoordinator = async (req, res) => {
+    const { course_id, academic_year, semester, new_faculty_id } = req.body;
+
+    if (!course_id || !academic_year || !semester || !new_faculty_id) {
+        return res.status(400).json({ message: "All fields are required" });
+    }
+
+    try {
+        await pool.query('BEGIN');
+
+        // Verify department access
+        const courseCheck = await pool.query(
+            `SELECT department FROM courses WHERE id = $1`,
+            [course_id]
+        );
+
+        if (courseCheck.rows.length === 0) {
+            await pool.query('ROLLBACK');
+            return res.status(404).json({ message: "Course not found" });
+        }
+
+        if (courseCheck.rows[0].department !== req.user.department) {
+            await pool.query('ROLLBACK');
+            return res.status(403).json({ message: "Access denied: This course belongs to a different department" });
+        }
+
+        // Check if new faculty exists and is in the same department
+        const facultyCheck = await pool.query(
+            `SELECT id FROM users WHERE id = $1 AND role = 'FACULTY' AND department = $2 AND is_active = true`,
+            [new_faculty_id, req.user.department]
+        );
+
+        if (facultyCheck.rows.length === 0) {
+            await pool.query('ROLLBACK');
+            return res.status(404).json({ message: "Faculty not found or not in your department" });
+        }
+
+        // Check if new faculty is already a coordinator for another subject in this term
+        const existingAssignment = await pool.query(
+            `SELECT id FROM course_assignments 
+             WHERE faculty_id = $1 AND academic_year = $2 AND semester = $3 AND is_active = true`,
+            [new_faculty_id, academic_year, semester]
+        );
+
+        if (existingAssignment.rows.length > 0) {
+            await pool.query('ROLLBACK');
+            return res.status(400).json({ message: "This faculty is already a coordinator for another subject in this semester" });
+        }
+
+        // Deactivate current assignment
+        await pool.query(
+            `UPDATE course_assignments 
+             SET is_active = false, updated_at = NOW() 
+             WHERE course_id = $1 AND academic_year = $2 AND semester = $3 AND is_active = true`,
+            [course_id, academic_year, semester]
+        );
+
+        // Create new assignment
+        await pool.query(
+            `INSERT INTO course_assignments (course_id, faculty_id, academic_year, semester)
+             VALUES ($1, $2, $3, $4)`,
+            [course_id, new_faculty_id, academic_year, semester]
+        );
+
+        await pool.query('COMMIT');
+        res.json({ message: "Coordinator reassigned successfully" });
+
+    } catch (error) {
+        await pool.query('ROLLBACK');
+        console.error("Reassign Coordinator Error:", error);
+        res.status(500).json({ message: "Failed to reassign coordinator" });
+    }
+};
