@@ -21,12 +21,16 @@ module.exports = async (req, res, next) => {
 
     // Fetch user details to get department and ensure user exists
     const { rows } = await pool.query(
-      "SELECT id, role, department FROM users WHERE id = $1",
+      "SELECT id, role, department, is_active FROM users WHERE id = $1",
       [decoded.id]
     );
 
     if (rows.length === 0) {
       return res.status(401).json({ message: "User not found" });
+    }
+
+    if (!rows[0].is_active) {
+      return res.status(403).json({ message: "Account disabled or deactivated" });
     }
 
     req.user = rows[0];

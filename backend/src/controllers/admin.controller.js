@@ -697,6 +697,7 @@ exports.listAllFaculty = async (req, res) => {
         u.name, 
         u.email, 
         u.department,
+        u.is_active,
         u.created_at,
         COUNT(e.id) FILTER (WHERE e.status != 'draft') AS total_claims,
         COUNT(e.id) FILTER (WHERE e.status = 'submitted') AS pending_claims,

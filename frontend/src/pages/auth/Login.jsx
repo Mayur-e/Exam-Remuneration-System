@@ -61,7 +61,7 @@ export default function Login() {
 
     try {
       const res = await api.post("/auth/login", { email, password });
-      
+
       // Custom toast animation
       setToastMessage("Login successful! Redirecting...");
       setToastType("success");
@@ -82,7 +82,7 @@ export default function Login() {
       if (err.response?.status === 401) {
         setGeneralError("Invalid email or password");
       } else if (err.response?.status === 403) {
-        setGeneralError("Only @pccoepune.org email is allowed");
+        setGeneralError(err.response.data.message || "Only @pccoepune.org email is allowed");
       } else {
         setGeneralError("Something went wrong. Please try again.");
       }
@@ -131,7 +131,7 @@ export default function Login() {
     } catch (err) {
       console.error("Google auth error:", err);
       if (err.response?.status === 403) {
-        setGeneralError("Only @pccoepune.org email addresses are allowed");
+        setGeneralError(err.response.data.message || "Only @pccoepune.org email addresses are allowed");
       } else {
         setGeneralError("Google authentication failed. Please try again.");
       }
@@ -185,12 +185,12 @@ export default function Login() {
       } else {
         setGeneralError("Registration failed. Please try again.");
       }
-      
+
       // Custom toast animation for error
       setToastMessage("Registration failed");
       setToastType("error");
       setTimeout(() => setToastMessage(""), 3000);
-      
+
       setShowSignupModal(false);
     } finally {
       setIsGoogleLoading(false);
@@ -199,7 +199,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-background dark:via-background dark:to-accent p-4">
-      
+
       {/* Custom Toast Animation */}
       <AnimatePresence>
         {toastMessage && (
@@ -208,11 +208,10 @@ export default function Login() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 50 }}
             transition={{ duration: 0.3 }}
-            className={`fixed top-4 right-16 px-4 py-2 rounded shadow-lg z-50 ${
-              toastType === "success" 
-                ? "bg-green-600 text-white" 
-                : "bg-red-600 text-white"
-            }`}
+            className={`fixed top-4 right-16 px-4 py-2 rounded shadow-lg z-50 ${toastType === "success"
+              ? "bg-green-600 text-white"
+              : "bg-red-600 text-white"
+              }`}
           >
             {toastMessage}
           </motion.div>
@@ -242,14 +241,14 @@ export default function Login() {
 
             <div className="relative p-8 space-y-6">
               {/* Header with fade-in animation */}
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
                 className="text-center space-y-3"
               >
                 <div className="flex justify-center mb-4">
-                  <motion.div 
+                  <motion.div
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 0.6, delay: 0.1 }}
@@ -282,7 +281,7 @@ export default function Login() {
               </AnimatePresence>
 
               {/* Google Sign-In Button with animation */}
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
@@ -313,11 +312,11 @@ export default function Login() {
               </motion.div>
 
               {/* Form with staggered animations */}
-              <motion.form 
+              <motion.form
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5, delay: 0.3 }}
-                onSubmit={handleLogin} 
+                onSubmit={handleLogin}
                 className="space-y-5"
               >
                 {/* Email field */}
@@ -420,7 +419,7 @@ export default function Login() {
               </motion.form>
 
               {/* Switch to Sign Up */}
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5, delay: 0.7 }}

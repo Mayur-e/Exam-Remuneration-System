@@ -13,11 +13,13 @@ exports.login = async (req, res) => {
   password = password.trim();
 
   if (!email.endsWith(EMAIL_DOMAIN)) {
-    return res.status(403).json({ message: "Invalid email domain" });
+    // If it's a super admin or special case, maybe bypass? But generally we enforce domain.
+    // If the valid user has a different email, this blocks them.
+    return res.status(403).json({ message: "Invalid email domain. Use @pccoepune.org" });
   }
 
   const result = await pool.query(
-    "SELECT * FROM users WHERE LOWER(email) = $1 AND is_active = true",
+    "SELECT * FROM users WHERE LOWER(email) = $1",
     [email]
   );
 
@@ -26,6 +28,10 @@ exports.login = async (req, res) => {
   }
 
   const user = result.rows[0];
+
+  if (!user.is_active) {
+    return res.status(403).json({ message: "Account disabled or deactivated" });
+  }
 
   const isMatch = await bcrypt.compare(password, user.password);
 

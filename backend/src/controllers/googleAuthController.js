@@ -36,13 +36,18 @@ exports.checkGoogleUser = async (req, res) => {
 
         // Check if user exists
         const result = await pool.query(
-            'SELECT id, name, email, role, department, prn FROM users WHERE LOWER(email) = $1 AND is_active = true',
+            'SELECT id, name, email, role, department, prn, is_active FROM users WHERE LOWER(email) = $1',
             [email]
         );
 
         if (result.rows.length > 0) {
-            // User exists - return user data for login
             const user = result.rows[0];
+
+            if (!user.is_active) {
+                return res.status(403).json({ message: "Account disabled or deactivated" });
+            }
+
+            // User exists - return user data for login
             const authToken = jwt.sign(
                 { id: user.id, role: user.role },
                 process.env.JWT_SECRET,
