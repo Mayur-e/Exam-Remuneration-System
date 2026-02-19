@@ -572,16 +572,16 @@ exports.submitExam = async (req, res) => {
       });
     }
 
-    // 3. VALIDATION: Subject must exist in subjects table
+    // 3. VALIDATION: Subject must exist in courses table (aligned with search)
     if (exam.subject_code) {
       const subjectCheck = await pool.query(
-        `SELECT 1 FROM subjects WHERE code = $1 LIMIT 1`,
+        `SELECT 1 FROM courses WHERE code = $1 LIMIT 1`,
         [exam.subject_code]
       );
 
       if (subjectCheck.rows.length === 0) {
         return res.status(400).json({
-          message: `Subject code "${exam.subject_code}" not found in master subjects list. Please select a valid subject.`
+          message: `Subject code "${exam.subject_code}" not found in courses list. Please select a valid subject.`
         });
       }
     }
