@@ -59,7 +59,7 @@ exports.createExam = async (req, res) => {
   // VALIDATION: Course must exist if provided (and it should be for coordination)
   if (course_id) {
     const courseCheck = await pool.query(
-      `SELECT code, name FROM courses WHERE id = $1`,
+      `SELECT code, name FROM subjects WHERE id = $1`,
       [course_id]
     );
 
@@ -572,16 +572,16 @@ exports.submitExam = async (req, res) => {
       });
     }
 
-    // 3. VALIDATION: Subject must exist in courses table (aligned with search)
+    // 3. VALIDATION: Subject must exist in subjects table (aligned with search)
     if (exam.subject_code) {
       const subjectCheck = await pool.query(
-        `SELECT 1 FROM courses WHERE code = $1 LIMIT 1`,
+        `SELECT 1 FROM subjects WHERE code = $1 LIMIT 1`,
         [exam.subject_code]
       );
 
       if (subjectCheck.rows.length === 0) {
         return res.status(400).json({
-          message: `Subject code "${exam.subject_code}" not found in courses list. Please select a valid subject.`
+          message: `Subject code "${exam.subject_code}" not found in subjects list. Please select a valid subject.`
         });
       }
     }

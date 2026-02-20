@@ -13,7 +13,7 @@ exports.assignCoordinator = async (req, res) => {
 
     try {
         // 1. Check if course exists
-        const courseCheck = await pool.query("SELECT id FROM courses WHERE id = $1", [course_id]);
+        const courseCheck = await pool.query("SELECT id FROM subjects WHERE id = $1", [course_id]);
         if (courseCheck.rows.length === 0) {
             return res.status(404).json({ message: "Course not found" });
         }
@@ -70,7 +70,7 @@ exports.getMyAssignments = async (req, res) => {
         const result = await pool.query(
             `SELECT ca.id, c.code, c.name, ca.academic_year, ca.semester, ca.created_at
        FROM course_assignments ca
-       JOIN courses c ON ca.course_id = c.id
+       JOIN subjects c ON ca.course_id = c.id
        WHERE ca.faculty_id = $1 AND ca.is_active = true
        ORDER BY ca.created_at DESC`,
             [req.user.id]
@@ -107,7 +107,7 @@ exports.getCoordinatorClaims = async (req, res) => {
          ORDER BY action_at DESC LIMIT 1) as rejection_reason
        FROM exams e
        JOIN users u ON e.faculty_id = u.id
-       LEFT JOIN courses c ON e.course_id = c.id
+       LEFT JOIN subjects c ON e.course_id = c.id
        JOIN course_assignments ca ON 
           ca.course_id = e.course_id AND 
           ca.academic_year = e.academic_year AND 
@@ -280,7 +280,7 @@ exports.rejectClaim = async (req, res) => {
 };
 
 /**
- * Get Available Courses for Assignment (Department based)
+ * Get Available Subjects for Assignment (Department based)
  */
 exports.getDepartmentCourses = async (req, res) => {
     try {
@@ -288,7 +288,7 @@ exports.getDepartmentCourses = async (req, res) => {
         const userDept = req.user.department;
 
         // If user has department, filter by it. Else return all? or return all for now.
-        let query = "SELECT id, code, name, department FROM courses";
+        let query = "SELECT id, code, name, department FROM subjects";
         let params = [];
 
         if (userDept && userDept !== 'Admin') { // Assuming 'Admin' can see all
@@ -330,7 +330,7 @@ exports.getAllCoordinatorAssignments = async (req, res) => {
                 u.email as faculty_email,
                 COUNT(e.id) FILTER (WHERE e.status IN ('UNDER_COORDINATOR_REVIEW', 'COORDINATOR_VERIFIED')) as pending_claims
             FROM course_assignments ca
-            JOIN courses c ON ca.course_id = c.id
+            JOIN subjects c ON ca.course_id = c.id
             JOIN users u ON ca.faculty_id = u.id
             LEFT JOIN exams e ON e.course_id = ca.course_id 
                 AND e.academic_year = ca.academic_year 
@@ -362,7 +362,7 @@ exports.revokeCoordinator = async (req, res) => {
         const assignmentCheck = await pool.query(
             `SELECT ca.id, c.department, u.name as faculty_name
              FROM course_assignments ca
-             JOIN courses c ON ca.course_id = c.id
+             JOIN subjects c ON ca.course_id = c.id
              JOIN users u ON ca.faculty_id = u.id
              WHERE ca.id = $1 AND ca.is_active = true`,
             [assignmentId]
@@ -414,7 +414,7 @@ exports.reassignCoordinator = async (req, res) => {
 
         // Verify department access
         const courseCheck = await pool.query(
-            `SELECT department FROM courses WHERE id = $1`,
+            `SELECT department FROM subjects WHERE id = $1`,
             [course_id]
         );
 
