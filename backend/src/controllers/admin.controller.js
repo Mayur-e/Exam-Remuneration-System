@@ -569,7 +569,7 @@ exports.getAuditLogs = async (req, res) => {
 exports.getExternalExaminers = async (req, res) => {
     try {
         const { rows } = await pool.query(`
-      SELECT
+      SELECT DISTINCT ON (e.id)
         ee.id,
         ee.full_name,
         ee.email,
@@ -598,7 +598,7 @@ exports.getExternalExaminers = async (req, res) => {
       JOIN users u ON u.id = e.faculty_id
       LEFT JOIN external_exam_links eel ON eel.exam_id = e.id
       WHERE e.claim_form_type = 'TEACHING_EXTERNAL' AND e.status != 'draft'
-      ORDER BY ee.id DESC
+      ORDER BY e.id DESC, eel.created_at DESC
     `);
 
         res.json(rows);

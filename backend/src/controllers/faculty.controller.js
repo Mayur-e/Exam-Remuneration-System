@@ -731,7 +731,7 @@ exports.listMyExams = async (req, res) => {
   try {
     const result = await pool.query(
       `
-    SELECT
+    SELECT DISTINCT ON (e.created_at, e.id)
       e.id,
       e.exam_type,
       e.subject_name,
@@ -746,7 +746,7 @@ exports.listMyExams = async (req, res) => {
     LEFT JOIN remuneration_calculations r ON r.exam_id = e.id
     LEFT JOIN external_exam_links eel ON eel.exam_id = e.id
     WHERE e.faculty_id = $1
-    ORDER BY e.created_at DESC
+    ORDER BY e.created_at DESC, e.id DESC, eel.created_at DESC
     `,
       [req.user.id]
     );
