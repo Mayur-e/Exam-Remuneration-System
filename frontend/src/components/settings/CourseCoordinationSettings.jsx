@@ -115,6 +115,22 @@ export default function CourseCoordinationSettings() {
         }
     };
 
+    const handleRevoke = async (assignmentId) => {
+        if (!window.confirm("Are you sure you want to revoke your coordinator assignment? This action cannot be undone.")) return;
+
+        try {
+            setMessage({ type: '', text: '' });
+            await api.delete(`/coordinator/assignments/${assignmentId}/revoke`);
+            setMessage({ type: 'success', text: 'Coordinator assignment successfully revoked' });
+            fetchData();
+        } catch (error) {
+            setMessage({
+                type: 'error',
+                text: error.response?.data?.message || 'Failed to revoke assignment'
+            });
+        }
+    };
+
     if (loading) return <div>Loading coordination settings...</div>;
 
     return (
@@ -231,6 +247,7 @@ export default function CourseCoordinationSettings() {
                                     <th className="p-3">Year</th>
                                     <th className="p-3">Semester</th>
                                     <th className="p-3">Assigned Date</th>
+                                    <th className="p-3">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -240,6 +257,14 @@ export default function CourseCoordinationSettings() {
                                         <td className="p-3">{assign.academic_year}</td>
                                         <td className="p-3">Sem {assign.semester}</td>
                                         <td className="p-3">{new Date(assign.created_at).toLocaleDateString()}</td>
+                                        <td className="p-3">
+                                            <button
+                                                onClick={() => handleRevoke(assign.id)}
+                                                className="text-xs text-red-600 hover:text-red-800 bg-red-100 hover:bg-red-200 px-3 py-1 rounded transition-colors"
+                                            >
+                                                Revoke
+                                            </button>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>

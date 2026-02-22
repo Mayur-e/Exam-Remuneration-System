@@ -14,6 +14,7 @@ router.get('/courses', role(['FACULTY']), coordinatorController.getDepartmentCou
 // Coordinator Assignment
 router.post('/assign', role(['FACULTY']), coordinatorController.assignCoordinator);
 router.get('/assignments', role(['FACULTY']), coordinatorController.getMyAssignments);
+router.delete('/assignments/:assignmentId/revoke', role(['FACULTY']), coordinatorController.revokeSelfCoordinator);
 
 // Coordinator Actions
 router.get('/claims', role(['FACULTY']), coordinatorController.getCoordinatorClaims);

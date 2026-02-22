@@ -475,3 +475,44 @@ exports.reassignCoordinator = async (req, res) => {
         res.status(500).json({ message: "Failed to reassign coordinator" });
     }
 };
+
+/**
+ * Revoke Self Coordinator Assignment (for Faculty)
+ */
+exports.revokeSelfCoordinator = async (req, res) => {
+    const { assignmentId } = req.params;
+    const facultyId = req.user.id;
+
+    try {
+        await pool.query('BEGIN');
+
+        // Verify assignment belongs to the requesting faculty and is active
+        const assignmentCheck = await pool.query(
+            `SELECT id FROM course_assignments 
+             WHERE id = $1 AND faculty_id = $2 AND is_active = true`,
+            [assignmentId, facultyId]
+        );
+
+        if (assignmentCheck.rows.length === 0) {
+            await pool.query('ROLLBACK');
+            return res.status(404).json({ message: "Active assignment not found or you don't have permission" });
+        }
+
+        // Check if there are any *pending* claims verified by this coordinator that might block revocation?
+        // Let's assume they can revoke anytime, and new claims will just need a new coordinator.
+
+        // Revoke assignment
+        await pool.query(
+            `UPDATE course_assignments SET is_active = false, updated_at = NOW() WHERE id = $1`,
+            [assignmentId]
+        );
+
+        await pool.query('COMMIT');
+        res.json({ message: "Your coordinator assignment was successfully revoked" });
+
+    } catch (error) {
+        await pool.query('ROLLBACK');
+        console.error("Revoke Self Coordinator Error:", error);
+        res.status(500).json({ message: "Failed to revoke coordinator assignment" });
+    }
+};
