@@ -22,6 +22,12 @@ router.get("/payments", ctrl.listPayments);
 
 router.put("/profile", ctrl.updateProfile);
 
+// External Supervision
+const adminCtrl = require("../../controllers/admin.controller");
+router.get("/external/examiners", adminCtrl.getExternalExaminers);
+router.get("/external/links", adminCtrl.getExternalLinkStats);
+router.get("/external/documents/:id", idParamValidation, adminCtrl.getExternalDocuments);
+
 // Coordinator Management
 const coordinatorCtrl = require("../../controllers/coordinator.controller");
 router.get("/coordinators", coordinatorCtrl.getAllCoordinatorAssignments);

@@ -41,6 +41,7 @@ import FacultyProfile from "../pages/accountant/FacultyProfile";
 import QueryManagement from "../pages/accountant/QueryManagement";
 import Settingsacc from "../pages/accountant/Settings";
 import CoordinatorManagement from "../components/billing/CoordinatorManagement";
+import AccountantExternalSupervision from "../pages/accountant/AccountantExternalSupervision";
 
 // Protection
 import ProtectedRoute from "./ProtectedRoutes";
@@ -86,6 +87,7 @@ export default function AppRoutes() {
         <Route path="faculty" element={<FacultyList />} />
         <Route path="faculty/:id" element={<FacultyProfile />} />
         <Route path="coordinators" element={<CoordinatorManagement />} />
+        <Route path="external" element={<AccountantExternalSupervision />} />
         <Route path="queries" element={<QueryManagement />} />
         <Route path="settings" element={<Settingsacc />} />
       </Route>

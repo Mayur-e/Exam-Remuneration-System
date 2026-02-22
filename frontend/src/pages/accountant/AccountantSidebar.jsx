@@ -7,7 +7,8 @@ import {
   UsersIcon,
   CurrencyRupeeIcon,
   SettingsIcon,
-  LogoutIcon
+  LogoutIcon,
+  UserIcon
 } from "../../components/icons/logo";
 
 export default function AccountantSidebar() {
@@ -54,6 +55,16 @@ export default function AccountantSidebar() {
         >
           <UsersIcon className="w-5 h-5" />
           Faculty
+        </NavLink>
+
+        <NavLink
+          to="/accountant/external"
+          className={({ isActive }) =>
+            `${linkClass} ${isActive ? activeClass : ""}`
+          }
+        >
+          <UserIcon className="w-5 h-5" />
+          External Examiners
         </NavLink>
 
         <NavLink
