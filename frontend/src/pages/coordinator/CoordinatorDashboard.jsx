@@ -305,7 +305,7 @@ export default function CoordinatorDashboard() {
                                         )}
                                     </h3>
                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                        {isExternal ? [
+                                        {(isExternal ? [
                                             { label: "Name", value: exam.external_examiner_name },
                                             { label: "Email", value: exam.external_examiner_email },
                                             { label: "Mobile", value: exam.external_examiner_mobile },
@@ -317,7 +317,7 @@ export default function CoordinatorDashboard() {
                                             { label: "Email", value: exam.faculty_email },
                                             { label: "Mobile", value: exam.faculty_mobile },
                                             { label: "Department", value: exam.faculty_department },
-                                        ].map(({ label, value }) => (
+                                        ]).map(({ label, value }) => (
                                             <div key={label} className="bg-muted/40 rounded-lg p-3">
                                                 <div className="text-[10px] text-muted-foreground uppercase font-semibold">{label}</div>
                                                 <div className="text-sm font-medium text-foreground mt-0.5">{value || "—"}</div>
