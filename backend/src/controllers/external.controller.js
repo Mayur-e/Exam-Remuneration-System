@@ -290,10 +290,10 @@ exports.submitExternalClaim = async (req, res) => {
       UPDATE exams
       SET
         external_examiner_id = $1,
-        status = 'submitted',
+        status = 'UNDER_COORDINATOR_REVIEW',
         updated_at = NOW()
       WHERE id = $2
-        AND (status = 'draft' OR status = 'rejected')
+        AND (status = 'draft' OR status = 'rejected' OR status = 'COORDINATOR_REJECTED')
         AND claim_form_type = 'TEACHING_EXTERNAL'
       `,
       [examinerId, examId]
@@ -373,10 +373,10 @@ exports.getExternalClaimInfo = async (req, res) => {
 
     // 3. Get Rejection History
     const rejections = await pool.query(
-      `SELECT ca.comment, ca.action_at, u.name AS rejected_by
+      `SELECT ca.comment, ca.remarks, ca.action_at, u.name AS rejected_by
        FROM claim_actions ca
        JOIN users u ON ca.action_by = u.id
-       WHERE ca.exam_id = $1 AND ca.action_type = 'REJECTED'
+       WHERE ca.exam_id = $1 AND ca.action_type IN ('REJECT', 'REJECTED')
        ORDER BY ca.action_at DESC`,
       [examId]
     );
@@ -384,7 +384,7 @@ exports.getExternalClaimInfo = async (req, res) => {
     res.json({
       exam: exam.rows[0],
       rejections: rejections.rows,
-      isResubmission: exam.rows[0].status === 'rejected' && exam.rows[0].external_examiner_id !== null
+      isResubmission: (exam.rows[0].status === 'rejected' || exam.rows[0].status === 'COORDINATOR_REJECTED') && exam.rows[0].external_examiner_id !== null
     });
   } catch (err) {
     console.error("getExternalClaimInfo error:", err);
