@@ -92,13 +92,17 @@ exports.getCoordinatorClaims = async (req, res) => {
             `SELECT 
         e.id, 
         e.exam_type, 
+        e.claim_form_type,
         e.subject_code, 
         e.subject_name, 
         e.students_count, 
         e.exam_date,
         e.status,
         e.created_at,
-        u.name as faculty_name,
+        CASE 
+          WHEN e.claim_form_type = 'TEACHING_EXTERNAL' THEN ex.full_name 
+          ELSE u.name 
+        END AS faculty_name,
         c.name as course_name,
         (SELECT COALESCE(remarks, comment) 
          FROM claim_actions 
@@ -107,6 +111,7 @@ exports.getCoordinatorClaims = async (req, res) => {
          ORDER BY action_at DESC LIMIT 1) as rejection_reason
        FROM exams e
        JOIN users u ON e.faculty_id = u.id
+       LEFT JOIN external_examiners ex ON e.external_examiner_id = ex.id
        LEFT JOIN subjects c ON e.course_id = c.id
        JOIN course_assignments ca ON 
           ca.course_id = e.course_id AND 

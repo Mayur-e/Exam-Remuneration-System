@@ -142,7 +142,7 @@ export default function CoordinatorDashboard() {
                             <thead className="text-xs uppercase bg-muted/50 text-muted-foreground">
                                 <tr>
                                     <th className="px-4 py-3">Date</th>
-                                    <th className="px-4 py-3">Faculty</th>
+                                    <th className="px-4 py-3">Examiner</th>
                                     <th className="px-4 py-3">Course</th>
                                     <th className="px-4 py-3">Exam Type</th>
                                     <th className="px-4 py-3">Status</th>
@@ -155,7 +155,14 @@ export default function CoordinatorDashboard() {
                                         <td className="px-4 py-3 font-medium text-xs">
                                             {new Date(claim.exam_date).toLocaleDateString()}
                                         </td>
-                                        <td className="px-4 py-3 font-medium">{claim.faculty_name}</td>
+                                        <td className="px-4 py-3">
+                                            <div className="font-medium text-sm">{claim.faculty_name || 'N/A'}</div>
+                                            {claim.claim_form_type === 'TEACHING_EXTERNAL' && (
+                                                <div className="inline-block mt-1 px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[10px] uppercase font-bold rounded">
+                                                    External
+                                                </div>
+                                            )}
+                                        </td>
                                         <td className="px-4 py-3">
                                             <div className="font-medium text-xs">{claim.subject_code}</div>
                                             <div className="text-[10px] text-muted-foreground">{claim.subject_name}</div>
