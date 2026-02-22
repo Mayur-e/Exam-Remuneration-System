@@ -18,6 +18,7 @@ router.delete('/assignments/:assignmentId/revoke', role(['FACULTY']), coordinato
 
 // Coordinator Actions
 router.get('/claims', role(['FACULTY']), coordinatorController.getCoordinatorClaims);
+router.get('/claims/:id', role(['FACULTY']), coordinatorController.getCoordinatorClaimDetails);
 router.post('/verify', role(['FACULTY']), coordinatorController.verifyClaim);
 router.post('/reject', role(['FACULTY']), coordinatorController.rejectClaim);
 router.post('/submit-billing', role(['FACULTY']), coordinatorController.submitToBilling);

@@ -83,6 +83,107 @@ exports.getMyAssignments = async (req, res) => {
 };
 
 /**
+ * Get Full Claim Details (Coordinator View - read-only)
+ */
+exports.getCoordinatorClaimDetails = async (req, res) => {
+    const examId = req.params.id;
+    const coordinatorId = req.user.id;
+
+    try {
+        // Verify the coordinator has access to this exam via their course assignment
+        const accessCheck = await pool.query(
+            `SELECT e.id FROM exams e
+             JOIN course_assignments ca ON 
+               ca.course_id = e.course_id AND
+               ca.academic_year = e.academic_year AND
+               ca.semester = e.semester
+             WHERE e.id = $1 AND ca.faculty_id = $2 AND ca.is_active = true`,
+            [examId, coordinatorId]
+        );
+
+        if (accessCheck.rows.length === 0) {
+            return res.status(403).json({ message: "Not authorized to view this claim" });
+        }
+
+        const exam = await pool.query(
+            `SELECT
+                e.*,
+                u.name AS faculty_name,
+                u.email AS faculty_email,
+                u.department AS faculty_department,
+                u.mobile AS faculty_mobile,
+                fb.bank_name AS faculty_bank_name,
+                fb.branch_name AS faculty_branch_name,
+                fb.account_number AS faculty_account_number,
+                fb.ifsc_code AS faculty_ifsc_code,
+                fb.pan_number AS faculty_pan_number,
+                fb.cancelled_cheque_url AS faculty_cheque_url,
+                fb.pan_document_url AS faculty_pan_url,
+                ee.full_name AS external_examiner_name,
+                ee.email AS external_examiner_email,
+                ee.mobile AS external_examiner_mobile,
+                ee.parent_institute,
+                ee.bank_name AS external_bank_name,
+                ee.branch_name AS external_branch_name,
+                ee.account_number AS external_account_number,
+                ee.ifsc_code AS external_ifsc_code,
+                ee.pan_number AS external_pan_number,
+                ee.pan_document_url AS external_pan_url,
+                ee.cancelled_cheque_url AS external_cheque_url,
+                ee.travel_proof_url,
+                ee.is_local,
+                ee.journey_days,
+                ee.travel_allowance
+            FROM exams e
+            JOIN users u ON u.id = e.faculty_id
+            LEFT JOIN faculty_bank_accounts fb ON u.id = fb.faculty_id
+            LEFT JOIN external_examiners ee ON e.external_examiner_id = ee.id
+            WHERE e.id = $1`,
+            [examId]
+        );
+
+        if (!exam.rows.length) {
+            return res.status(404).json({ message: "Claim not found" });
+        }
+
+        const examData = exam.rows[0];
+
+        // Get staff members
+        const staff = await pool.query(
+            `SELECT * FROM exam_staff_members WHERE exam_id = $1 ORDER BY id`,
+            [examId]
+        );
+
+        // Get remuneration calculation
+        const calc = await pool.query(
+            `SELECT * FROM remuneration_calculations WHERE exam_id = $1`,
+            [examId]
+        );
+
+        // Get action history
+        const actions = await pool.query(
+            `SELECT ca.*, u.name AS action_by_name, u.role AS action_by_role
+             FROM claim_actions ca
+             JOIN users u ON ca.action_by = u.id
+             WHERE ca.exam_id = $1
+             ORDER BY ca.action_at DESC`,
+            [examId]
+        );
+
+        res.json({
+            exam: examData,
+            staff: staff.rows,
+            calculation: calc.rows[0] || null,
+            actions: actions.rows
+        });
+
+    } catch (error) {
+        console.error("getCoordinatorClaimDetails error:", error);
+        res.status(500).json({ message: "Failed to fetch claim details" });
+    }
+};
+
+/**
  * Get Claims for Review (Coordinator View)
  */
 exports.getCoordinatorClaims = async (req, res) => {
