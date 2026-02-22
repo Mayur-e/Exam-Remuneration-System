@@ -598,8 +598,9 @@ exports.getExternalExaminers = async (req, res) => {
       JOIN users u ON u.id = e.faculty_id
       LEFT JOIN external_exam_links eel ON eel.exam_id = e.id
       WHERE e.claim_form_type = 'TEACHING_EXTERNAL' AND e.status != 'draft'
+      ${req.user.role === 'BILLING_INCHARGE' ? 'AND u.department = $1' : ''}
       ORDER BY e.id DESC, eel.created_at DESC
-    `);
+    `, req.user.role === 'BILLING_INCHARGE' ? [req.user.department] : []);
 
         res.json(rows);
     } catch (error) {
@@ -635,8 +636,9 @@ exports.getExternalLinkStats = async (req, res) => {
       JOIN exams e ON e.id = eel.exam_id
       JOIN users u ON u.id = e.faculty_id
       LEFT JOIN external_examiners ee ON ee.id = e.external_examiner_id
+      ${req.user.role === 'BILLING_INCHARGE' ? 'WHERE u.department = $1' : ''}
       ORDER BY eel.created_at DESC
-    `);
+    `, req.user.role === 'BILLING_INCHARGE' ? [req.user.department] : []);
 
         res.json(rows);
     } catch (error) {
@@ -671,8 +673,10 @@ exports.getExternalDocuments = async (req, res) => {
         ee.travel_allowance
       FROM exams e
       LEFT JOIN external_examiners ee ON ee.id = e.external_examiner_id
-      WHERE e.id = $1 AND e.claim_form_type = 'TEACHING_EXTERNAL'`,
-            [examId]
+      JOIN users u ON u.id = e.faculty_id
+      WHERE e.id = $1 AND e.claim_form_type = 'TEACHING_EXTERNAL'
+      ${req.user.role === 'BILLING_INCHARGE' ? 'AND u.department = $2' : ''}`,
+            req.user.role === 'BILLING_INCHARGE' ? [examId, req.user.department] : [examId]
         );
 
         if (!rows.length) {
