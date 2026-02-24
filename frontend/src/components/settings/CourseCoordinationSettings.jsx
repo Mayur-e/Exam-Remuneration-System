@@ -5,6 +5,27 @@ import { SearchIcon, AlertCircleIcon } from "../../components/icons/logo";
 
 const SEMESTERS = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII"];
 
+const START_YEAR = 2024;
+const generateAcademicYears = () => {
+    const currentYear = new Date().getFullYear();
+    const endYear = currentYear + 6;
+    const years = [];
+    for (let year = START_YEAR; year <= endYear; year++) {
+        const nextYear = (year + 1).toString().slice(-2);
+        years.push(`${year}-${nextYear}`);
+    }
+    return years;
+};
+
+const getCurrentAcademicYear = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const startYear = month >= 5 ? year : year - 1;
+    const nextYear = (startYear + 1).toString().slice(-2);
+    return startYear < START_YEAR ? `${START_YEAR}-${(START_YEAR + 1).toString().slice(-2)}` : `${startYear}-${nextYear}`;
+};
+
 export default function CourseCoordinationSettings() {
     const [courses, setCourses] = useState([]);
     const [filteredCourses, setFilteredCourses] = useState([]);
@@ -17,7 +38,7 @@ export default function CourseCoordinationSettings() {
     const [assignLoading, setAssignLoading] = useState(false);
 
     const [formData, setFormData] = useState({
-        academic_year: '2024-25',
+        academic_year: getCurrentAcademicYear(),
         semester: 'I',
         course_id: ''
     });
@@ -157,8 +178,9 @@ export default function CourseCoordinationSettings() {
                             value={formData.academic_year}
                             onChange={(e) => setFormData({ ...formData, academic_year: e.target.value })}
                         >
-                            <option value="2024-25">2024-25</option>
-                            <option value="2025-26">2025-26</option>
+                            {generateAcademicYears().map(year => (
+                                <option key={year} value={year}>{year}</option>
+                            ))}
                         </select>
                     </div>
                     <div>

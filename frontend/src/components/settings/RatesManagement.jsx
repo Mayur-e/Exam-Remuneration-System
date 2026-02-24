@@ -97,14 +97,15 @@ export default function RatesManagement() {
     const [newYear, setNewYear] = useState("");
     const [cloning, setCloning] = useState(false);
 
-    // Generate next 5 years for dropdown options
+    // Generate years from 2024 to currentYear + 6 for dropdown options
     const generateYearOptions = () => {
+        const START_YEAR = 2024;
         const currentYear = new Date().getFullYear();
+        const endYear = currentYear + 6;
         const years = [];
-        for (let i = 0; i < 5; i++) {
-            const startYear = currentYear + i;
-            const endYear = (startYear + 1).toString().slice(-2);
-            years.push(`${startYear}-${endYear}`);
+        for (let year = START_YEAR; year <= endYear; year++) {
+            const nextYear = (year + 1).toString().slice(-2);
+            years.push(`${year}-${nextYear}`);
         }
         return years;
     };

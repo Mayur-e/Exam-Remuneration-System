@@ -5,13 +5,34 @@ import { Input } from "../ui/input";
 import { useToast } from "../../hooks/useToast";
 import api from "../../services/api"; // Ensure this import path is correct
 
+const START_YEAR = 2024;
+const generateAcademicYears = () => {
+    const currentYear = new Date().getFullYear();
+    const endYear = currentYear + 6;
+    const years = [];
+    for (let year = START_YEAR; year <= endYear; year++) {
+        const nextYear = (year + 1).toString().slice(-2);
+        years.push(`${year}-${nextYear}`);
+    }
+    return years;
+};
+
+const getCurrentAcademicYear = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const startYear = month >= 5 ? year : year - 1;
+    const nextYear = (startYear + 1).toString().slice(-2);
+    return startYear < START_YEAR ? `${START_YEAR}-${(START_YEAR + 1).toString().slice(-2)}` : `${startYear}-${nextYear}`;
+};
+
 export default function StudentCountManagement() {
     const [counts, setCounts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [academicYears, setAcademicYears] = useState([]);
 
     // Filters
-    const [selectedYear, setSelectedYear] = useState("2024-25");
+    const [selectedYear, setSelectedYear] = useState(getCurrentAcademicYear());
     const [selectedSemester, setSelectedSemester] = useState("");
     const [subjectSearch, setSubjectSearch] = useState("");
 
@@ -19,7 +40,7 @@ export default function StudentCountManagement() {
     const [showModal, setShowModal] = useState(false);
     const [formData, setFormData] = useState({
         subject_code: "",
-        academic_year: "2024-25",
+        academic_year: getCurrentAcademicYear(),
         semester: "I",
         registered_count: ""
     });
@@ -48,12 +69,16 @@ export default function StudentCountManagement() {
     const fetchAcademicYears = async () => {
         try {
             const response = await api.get("/admin/rates/academic-years");
-            const years = response.data || ["2024-25"];
-            setAcademicYears(years);
-            if (years.length > 0) setSelectedYear(years[0]);
+            const dbYears = response.data || [];
+            const generated = generateAcademicYears();
+            const allYears = Array.from(new Set([...dbYears, ...generated])).sort((a, b) => b.localeCompare(a));
+            setAcademicYears(allYears);
+            setSelectedYear(getCurrentAcademicYear());
         } catch (error) {
             console.error("Fetch years error:", error);
-            setAcademicYears(["2024-25"]);
+            const generated = generateAcademicYears();
+            setAcademicYears(generated);
+            setSelectedYear(getCurrentAcademicYear());
         }
     };
 
@@ -86,7 +111,7 @@ export default function StudentCountManagement() {
         }
 
         try {
-            const res = await api.get(`/faculty/subjects?query=${encodeURIComponent(query)}`);
+            const res = await api.get(`/admin/subjects/search?query=${encodeURIComponent(query)}`);
             setSearchResults(res.data);
             setShowResults(true);
         } catch (err) {
@@ -191,7 +216,6 @@ export default function StudentCountManagement() {
                                 <th className="px-6 py-3">Subject Code</th>
                                 <th className="px-6 py-3">Subject Name</th>
                                 <th className="px-6 py-3">Registered Count</th>
-                                <th className="px-6 py-3">Status</th>
                                 <th className="px-6 py-3">Action</th>
                             </tr>
                         </thead>
@@ -202,29 +226,14 @@ export default function StudentCountManagement() {
                                 <tr><td colSpan="7" className="text-center py-4 text-gray-500">No subjects found.</td></tr>
                             ) : (
                                 counts.map((item, idx) => (
-                                    <tr key={idx} className={`border-b hover:bg-gray-50 ${!item.is_set ? 'bg-gray-50/50' : 'bg-white'}`}>
+                                    <tr key={idx} className="border-b hover:bg-gray-50 bg-white">
                                         <td className="px-6 py-4 text-gray-500">{item.academic_year || '-'}</td>
                                         <td className="px-6 py-4 text-gray-500 font-medium">{item.year || '-'}</td>
                                         <td className="px-6 py-4 text-gray-500">{item.semester || '-'}</td>
                                         <td className="px-6 py-4 font-mono text-purple-600 font-medium">{item.subject_code}</td>
                                         <td className="px-6 py-4 max-w-xs truncate" title={item.subject_name}>{item.subject_name || '-'}</td>
                                         <td className="px-6 py-4">
-                                            {item.is_set ? (
-                                                <span className="font-bold text-gray-900">{item.registered_count}</span>
-                                            ) : (
-                                                <span className="text-gray-400 italic">Not Set</span>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            {item.is_set ? (
-                                                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                                                    Active
-                                                </span>
-                                            ) : (
-                                                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">
-                                                    Pending
-                                                </span>
-                                            )}
+                                            <span className="font-bold text-gray-900">{item.registered_count}</span>
                                         </td>
                                         <td className="px-6 py-4">
                                             <button
@@ -239,7 +248,7 @@ export default function StudentCountManagement() {
                                                 }}
                                                 className="text-blue-600 hover:underline font-medium"
                                             >
-                                                {item.is_set ? "Edit" : "Set Limit"}
+                                                Edit
                                             </button>
                                         </td>
                                     </tr>
