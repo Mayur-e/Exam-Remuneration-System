@@ -40,6 +40,7 @@ router.post("/rates/clone", auth, role(["ADMIN"]), adminController.cloneRatesToN
 const subjectController = require("../../controllers/subject.controller");
 router.post("/subjects/counts", auth, role(["ADMIN"]), subjectController.setSubjectCount);
 router.get("/subjects/counts", auth, role(["ADMIN"]), subjectController.getSubjectCounts);
+router.get("/subjects/search", auth, role(["ADMIN"]), subjectController.searchSubjects);
 
 // Excel Export
 const exportController = require("../../controllers/export.controller");
