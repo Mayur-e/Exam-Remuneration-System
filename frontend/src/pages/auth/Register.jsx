@@ -15,7 +15,7 @@ import { useToast } from "../../hooks/useToast";
 
 // Icons
 import { MailIcon, LockIcon, UserIcon, BuildingOfficeIcon } from "../../components/icons/logo";
-import { DEPARTMENTS } from "../../constants/departments";
+import { PROGRAM_DEPARTMENTS } from "../../constants/departments";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -233,7 +233,7 @@ export default function Register() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-white to-blue-50 dark:from-background dark:via-background dark:to-accent p-4">
-      
+
       {/* Custom Toast Animation */}
       <AnimatePresence>
         {toastMessage && (
@@ -242,11 +242,10 @@ export default function Register() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 50 }}
             transition={{ duration: 0.3 }}
-            className={`fixed top-4 right-16 px-4 py-2 rounded shadow-lg z-50 ${
-              toastType === "success" 
-                ? "bg-green-600 text-white" 
+            className={`fixed top-4 right-16 px-4 py-2 rounded shadow-lg z-50 ${toastType === "success"
+                ? "bg-green-600 text-white"
                 : "bg-red-600 text-white"
-            }`}
+              }`}
           >
             {toastMessage}
           </motion.div>
@@ -276,14 +275,14 @@ export default function Register() {
 
             <div className="relative p-8 space-y-6">
               {/* Header with fade-in animation */}
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
                 className="text-center space-y-3"
               >
                 <div className="flex justify-center mb-4">
-                  <motion.div 
+                  <motion.div
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 0.6, delay: 0.1 }}
@@ -331,7 +330,7 @@ export default function Register() {
               </AnimatePresence>
 
               {/* Google Sign-In Button with animation */}
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
@@ -361,11 +360,11 @@ export default function Register() {
               </motion.div>
 
               {/* Form with staggered animations */}
-              <motion.form 
+              <motion.form
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5, delay: 0.3 }}
-                onSubmit={submit} 
+                onSubmit={submit}
                 className="space-y-5"
               >
                 {/* Full Name field */}
@@ -521,16 +520,18 @@ export default function Register() {
                       disabled={isGoogleLoading}
                     >
                       <option value="">Select Department</option>
-                      {DEPARTMENTS.map((dept, index) => (
-                        <motion.option 
-                          key={dept} 
-                          value={dept}
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.3, delay: index * 0.05 }}
-                        >
-                          {dept}
-                        </motion.option>
+                      {Object.entries(PROGRAM_DEPARTMENTS).map(([program, depts], groupIndex) => (
+                        <optgroup key={program} label={program} className="font-semibold text-muted-foreground">
+                          {depts.map((dept, idx) => (
+                            <option
+                              key={`${program}-${dept}`}
+                              value={dept}
+                              className="font-normal text-foreground"
+                            >
+                              {dept}
+                            </option>
+                          ))}
+                        </optgroup>
                       ))}
                     </select>
                   </div>
@@ -572,7 +573,7 @@ export default function Register() {
               </motion.form>
 
               {/* Switch to Sign In */}
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5, delay: 0.7 }}

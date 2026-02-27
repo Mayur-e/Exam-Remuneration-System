@@ -3,7 +3,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Card } from '../ui/card';
 
-import { DEPARTMENTS } from '../../constants/departments';
+import { PROGRAM_DEPARTMENTS } from '../../constants/departments';
 
 export default function GoogleSignupModal({ isOpen, onClose, email, name, onSubmit, isLoading }) {
     const [prn, setPrn] = useState('');
@@ -91,10 +91,14 @@ export default function GoogleSignupModal({ isOpen, onClose, email, name, onSubm
                                 disabled={isLoading}
                             >
                                 <option value="">Select Department</option>
-                                {DEPARTMENTS.map((dept) => (
-                                    <option key={dept} value={dept}>
-                                        {dept}
-                                    </option>
+                                {Object.entries(PROGRAM_DEPARTMENTS).map(([program, depts]) => (
+                                    <optgroup key={program} label={program} className="font-semibold text-gray-700">
+                                        {depts.map((dept) => (
+                                            <option key={`${program}-${dept}`} value={dept} className="font-normal text-gray-900">
+                                                {dept}
+                                            </option>
+                                        ))}
+                                    </optgroup>
                                 ))}
                             </select>
                         </div>

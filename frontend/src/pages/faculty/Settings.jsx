@@ -6,7 +6,7 @@ import SecuritySettings from "../../components/settings/SecuritySettings";
 import BankSettings from "../../components/settings/BankSettings";
 import CourseCoordinationSettings from "../../components/settings/CourseCoordinationSettings";
 import { MailIcon } from "../../components/icons/logo";
-import { DEPARTMENTS } from "../../constants/departments";
+import { PROGRAM_DEPARTMENTS } from "../../constants/departments";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function Settings() {
@@ -212,7 +212,7 @@ export default function Settings() {
       name: "department",
       label: "Department",
       type: "select",
-      options: DEPARTMENTS,
+      options: PROGRAM_DEPARTMENTS,
     },
     {
       name: "mobile",
@@ -239,8 +239,8 @@ export default function Settings() {
             exit={{ opacity: 0, x: 50 }}
             transition={{ duration: 0.3 }}
             className={`fixed top-4 right-4 px-4 py-2 rounded shadow-lg z-50 ${toastType === "success"
-                ? "bg-green-600 text-white"
-                : "bg-red-600 text-white"
+              ? "bg-green-600 text-white"
+              : "bg-red-600 text-white"
               }`}
           >
             {toastMessage}

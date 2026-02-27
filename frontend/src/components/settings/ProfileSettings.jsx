@@ -140,7 +140,7 @@ export default function ProfileSettings({ initialData, onSave, readOnlyFields = 
         >
             <Card className="p-6 h-full hover:shadow-lg transition-shadow duration-300">
                 <div className="flex items-center gap-3 mb-6">
-                    <motion.div 
+                    <motion.div
                         whileHover={{ rotate: 360 }}
                         transition={{ duration: 0.6 }}
                         className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center"
@@ -149,15 +149,15 @@ export default function ProfileSettings({ initialData, onSave, readOnlyFields = 
                     </motion.div>
                     <h2 className="text-xl font-semibold text-foreground">Profile Information</h2>
                 </div>
-                
-                <motion.div 
+
+                <motion.div
                     variants={containerVariants}
                     initial="hidden"
                     animate="visible"
                     className="space-y-4 max-w-md"
                 >
                     {fields.map((field, index) => (
-                        <motion.div 
+                        <motion.div
                             key={field.name}
                             variants={itemVariants}
                             transition={{ delay: index * 0.05 }}
@@ -169,7 +169,7 @@ export default function ProfileSettings({ initialData, onSave, readOnlyFields = 
                                 )}
                             </label>
                             {readOnlyFields.includes(field.name) ? (
-                                <motion.div 
+                                <motion.div
                                     whileHover={{ scale: 1.01 }}
                                     className="flex items-center gap-2 px-3 py-2 bg-muted border border-border rounded-md"
                                 >
@@ -186,9 +186,23 @@ export default function ProfileSettings({ initialData, onSave, readOnlyFields = 
                                             className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${errors[field.name] ? "border-red-500" : "border-border"}`}
                                         >
                                             <option value="">Select {field.label}</option>
-                                            {field.options && field.options.map((opt) => (
-                                                <option key={opt} value={opt}>{opt}</option>
-                                            ))}
+                                            {field.options && (
+                                                Array.isArray(field.options) ? (
+                                                    field.options.map((opt) => (
+                                                        <option key={opt} value={opt}>{opt}</option>
+                                                    ))
+                                                ) : (
+                                                    Object.entries(field.options).map(([group, opts]) => (
+                                                        <optgroup key={group} label={group} className="font-semibold text-muted-foreground">
+                                                            {opts.map((opt) => (
+                                                                <option key={`${group}-${opt}`} value={opt} className="font-normal text-foreground">
+                                                                    {opt}
+                                                                </option>
+                                                            ))}
+                                                        </optgroup>
+                                                    ))
+                                                )
+                                            )}
                                         </select>
                                     </motion.div>
                                     <AnimatePresence>
@@ -238,7 +252,7 @@ export default function ProfileSettings({ initialData, onSave, readOnlyFields = 
                             )}
                         </motion.div>
                     ))}
-                    
+
                     {/* Success Message */}
                     <AnimatePresence>
                         {saveSuccess && (
@@ -252,15 +266,15 @@ export default function ProfileSettings({ initialData, onSave, readOnlyFields = 
                             </motion.div>
                         )}
                     </AnimatePresence>
-                    
+
                     <motion.div
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         className="pt-2"
                     >
-                        <Button 
-                            onClick={handleSave} 
-                            disabled={saving} 
+                        <Button
+                            onClick={handleSave}
+                            disabled={saving}
                             className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600"
                         >
                             {saving ? (
