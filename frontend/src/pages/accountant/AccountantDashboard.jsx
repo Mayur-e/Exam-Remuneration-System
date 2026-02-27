@@ -12,10 +12,12 @@ import {
   CheckCircleIcon,
   FileTextIcon
 } from "../../components/icons/logo";
+import ExportFilterModal from "../../components/ExportFilterModal";
 
 export default function AccountantDashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -30,9 +32,18 @@ export default function AccountantDashboard() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleExport = async () => {
+  const handleExport = async (filters) => {
     try {
-      const response = await api.get('/admin/export/billing-sheet', {
+      const queryParams = new URLSearchParams();
+      if (filters) {
+        Object.entries(filters).forEach(([key, value]) => {
+          if (value) queryParams.append(key, value);
+        });
+      }
+      const queryString = queryParams.toString();
+      const endpoint = queryString ? `/admin/export/billing-sheet?${queryString}` : '/admin/export/billing-sheet';
+
+      const response = await api.get(endpoint, {
         responseType: 'blob',
       });
 
@@ -124,6 +135,13 @@ export default function AccountantDashboard() {
       transition={{ duration: 0.5 }}
     >
       {/* Header */}
+      <ExportFilterModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onExport={handleExport}
+        isAdmin={false}
+      />
+
       <motion.div
         className="space-y-2"
         initial={{ opacity: 0, y: -10 }}
@@ -249,7 +267,7 @@ export default function AccountantDashboard() {
               whileTap={{ scale: 0.95 }}
             >
               <Button
-                onClick={handleExport}
+                onClick={() => setIsExportModalOpen(true)}
                 variant="outline"
                 className="border-green-600 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 font-semibold w-full"
               >

@@ -14,6 +14,7 @@ import {
   AlertCircleIcon,
   UsersIcon
 } from "../../components/icons/logo";
+import ExportFilterModal from "../../components/ExportFilterModal";
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
@@ -21,6 +22,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("");
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -40,13 +42,22 @@ export default function AdminDashboard() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleExport = async () => {
+  const handleExport = async (filters) => {
     try {
       // Loading toast
       setToastMessage("Generating export...");
       setToastType("info");
-      
-      const response = await api.get('/admin/export/billing-sheet', {
+
+      const queryParams = new URLSearchParams();
+      if (filters) {
+        Object.entries(filters).forEach(([key, value]) => {
+          if (value) queryParams.append(key, value);
+        });
+      }
+      const queryString = queryParams.toString();
+      const endpoint = queryString ? `/admin/export/billing-sheet?${queryString}` : '/admin/export/billing-sheet';
+
+      const response = await api.get(endpoint, {
         responseType: 'blob',
       });
 
@@ -59,7 +70,7 @@ export default function AdminDashboard() {
 
       link.parentNode.removeChild(link);
       window.URL.revokeObjectURL(url);
-      
+
       // Success toast
       setToastMessage("Export downloaded successfully!");
       setToastType("success");
@@ -141,7 +152,7 @@ export default function AdminDashboard() {
       >
         <Card className="p-8 text-center max-w-md">
           <motion.div
-            animate={{ 
+            animate={{
               x: [0, -5, 5, -5, 5, 0],
               transition: { duration: 0.6 }
             }}
@@ -154,8 +165,8 @@ export default function AdminDashboard() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            <Button 
-              onClick={() => window.location.reload()} 
+            <Button
+              onClick={() => window.location.reload()}
               className="bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600"
             >
               <motion.span
@@ -181,13 +192,12 @@ export default function AdminDashboard() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 50 }}
             transition={{ duration: 0.3 }}
-            className={`fixed top-4 right-4 px-4 py-2 rounded shadow-lg z-50 ${
-              toastType === "success" 
-                ? "bg-green-600 text-white" 
+            className={`fixed top-4 right-4 px-4 py-2 rounded shadow-lg z-50 ${toastType === "success"
+                ? "bg-green-600 text-white"
                 : toastType === "error"
-                ? "bg-red-600 text-white"
-                : "bg-blue-600 text-white"
-            }`}
+                  ? "bg-red-600 text-white"
+                  : "bg-blue-600 text-white"
+              }`}
           >
             {toastMessage}
           </motion.div>
@@ -195,6 +205,13 @@ export default function AdminDashboard() {
       </AnimatePresence>
 
       {/* Header */}
+      <ExportFilterModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onExport={handleExport}
+        isAdmin={true}
+      />
+
       <motion.div
         className="space-y-2"
         initial={{ opacity: 0, y: -20 }}
@@ -202,7 +219,7 @@ export default function AdminDashboard() {
         transition={{ duration: 0.6, type: "spring" }}
       >
         <div className="flex items-center gap-3">
-          <motion.div 
+          <motion.div
             whileHover={{ rotate: 360 }}
             transition={{ duration: 0.6 }}
             className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-600 to-purple-500 flex items-center justify-center"
@@ -309,8 +326,8 @@ export default function AdminDashboard() {
           >
             <Card className="p-6 bg-card border-border hover:shadow-lg transition-shadow duration-300">
               <div className="flex items-center gap-3 mb-6">
-                <motion.div 
-                  animate={{ 
+                <motion.div
+                  animate={{
                     scale: [1, 1.2, 1],
                     transition: { duration: 2, repeat: Infinity }
                   }}
@@ -357,7 +374,7 @@ export default function AdminDashboard() {
                 )}
 
                 {!alerts.pending_beyond_limit && !alerts.repeated_rejections && !alerts.external_without_docs && !alerts.rate_mismatch_flags && (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     className="text-center py-4 text-muted-foreground"
@@ -386,8 +403,8 @@ export default function AdminDashboard() {
         <Card className="p-6 bg-card border-border hover:shadow-lg transition-shadow duration-300">
           <h2 className="text-xl font-semibold text-foreground mb-4">Quick Actions</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <motion.div 
-              whileHover={{ scale: 1.05, y: -3 }} 
+            <motion.div
+              whileHover={{ scale: 1.05, y: -3 }}
               whileTap={{ scale: 0.95 }}
               transition={{ type: "spring", stiffness: 400, damping: 25 }}
             >
@@ -400,8 +417,8 @@ export default function AdminDashboard() {
               </Button>
             </motion.div>
 
-            <motion.div 
-              whileHover={{ scale: 1.05, y: -3 }} 
+            <motion.div
+              whileHover={{ scale: 1.05, y: -3 }}
               whileTap={{ scale: 0.95 }}
               transition={{ type: "spring", stiffness: 400, damping: 25 }}
             >
@@ -415,8 +432,8 @@ export default function AdminDashboard() {
               </Button>
             </motion.div>
 
-            <motion.div 
-              whileHover={{ scale: 1.05, y: -3 }} 
+            <motion.div
+              whileHover={{ scale: 1.05, y: -3 }}
               whileTap={{ scale: 0.95 }}
               transition={{ type: "spring", stiffness: 400, damping: 25 }}
             >
@@ -430,13 +447,13 @@ export default function AdminDashboard() {
               </Button>
             </motion.div>
 
-            <motion.div 
-              whileHover={{ scale: 1.05, y: -3 }} 
+            <motion.div
+              whileHover={{ scale: 1.05, y: -3 }}
               whileTap={{ scale: 0.95 }}
               transition={{ type: "spring", stiffness: 400, damping: 25 }}
             >
               <Button
-                onClick={handleExport}
+                onClick={() => setIsExportModalOpen(true)}
                 variant="outline"
                 className="w-full border-green-600 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 font-semibold"
               >
@@ -491,11 +508,11 @@ function StatCard({ title, value, subtitle, icon, bgColor, borderColor, textColo
           <motion.div
             className={`p-3 rounded-lg ${iconBg}`}
             animate={
-              animateIcon 
+              animateIcon
                 ? { rotate: [0, 10, 0, -10, 0], transition: { duration: 4, repeat: Infinity, ease: "linear" } }
                 : pulseIcon
-                ? { scale: [1, 1.1, 1], transition: { duration: 2, repeat: Infinity } }
-                : {}
+                  ? { scale: [1, 1.1, 1], transition: { duration: 2, repeat: Infinity } }
+                  : {}
             }
             whileHover={!animateIcon && !pulseIcon ? { rotate: 360 } : {}}
             transition={{ duration: 0.6 }}
