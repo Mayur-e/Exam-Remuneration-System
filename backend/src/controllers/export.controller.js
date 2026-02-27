@@ -8,8 +8,21 @@ exports.exportBillingSheet = async (req, res) => {
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.readFile(templatePath);
 
-        const { department } = req.user;
-        const isBillingIncharge = req.user.role === 'BILLING_INCHARGE';
+        const { department: userDept, role } = req.user;
+        const isBillingIncharge = role === 'BILLING_INCHARGE';
+
+        // Extract filters from query
+        const {
+            academic_year: queryAcademicYear,
+            department: queryDepartment,
+            program: queryProgram,
+            level: queryLevel,
+            exam_type: queryExamType
+        } = req.query;
+
+        // Determine effective department filter
+        // Admins can filter by queryDepartment; Accountants are locked to userDept
+        const targetDepartment = isBillingIncharge ? userDept : (queryDepartment || null);
 
         // Helper to formatting dates
         const formatDate = (dateStr) => {
@@ -41,10 +54,29 @@ exports.exportBillingSheet = async (req, res) => {
             `;
 
             const queryParams = [];
-            if (isBillingIncharge && department) {
-                externalClaimsQuery += ` AND u.department = $1`;
-                queryParams.push(department);
+            let paramIdx = 1;
+
+            if (targetDepartment) {
+                externalClaimsQuery += ` AND u.department = $${paramIdx++}`;
+                queryParams.push(targetDepartment);
             }
+            if (queryAcademicYear) {
+                externalClaimsQuery += ` AND e.academic_year = $${paramIdx++}`;
+                queryParams.push(queryAcademicYear);
+            }
+            if (queryProgram) {
+                externalClaimsQuery += ` AND e.program = $${paramIdx++}`;
+                queryParams.push(queryProgram);
+            }
+            if (queryLevel) {
+                externalClaimsQuery += ` AND e.level = $${paramIdx++}`;
+                queryParams.push(queryLevel);
+            }
+            if (queryExamType) {
+                externalClaimsQuery += ` AND e.exam_type = $${paramIdx++}`;
+                queryParams.push(queryExamType);
+            }
+
             const { rows: extClaims } = await db.query(externalClaimsQuery, queryParams);
 
             // Populate Headers (using first row if available)
@@ -54,9 +86,9 @@ exports.exportBillingSheet = async (req, res) => {
                 const uniqueClassYears = [...new Set(extClaims.map(c => c.level).filter(Boolean))].join(', ');
 
                 const first = extClaims[0];
-                const dept = first.exam_department || department || '';
+                const dept = first.exam_department || targetDepartment || '';
                 const prog = first.program || '';
-                const acadYear = first.academic_year || '';
+                const acadYear = first.academic_year || queryAcademicYear || '';
                 const semester = first.semester || '';
                 const classYear = uniqueClassYears || first.level || '';
                 const examMonth = getMonthYear(first.exam_date);
@@ -147,9 +179,27 @@ exports.exportBillingSheet = async (req, res) => {
             `;
 
             const intParams = [];
-            if (isBillingIncharge && department) {
-                internalClaimsQuery += ` AND u.department = $1`;
-                intParams.push(department);
+            let intParamIdx = 1;
+
+            if (targetDepartment) {
+                internalClaimsQuery += ` AND u.department = $${intParamIdx++}`;
+                intParams.push(targetDepartment);
+            }
+            if (queryAcademicYear) {
+                internalClaimsQuery += ` AND e.academic_year = $${intParamIdx++}`;
+                intParams.push(queryAcademicYear);
+            }
+            if (queryProgram) {
+                internalClaimsQuery += ` AND e.program = $${intParamIdx++}`;
+                intParams.push(queryProgram);
+            }
+            if (queryLevel) {
+                internalClaimsQuery += ` AND e.level = $${intParamIdx++}`;
+                intParams.push(queryLevel);
+            }
+            if (queryExamType) {
+                internalClaimsQuery += ` AND e.exam_type = $${intParamIdx++}`;
+                intParams.push(queryExamType);
             }
             internalClaimsQuery += ` ORDER BY e.exam_date, e.subject_code`;
 
@@ -168,9 +218,27 @@ exports.exportBillingSheet = async (req, res) => {
             `;
 
             const staffParams = [];
-            if (isBillingIncharge && department) {
-                staffClaimsQuery += ` AND u.department = $1`;
-                staffParams.push(department);
+            let staffParamIdx = 1;
+
+            if (targetDepartment) {
+                staffClaimsQuery += ` AND u.department = $${staffParamIdx++}`;
+                staffParams.push(targetDepartment);
+            }
+            if (queryAcademicYear) {
+                staffClaimsQuery += ` AND e.academic_year = $${staffParamIdx++}`;
+                staffParams.push(queryAcademicYear);
+            }
+            if (queryProgram) {
+                staffClaimsQuery += ` AND e.program = $${staffParamIdx++}`;
+                staffParams.push(queryProgram);
+            }
+            if (queryLevel) {
+                staffClaimsQuery += ` AND e.level = $${staffParamIdx++}`;
+                staffParams.push(queryLevel);
+            }
+            if (queryExamType) {
+                staffClaimsQuery += ` AND e.exam_type = $${staffParamIdx++}`;
+                staffParams.push(queryExamType);
             }
             staffClaimsQuery += ` ORDER BY e.exam_date, e.subject_code`;
 
@@ -184,22 +252,29 @@ exports.exportBillingSheet = async (req, res) => {
                 const uniqueExamTypes = [...new Set(allClaims.map(c => c.exam_type).filter(Boolean))].join('/');
                 const uniqueClassYears = [...new Set(allClaims.map(c => c.level).filter(Boolean))].join(', ');
 
-                const dept = first.exam_department || department || '';
+                const dept = first.exam_department || targetDepartment || '';
                 const prog = first.program || '';
-                const acadYear = first.academic_year || '';
+                const acadYear = first.academic_year || queryAcademicYear || '';
                 const semester = first.semester || '';
                 const classYear = uniqueClassYears || first.level || '';
                 const examMonth = getMonthYear(first.exam_date);
                 const currentDate = formatDate(new Date());
 
-                sheet2.getCell('A6').value = `Programme: ${prog}`;
-                sheet2.getCell('L6').value = `Date: ${currentDate}`;
-                sheet2.getCell('A7').value = `Department: ${dept}`;
-                sheet2.getCell('L7').value = `Class Year: ${classYear}`;
-                sheet2.getCell('A8').value = `Academic Year: ${acadYear}`;
-                sheet2.getCell('L8').value = `Semester: ${semester}`;
-                sheet2.getCell('A9').value = `Examination: ${uniqueExamTypes || first.exam_type}`;
-                sheet2.getCell('L9').value = `Exam Month: ${examMonth}`;
+                const PROGRAM_MAPPING = {
+                    "BTECH": "B.Tech.",
+                    "MTECH": "M.Tech.",
+                    "MCA": "MCA",
+                    "PHD": "Ph.D"
+                };
+
+                sheet2.getCell('A17').value = `Programme: ${PROGRAM_MAPPING[prog] || prog}`;
+                sheet2.getCell('L17').value = `Date: ${currentDate}`;
+                sheet2.getCell('A18').value = `Department: ${dept}`;
+                sheet2.getCell('L18').value = `Class Year: ${classYear}`;
+                sheet2.getCell('A19').value = `Academic Year: ${acadYear}`;
+                sheet2.getCell('L19').value = `Semester: ${semester}`;
+                sheet2.getCell('A20').value = `Examination: ${uniqueExamTypes || first.exam_type}`;
+                sheet2.getCell('L20').value = `Exam Month: ${examMonth}`;
             }
 
             // Calculate rows needed
@@ -240,7 +315,7 @@ exports.exportBillingSheet = async (req, res) => {
                 row.getCell(16).value = ''; // Examination - Rate per Batch
                 row.getCell(17).value = ''; // Examination - Total (D)
                 row.getCell(18).value = Number(claim.total_amount) || 0; // Total Amount (A+B+C+D)
-                row.getCell(19).value = claim.pan_number || claim.prn || ''; // PAN
+                row.getCell(19).value = claim.pan_number || ''; // PAN (Removed PRN fallback)
                 row.getCell(20).value = claim.bank_name || ''; // Bank Name
                 row.getCell(21).value = claim.branch_name || ''; // Bank Branch
                 row.getCell(22).value = claim.account_number || ''; // Bank Account No.
@@ -286,7 +361,7 @@ exports.exportBillingSheet = async (req, res) => {
                 row.getCell(17).value = examDays > 0 ? amountD : ''; // Total (D)
 
                 row.getCell(18).value = total; // Total Amount
-                row.getCell(19).value = claim.pan_number || claim.prn || ''; // PAN
+                row.getCell(19).value = claim.pan_number || ''; // PAN (Removed PRN fallback)
                 row.getCell(20).value = claim.bank_name || ''; // Bank Name
                 row.getCell(21).value = claim.branch_name || ''; // Bank Branch
                 row.getCell(22).value = claim.account_number || ''; // Bank Account No.
