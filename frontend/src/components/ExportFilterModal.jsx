@@ -27,18 +27,48 @@ export default function ExportFilterModal({ isOpen, onClose, onExport, isAdmin }
         "PHD": ["Coursework", "Research"]
     };
 
+    const EXAM_TYPES = [
+        { value: "PR", label: "Practical (PR)", programs: ["BTECH", "MTECH", "MCA", "PHD"] },
+        { value: "OR", label: "Oral (OR)", programs: ["BTECH", "MTECH", "MCA", "PHD"] },
+        { value: "TW", label: "Term Work (TW)", programs: ["BTECH", "MTECH", "MCA", "PHD"] },
+        { value: "Project_Seminar_MiniProject", label: "Project / Seminar / MiniProject", programs: ["BTECH", "MTECH", "MCA", "PHD"] },
+        { value: "BTech_Project_Stage1", label: "B.Tech Project Stage 1", programs: ["BTECH"] },
+        { value: "BTech_Project_Stage2", label: "B.Tech Project Stage 2", programs: ["BTECH"] },
+        { value: "MTech_MiniProject", label: "M.Tech MiniProject", programs: ["MTECH"] },
+        { value: "MTech_Seminar", label: "M.Tech Seminar", programs: ["MTECH"] },
+        { value: "MTech_Project_Stage1", label: "M.Tech Project Stage 1", programs: ["MTECH"] },
+        { value: "MTech_Dissertation", label: "M.Tech Dissertation", programs: ["MTECH"] },
+        { value: "MCA_MiniProject", label: "MCA MiniProject", programs: ["MCA"] },
+        { value: "MCA_MajorProject", label: "MCA MajorProject", programs: ["MCA"] },
+        { value: "Audit_Course", label: "Audit Course", programs: ["BTECH", "MTECH", "MCA", "PHD"] }
+    ];
+
     if (!isOpen) return null;
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFilters(prev => {
             const newFilters = { ...prev, [name]: value };
-            // Auto-reset level if program changes to avoid invalid combinations
+            // Auto-reset level and exam_type if program changes to avoid invalid combinations
             if (name === "program") {
                 newFilters.level = "";
+
+                // Clear exam_type if no longer applicable to the new program
+                const validExamTypes = value
+                    ? EXAM_TYPES.filter(t => t.programs.includes(value)).map(t => t.value)
+                    : EXAM_TYPES.map(t => t.value);
+
+                if (newFilters.exam_type && !validExamTypes.includes(newFilters.exam_type)) {
+                    newFilters.exam_type = "";
+                }
             }
             return newFilters;
         });
+    };
+
+    const getAvailableExamTypes = () => {
+        if (!filters.program) return EXAM_TYPES;
+        return EXAM_TYPES.filter(type => type.programs.includes(filters.program));
     };
 
     const handleSubmit = (e) => {
@@ -144,9 +174,11 @@ export default function ExportFilterModal({ isOpen, onClose, onExport, isAdmin }
                                 className="w-full px-3 py-2 border rounded-md bg-background focus:ring-2 focus:ring-purple-500"
                             >
                                 <option value="">All Exam Types</option>
-                                <option value="PR">Practical (PR)</option>
-                                <option value="OR">Oral (OR)</option>
-                                <option value="TW">Term Work (TW)</option>
+                                {getAvailableExamTypes().map((type) => (
+                                    <option key={type.value} value={type.value}>
+                                        {type.label}
+                                    </option>
+                                ))}
                             </select>
                         </div>
 
