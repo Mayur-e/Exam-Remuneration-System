@@ -14,17 +14,33 @@ export default function ExportFilterModal({ isOpen, onClose, onExport, isAdmin }
     });
 
     const PROGRAM_MAPPING = {
-        "BTECH": "B.Tech",
-        "MTECH": "M.Tech",
+        "BTECH": "B.Tech.",
+        "MTECH": "M.Tech.",
         "MCA": "MCA",
-        "PHD": "Ph.D"
+        "PHD": "Ph.D."
     };
 
     const PROGRAM_LEVELS = {
-        "BTECH": ["FY", "SY", "TY", "Final Year"],
-        "MTECH": ["FY M.Tech", "SY M.Tech"],
-        "MCA": ["FY MCA", "SY MCA"],
-        "PHD": ["Coursework", "Research"]
+        "BTECH": [
+            { value: "FY", label: "First Year (FY)" },
+            { value: "SY", label: "Second Year (SY)" },
+            { value: "TY", label: "Third Year (TY)" },
+            { value: "FINAL", label: "Final Year" }
+        ],
+        "MTECH": [
+            { value: "FY", label: "First Year (FY)" },
+            { value: "SY", label: "Second Year (SY)" }
+        ],
+        "MCA": [
+            { value: "FY", label: "First Year (FY)" },
+            { value: "SY", label: "Second Year (SY)" }
+        ],
+        "PHD": [
+            { value: "FY", label: "First Year (FY)" },
+            { value: "SY", label: "Second Year (SY)" },
+            { value: "TY", label: "Third Year (TY)" },
+            { value: "FINAL", label: "Final Year" }
+        ]
     };
 
     const EXAM_TYPES = [
@@ -49,9 +65,10 @@ export default function ExportFilterModal({ isOpen, onClose, onExport, isAdmin }
         const { name, value } = e.target;
         setFilters(prev => {
             const newFilters = { ...prev, [name]: value };
-            // Auto-reset level and exam_type if program changes to avoid invalid combinations
+            // Auto-reset dependent fields if program changes
             if (name === "program") {
                 newFilters.level = "";
+                newFilters.department = "";
 
                 // Clear exam_type if no longer applicable to the new program
                 const validExamTypes = value
@@ -111,29 +128,6 @@ export default function ExportFilterModal({ isOpen, onClose, onExport, isAdmin }
                             </select>
                         </div>
 
-                        {isAdmin && (
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Department</label>
-                                <select
-                                    name="department"
-                                    value={filters.department}
-                                    onChange={handleChange}
-                                    className="w-full px-3 py-2 border rounded-md bg-background focus:ring-2 focus:ring-purple-500"
-                                >
-                                    <option value="">All Departments</option>
-                                    {Object.entries(PROGRAM_DEPARTMENTS).map(([program, depts]) => (
-                                        <optgroup key={program} label={program}>
-                                            {depts.map((deptName) => (
-                                                <option key={deptName} value={deptName}>
-                                                    {deptName}
-                                                </option>
-                                            ))}
-                                        </optgroup>
-                                    ))}
-                                </select>
-                            </div>
-                        )}
-
                         <div>
                             <label className="block text-sm font-medium mb-1">Programme</label>
                             <select
@@ -149,6 +143,35 @@ export default function ExportFilterModal({ isOpen, onClose, onExport, isAdmin }
                             </select>
                         </div>
 
+                        {isAdmin && (
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Department</label>
+                                <select
+                                    name="department"
+                                    value={filters.department}
+                                    onChange={handleChange}
+                                    className="w-full px-3 py-2 border rounded-md bg-background focus:ring-2 focus:ring-purple-500"
+                                    disabled={!filters.program}
+                                >
+                                    <option value="">All Departments</option>
+                                    {filters.program && PROGRAM_DEPARTMENTS[PROGRAM_MAPPING[filters.program]]?.map((deptName) => (
+                                        <option key={deptName} value={deptName}>
+                                            {deptName}
+                                        </option>
+                                    ))}
+                                    {!filters.program && Object.entries(PROGRAM_DEPARTMENTS).map(([program, depts]) => (
+                                        <optgroup key={program} label={program}>
+                                            {depts.map((deptName) => (
+                                                <option key={deptName} value={deptName}>
+                                                    {deptName}
+                                                </option>
+                                            ))}
+                                        </optgroup>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+
                         <div>
                             <label className="block text-sm font-medium mb-1">Class Year (Level)</label>
                             <select
@@ -160,7 +183,7 @@ export default function ExportFilterModal({ isOpen, onClose, onExport, isAdmin }
                             >
                                 <option value="">All Classes</option>
                                 {filters.program && PROGRAM_LEVELS[filters.program]?.map(lvl => (
-                                    <option key={lvl} value={lvl}>{lvl} {PROGRAM_MAPPING[filters.program]}</option>
+                                    <option key={lvl.value} value={lvl.value}>{lvl.label}</option>
                                 ))}
                             </select>
                         </div>
