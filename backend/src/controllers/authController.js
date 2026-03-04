@@ -52,7 +52,10 @@ exports.login = async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
-      department: user.department
+      department: user.department,
+      prn: user.prn || null,
+      mobile: user.mobile || null,
+      pan_card: user.pan_card || null
     },
   });
 };
