@@ -11,63 +11,104 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 
-
 export default function TeachingBillForm() {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
 
   const examIdFromUrl = params.get("examId");
-  const claimTypeFromUrl =
-    params.get("claimType") || "TEACHING_INTERNAL";
-
+  const claimTypeFromUrl = params.get("claimType") || "TEACHING_INTERNAL";
 
   const [examId, setExamId] = useState(examIdFromUrl);
   const [status, setStatus] = useState(examIdFromUrl ? null : "draft");
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [exam, setExam] = useState(null);
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [externalLink, setExternalLink] = useState("");
   const [linkExpiration, setLinkExpiration] = useState(null);
   const [isExistingLink, setIsExistingLink] = useState(false);
 
+  // Stepper state
+  const [currentStep, setCurrentStep] = useState(1);
+  const baseSteps = [
+    { num: 1, label: "GENERAL" },
+    { num: 2, label: "DUTY DETAILS" }
+  ];
+
+  const steps = (status && status !== "draft" && status !== "rejected" && status !== "COORDINATOR_REJECTED")
+    ? [...baseSteps, { num: 3, label: "SUMMARY" }]
+    : baseSteps;
 
   useEffect(() => {
-    // New claim → reset everything
     if (!examIdFromUrl) {
       setExamId(null);
       setStatus("draft");
       setExam(null);
+      setCurrentStep(1);
     }
-  }, [claimTypeFromUrl]);
+  }, [claimTypeFromUrl, examIdFromUrl]);
 
-
-  // ✅ DEFINE fetchExam
   const fetchExam = async (id = examId) => {
     if (!id) return;
-
     try {
       const res = await api.get(`/faculty/exams/${id}`);
       setExam({ ...res.data });
       setStatus(res.data.status);
-      setRefreshKey(k => k + 1); // triggers BillSummary refresh
+      setRefreshKey(k => k + 1);
+
+      if (res.data.status && res.data.status !== "draft" && res.data.status !== "rejected" && res.data.status !== "COORDINATOR_REJECTED") {
+        setCurrentStep(3);
+      }
     } catch (err) {
       console.error("Failed to fetch exam", err);
     }
   };
 
   useEffect(() => {
-
     fetchExam();
   }, [examId]);
 
+  useEffect(() => {
+    if (examId && currentStep === 3 && !pdfUrl) {
+      const allowedStatuses = ["submitted", "approved", "paid", "SENT_TO_BILLING", "UNDER_COORDINATOR_REVIEW", "COORDINATOR_VERIFIED"];
+      if (allowedStatuses.includes(status)) {
+        const fetchPdfPreview = async () => {
+          setIsPreviewLoading(true);
+          try {
+            const response = await api.get(`/pdf/claim/${examId}/download`, {
+              responseType: 'blob',
+              validateStatus: (s) => s < 500,
+            });
+            if (response.status === 200) {
+              const blob = new Blob([response.data], { type: 'application/pdf' });
+              setPdfUrl(URL.createObjectURL(blob));
+            }
+          } catch (error) {
+            console.error("Failed to load PDF preview:", error);
+          } finally {
+            setIsPreviewLoading(false);
+          }
+        };
+        fetchPdfPreview();
+      }
+    }
+  }, [examId, currentStep, status, pdfUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+    };
+  }, [pdfUrl]);
 
   const handleSubmit = async () => {
     setLoading(true);
     try {
       await api.post(`/faculty/exams/${examId}/submit`, {});
       setStatus("submitted");
-      setRefreshKey(k => k + 1); // Refresh summary
+      setRefreshKey(k => k + 1);
+      setCurrentStep(3);
       showToast("Claim submitted successfully!", "success");
     } catch (err) {
       showToast(err.response?.data?.message || "Submit failed", "error");
@@ -80,26 +121,20 @@ export default function TeachingBillForm() {
     if (!examId) return;
     try {
       showToast("Generating PDF...", "info");
-
       const response = await api.get(`/pdf/claim/${examId}/download`, {
         responseType: 'blob',
-        validateStatus: (status) => status < 500, // Resolve only if the status code is less than 500
+        validateStatus: (status) => status < 500,
       });
 
-      if (response.status !== 200) {
-        throw new Error("Failed to generate PDF");
-      }
+      if (response.status !== 200) throw new Error("Failed to generate PDF");
 
-      // Construct filename
       const code = exam?.subject_code || 'Exam';
       const safeCode = code.replace(/[^a-zA-Z0-9-_]/g, '');
       const filename = `${safeCode}-Teaching.pdf`;
 
-      // Create a URL for the blob
       const blob = new Blob([response.data], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
 
-      // Trigger direct download
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', filename);
@@ -108,86 +143,275 @@ export default function TeachingBillForm() {
       link.remove();
 
       showToast("PDF Downloaded!", "success");
-
-      // Clean up the URL
-      setTimeout(() => {
-        window.URL.revokeObjectURL(url);
-      }, 1000);
-
+      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
     } catch (err) {
       console.error("Failed to generate PDF:", err);
       showToast("Failed to generate PDF. Please try again.", "error");
     }
   };
 
-
-
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Teaching Staff Claim</h2>
+    <div className={`mx-auto space-y-8 font-display pb-12 transition-all duration-300 ${currentStep === 3 ? 'max-w-7xl' : 'max-w-4xl'}`}>
 
-      {/* Rejection/Sent-Back Notice */}
-      {exam && exam.claimActions && exam.claimActions.length > 0 && (
-        <Card className={`p-6 ${exam.claimActions[0].action_type === 'REJECTED' ? 'bg-red-50 border-red-200' : 'bg-orange-50 border-orange-200'}`}>
+      {/* Rejection Notice */}
+      {exam && ['rejected', 'COORDINATOR_REJECTED'].includes(exam.status) && exam.claimActions && exam.claimActions.length > 0 && (
+        <Card className={`p-6 border-l-4 ${exam.claimActions[0].action_type === 'REJECTED' ? 'bg-red-50 border-red-500' : 'bg-orange-50 border-orange-500'}`}>
           <div className="flex items-start gap-3">
-            <div className="flex-shrink-0">
-              <svg className={`w-6 h-6 ${exam.claimActions[0].action_type === 'REJECTED' ? 'text-red-600' : 'text-orange-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
+            <span className={`material-symbols-outlined mt-0.5 ${exam.claimActions[0].action_type === 'REJECTED' ? 'text-red-600' : 'text-orange-600'}`}>
+              warning
+            </span>
             <div className="flex-1">
-              <h3 className={`font-semibold mb-2 ${['REJECTED', 'REJECT'].includes(exam.claimActions[0].action_type) ? 'text-red-900' : 'text-orange-900'}`}>
+              <h3 className={`font-bold mb-2 ${['REJECTED', 'REJECT'].includes(exam.claimActions[0].action_type) ? 'text-red-900' : 'text-orange-900'}`}>
                 {['REJECTED', 'REJECT'].includes(exam.claimActions[0].action_type) ? 'Claim Rejected' : 'Claim Sent Back for Correction'}
               </h3>
               {exam.claimActions.map((action, idx) => (
                 <div key={idx} className="mb-3 last:mb-0">
-                  <p className={`text-sm mb-1 ${['REJECTED', 'REJECT'].includes(action.action_type) ? 'text-red-700' : 'text-orange-700'}`}>
-                    <strong>{['REJECTED', 'REJECT'].includes(action.action_type) ? (action.action_type === 'REJECT' ? 'Rejected by Coordinator:' : 'Rejected by Billing:') : 'Sent back by:'}</strong> {action.action_by_name} on{' '}
-                    {new Date(action.action_at).toLocaleString()}
+                  <p className={`text-sm mb-1 font-medium ${['REJECTED', 'REJECT'].includes(action.action_type) ? 'text-red-700' : 'text-orange-700'}`}>
+                    {['REJECTED', 'REJECT'].includes(action.action_type) ? 'Rejected by:' : 'Sent back by:'} {action.action_by_name} on {new Date(action.action_at).toLocaleDateString()}
                   </p>
-                  <p className={`text-sm p-3 rounded border bg-card ${['REJECTED', 'REJECT'].includes(action.action_type) ? 'text-red-800 border-red-200' : 'text-orange-800 border-orange-200'}`}>
+                  <p className={`text-sm p-3 rounded-lg border bg-white shadow-sm ${['REJECTED', 'REJECT'].includes(action.action_type) ? 'text-red-800 border-red-200' : 'text-orange-800 border-orange-200'}`}>
                     {action.comment}
                   </p>
                 </div>
               ))}
-              <p className={`text-sm mt-3 ${exam.claimActions[0].action_type === 'REJECTED' ? 'text-red-700' : 'text-orange-700'}`}>
-                Please review the feedback above, make necessary corrections, and resubmit your claim.
-              </p>
+              <div className="mt-4">
+                <Button
+                  onClick={async () => {
+                    if (!confirm("Have you fixed all the issues? Click OK to resubmit.")) return;
+                    try {
+                      setLoading(true);
+                      await api.post(`/faculty/exams/${examId}/resubmit`);
+                      showToast("Claim resubmitted successfully!", "success");
+                      // Redirect back to Dashboard to clear the state and show progress natively
+                      window.location.href = '/faculty/my-claims';
+                    } catch (err) {
+                      showToast(err.response?.data?.message || "Failed to resubmit claim", "error");
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  disabled={loading}
+                  className="bg-blue-700 hover:bg-blue-800 text-white font-bold shadow-md"
+                >
+                  <span className="material-symbols-outlined mr-2 text-[18px]">send</span>
+                  {loading ? "Resubmitting..." : "Resubmit Claim Now"}
+                </Button>
+              </div>
             </div>
           </div>
         </Card>
       )}
 
-      {/* STEP 1 */}
-      <Card className="p-6">
-        <ExamDetails
-          examId={examId}
-          disabled={examId && status !== "draft" && status !== "rejected" && status !== "COORDINATOR_REJECTED"}
-          onCreated={(id) => {
-            setExamId(id);
-            fetchExam(id); // load immediately after create
-          }}
-          claimFormType={claimTypeFromUrl}
-          onUpdated={fetchExam}
-        />
-      </Card>
+      {/* Stepper Header */}
+      <div className="flex items-center justify-center py-6 pt-0">
+        {steps.map((step, idx) => {
+          const isActive = currentStep === step.num;
+          const isCompleted = currentStep > step.num;
 
+          return (
+            <div key={step.num} className="flex items-center">
+              <div className="flex flex-col items-center gap-3 relative">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg transition-colors ${isActive ? 'bg-[#293fb8] text-white shadow-lg ring-4 ring-blue-100' :
+                  isCompleted ? 'bg-[#293fb8] text-white' :
+                    'bg-slate-200 text-slate-500'
+                  }`}>
+                  {isCompleted ? <span className="material-symbols-outlined">check</span> : step.num}
+                </div>
+                <span className={`text-[11px] font-bold tracking-widest absolute -bottom-6 whitespace-nowrap ${isActive ? 'text-slate-800' : 'text-slate-500'}`}>
+                  {step.label}
+                </span>
+              </div>
 
-      {examId &&
-        claimTypeFromUrl === "TEACHING_EXTERNAL" &&
-        (status === "draft" || status === "rejected") && (
-          <Card className="p-4 space-y-4">
+              {idx < steps.length - 1 && (
+                <div className={`w-16 sm:w-32 h-1 mx-4 rounded-full transition-colors ${isCompleted ? 'bg-[#293fb8]' : 'bg-slate-200'
+                  }`}></div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="mt-8 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        {/* Step 1: General Info */}
+        {currentStep === 1 && (
+          <div className="p-0">
+            {/* Render ExamDetails inside, but provide the navigation under it */}
+            <ExamDetails
+              examId={examId}
+              disabled={examId && status !== "draft" && status !== "rejected" && status !== "COORDINATOR_REJECTED"}
+              onCreated={(id) => {
+                setExamId(id);
+                fetchExam(id);
+                setCurrentStep(2);
+              }}
+              claimFormType={claimTypeFromUrl}
+              onUpdated={fetchExam}
+            />
+
+            {examId && (
+              <div className="px-6 pb-6 pt-2 bg-white flex justify-end border-t-0 -mt-2">
+                <Button
+                  onClick={() => setCurrentStep(2)}
+                  className="bg-[#293fb8] hover:bg-blue-800 text-white font-bold px-6 py-2 rounded-lg"
+                >
+                  Review Section <span className="material-symbols-outlined ml-2 text-[18px]">arrow_forward</span>
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 2: Duty Details */}
+        {currentStep === 2 && (
+          <div className="p-0">
+            <ClaimsSection
+              examId={examId}
+              exam={exam}
+            />
+
+            {examId && (
+              <div className="p-6 bg-slate-50 border-t border-slate-200 flex justify-between items-center rounded-b-2xl">
+                <Button
+                  onClick={() => setCurrentStep(1)}
+                  variant="outline"
+                  className="border-slate-300 text-slate-700 font-bold px-6"
+                >
+                  <span className="material-symbols-outlined mr-2 text-[18px]">arrow_back</span> General Info
+                </Button>
+
+                {(status === "draft" || status === "rejected" || status === "COORDINATOR_REJECTED") && claimTypeFromUrl === "TEACHING_INTERNAL" && (
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={loading}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 shadow-lg shadow-emerald-500/20"
+                  >
+                    <span className="material-symbols-outlined mr-2 text-[18px]">{loading ? 'sync' : 'check_circle'}</span>
+                    {loading ? "Submitting..." : "Submit Claim"}
+                  </Button>
+                )}
+
+                {status !== "draft" && status !== "rejected" && status !== "COORDINATOR_REJECTED" && (
+                  <Button
+                    onClick={() => setCurrentStep(3)}
+                    className="bg-[#293fb8] hover:bg-blue-800 text-white font-bold px-6 py-2 rounded-lg"
+                  >
+                    View Summary <span className="material-symbols-outlined ml-2 text-[18px]">arrow_forward</span>
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 3: Summary (Only available after submission) */}
+        {currentStep === 3 && (
+          <div className="p-0">
+            <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-200">
+              {/* Left Column: Details */}
+              <div className="flex flex-col h-full bg-white">
+                {/* Status Messages */}
+                {examId && (status === "submitted" || status === "approved" || status === "paid" || status === "SENT_TO_BILLING" || status === "UNDER_COORDINATOR_REVIEW" || status === "COORDINATOR_VERIFIED") && (
+                  <div className="p-6 bg-green-50/50 border-b border-green-100 text-center">
+                    <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm ring-4 ring-green-50">
+                      <span className="material-symbols-outlined text-3xl">task_alt</span>
+                    </div>
+                    <h3 className="text-xl font-bold text-green-900 mb-2 tracking-tight">
+                      {status === "approved" || status === "paid" ? "Claim Approved" : "Claim Submitted Successfully"}
+                    </h3>
+                    <p className="text-green-700/80 font-medium text-sm">
+                      {status === "approved" || status === "paid"
+                        ? "Your claim has been fully evaluated and approved."
+                        : "Your claim has been securely submitted for department review."}
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex-1 overflow-y-auto max-h-[600px] scrollbar-thin">
+                  {(status === "submitted" || status === "approved" || status === "paid" || status === "SENT_TO_BILLING" || status === "UNDER_COORDINATOR_REVIEW" || status === "COORDINATOR_VERIFIED") && (
+                    <BillSummary examId={examId} refreshKey={refreshKey} />
+                  )}
+                </div>
+              </div>
+
+              {/* Right Column: PDF Preview */}
+              <div className="bg-slate-50 flex flex-col h-[700px] lg:h-auto min-h-[500px]">
+                <div className="px-6 py-4 border-b border-slate-200 bg-white flex justify-between items-center shrink-0">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center shadow-sm border border-red-100">
+                      <span className="material-symbols-outlined text-[18px]">print</span>
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-800 leading-tight">Print Preview</h3>
+                      <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">Generated Document</p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={handleDownloadPDF}
+                    variant="outline"
+                    className="border-slate-300 hover:bg-slate-100 text-slate-700 font-bold shadow-sm"
+                    size="sm"
+                  >
+                    <span className="material-symbols-outlined mr-1.5 text-[18px]">download</span>
+                    Download
+                  </Button>
+                </div>
+                <div className="flex-1 p-0 overflow-hidden relative bg-slate-100/50">
+                  {isPreviewLoading ? (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 bg-slate-50">
+                      <div className="w-10 h-10 border-4 border-slate-200 border-t-primary rounded-full animate-spin mb-4 shadow-sm"></div>
+                      <p className="font-medium text-sm">Generating Document...</p>
+                    </div>
+                  ) : pdfUrl ? (
+                    <iframe
+                      src={`${pdfUrl}#toolbar=1&navpanes=0&scrollbar=1&view=FitH`}
+                      className="w-full h-full border-0 lg:min-h-[700px]"
+                      title="PDF Preview"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 bg-slate-50">
+                      <span className="material-symbols-outlined text-4xl mb-2 opacity-50">error_outline</span>
+                      <p className="font-medium text-sm">Preview Unavailable</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 bg-white border-t border-slate-200 flex justify-between items-center rounded-b-2xl shadow-[0_-4px_10px_-4px_rgba(0,0,0,0.05)] relative z-10">
+              <Button
+                onClick={() => setCurrentStep(2)}
+                variant="outline"
+                className="border-slate-300 text-slate-700 font-bold px-6 shadow-sm"
+              >
+                <span className="material-symbols-outlined mr-2 text-[18px]">arrow_back</span> Duty Details
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {examId && claimTypeFromUrl === "TEACHING_EXTERNAL" && (status === "draft" || status === "rejected") && (
+        <Card className="p-6 border-purple-200 bg-purple-50/50 mt-8 shadow-sm">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+              <span className="material-symbols-outlined text-purple-600">share</span>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-800">External Examiner Sharing</h3>
+              <p className="text-sm text-slate-500">Generate a secure link for the external examiner to fill their details</p>
+            </div>
+          </div>
+
+          <div className="space-y-4 pt-2">
             <Button
               disabled={status !== "draft" && status !== "rejected" && status !== "COORDINATOR_REJECTED"}
+              className="bg-purple-600 hover:bg-purple-700 text-white font-bold"
               onClick={async () => {
                 try {
-                  const res = await api.post(
-                    `/faculty/exams/${examId}/external-link`
-                  );
+                  const res = await api.post(`/faculty/exams/${examId}/external-link`);
                   setExternalLink(res.data.link);
                   setLinkExpiration(res.data.expiresAt);
                   setIsExistingLink(res.data.isExisting);
-
                   if (res.data.isExisting) {
                     showToast("Existing valid link retrieved!", "success");
                   } else {
@@ -198,49 +422,34 @@ export default function TeachingBillForm() {
                 }
               }}
             >
+              <span className="material-symbols-outlined mr-2 text-[18px]">link</span>
               {status === "submitted" || status === "approved" || status === "paid"
                 ? "External Claim Submitted"
-                : externalLink ? "Regenerate Link" : "Generate External Examiner Link"}
-
+                : externalLink ? "Regenerate Link" : "Generate Link"}
             </Button>
 
             {externalLink && (
-              <div className="space-y-3">
-                <div className={`p-3 border rounded text-sm font-medium ${isExistingLink
-                  ? 'bg-blue-50 text-blue-700 border-blue-200'
-                  : 'bg-green-50 text-green-700 border-green-200'
-                  }`}>
-                  {isExistingLink
-                    ? '🔗 Existing valid link retrieved!'
-                    : '✅ New link generated successfully!'}
-                  {' '}Please share this link with the external examiner.
+              <div className="space-y-3 bg-white p-4 rounded-xl border border-purple-100 shadow-sm mt-4">
+                <div className={`text-sm font-bold flex items-center gap-2 ${isExistingLink ? 'text-blue-700' : 'text-green-700'}`}>
+                  <span className="material-symbols-outlined">{isExistingLink ? 'info' : 'check_circle'}</span>
+                  {isExistingLink ? 'Existing valid link retrieved!' : 'New link generated successfully!'}
                 </div>
                 <div className="flex gap-2 items-center">
-                  <Input
-                    value={externalLink}
-                    readOnly
-                    className="flex-1"
-                  />
+                  <Input value={externalLink} readOnly className="flex-1 bg-slate-50 font-mono text-sm" />
                   <Button
                     variant="secondary"
+                    className="font-bold border-purple-200 text-purple-700 hover:bg-purple-50"
                     onClick={async () => {
                       try {
-                        // Focus the window first to ensure clipboard access
                         window.focus();
                         await navigator.clipboard.writeText(externalLink);
                         showToast("Link copied to clipboard", "success");
                       } catch (err) {
-                        console.error("Clipboard error:", err);
-                        // Fallback: Select the text
                         const input = document.querySelector('input[readonly]');
                         if (input) {
                           input.select();
-                          try {
-                            document.execCommand('copy');
-                            showToast("Link copied to clipboard", "success");
-                          } catch (e) {
-                            showToast("Failed to copy. Please manually copy the link.", "error");
-                          }
+                          document.execCommand('copy');
+                          showToast("Link copied to clipboard", "success");
                         }
                       }
                     }}
@@ -249,118 +458,19 @@ export default function TeachingBillForm() {
                   </Button>
                 </div>
                 {linkExpiration && (
-                  <p className="text-xs text-muted-foreground">
-                    ⏰ Expires on: {new Date(linkExpiration).toLocaleString('en-IN', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
+                  <p className="text-xs text-slate-500 font-medium">
+                    <span className="material-symbols-outlined text-[14px] inline align-text-bottom mr-1">timer</span>
+                    Expires on: {new Date(linkExpiration).toLocaleString('en-IN', {
+                      day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                    })} (Valid for 7 days)
                   </p>
                 )}
-                <p className="text-xs text-muted-foreground">
-                  Note: This link is valid for 7 days. Once the examiner submits, it cannot be used again.
-                </p>
               </div>
             )}
-          </Card>
-        )}
-
-
-
-
-
-      {/* STEP 2 */}
-      {examId && (
-        <Card className="p-6">
-          <ClaimsSection
-            examId={examId}
-            exam={exam}
-          />
-        </Card>
-      )}
-
-
-
-      {/* STEP 4 */}
-      {examId && (status === "submitted" || status === "approved") && (
-        <Card className="p-6 bg-green-50 border-green-200">
-          <div className="text-center space-y-2 mb-4">
-            <h3 className="text-lg font-bold text-green-700">
-              {status === "approved" ? "Claim Approved" : "Claim Submitted Successfully"}
-            </h3>
-            <p className="text-green-600">
-              {status === "approved"
-                ? "Your claim has been approved."
-                : "Your claim has been submitted for approval."}
-            </p>
-            <div className="pt-2">
-              <Button
-                onClick={handleDownloadPDF}
-                className="bg-green-600 hover:bg-green-700 text-white"
-              >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Download PDF
-              </Button>
-            </div>
-          </div>
-          <BillSummary examId={examId} refreshKey={refreshKey} />
-        </Card>
-      )}
-
-      {/* SUBMIT */}
-      {examId && status === "draft" && claimTypeFromUrl === "TEACHING_INTERNAL" && (
-        <div className="flex justify-end p-4">
-          <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? "Submitting..." : "Submit Claim"}
-          </Button>
-        </div>
-      )}
-
-      {/* RESUBMIT for Rejected Claims */}
-      {examId && (status === "rejected" || status === "COORDINATOR_REJECTED") && claimTypeFromUrl === "TEACHING_INTERNAL" && (
-        <Card className="p-6 bg-orange-50 border-orange-200">
-          <div className="space-y-4">
-            <div className="flex items-start gap-3">
-              <svg className="w-6 h-6 text-orange-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <div className="flex-1">
-                <h3 className="font-semibold text-orange-900 mb-2">Ready to Resubmit?</h3>
-                <p className="text-sm text-orange-800 mb-4">
-                  Please ensure you have addressed all the issues mentioned in the rejection notice above before resubmitting your claim.
-                </p>
-                <div className="flex justify-end">
-                  <Button
-                    onClick={async () => {
-                      if (!confirm("Have you fixed all the issues mentioned in the rejection? Click OK to resubmit.")) {
-                        return;
-                      }
-                      try {
-                        setLoading(true);
-                        await api.post(`/faculty/exams/${examId}/resubmit`);
-                        showToast("Claim resubmitted successfully!", "success");
-                        fetchExam(); // Refresh to show new status
-                      } catch (err) {
-                        showToast(err.response?.data?.message || "Failed to resubmit claim", "error");
-                      } finally {
-                        setLoading(false);
-                      }
-                    }}
-                    disabled={loading}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    {loading ? "Resubmitting..." : "Resubmit Claim"}
-                  </Button>
-                </div>
-              </div>
-            </div>
           </div>
         </Card>
       )}
+
     </div>
   );
 }

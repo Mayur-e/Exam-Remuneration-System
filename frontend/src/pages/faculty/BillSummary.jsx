@@ -35,18 +35,18 @@ export default function BillSummary({ examId, refreshKey, billData }) {
 
   if (loading) {
     return (
-      <Card className="p-6">
+      <div className="p-8">
         <p className="text-center text-muted-foreground">Loading bill summary...</p>
-      </Card>
+      </div>
     );
   }
 
   if (!bill) {
     return (
-      <Card className="p-6 text-center">
+      <div className="p-8 text-center">
         <AlertCircleIcon className="w-6 h-6 text-red-500 mx-auto mb-2" />
         <p className="text-sm text-muted-foreground">Bill not generated yet</p>
-      </Card>
+      </div>
     );
   }
 
@@ -68,7 +68,7 @@ export default function BillSummary({ examId, refreshKey, billData }) {
   const requiresRevenueStamp = finalNet > 5000;
 
   return (
-    <Card className="p-6 bg-card border-border space-y-6">
+    <div className="p-8 bg-card border-none space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <ReceiptIcon className="w-5 h-5 text-blue-600" />
@@ -169,6 +169,6 @@ export default function BillSummary({ examId, refreshKey, billData }) {
           Payment will be processed after approval by accounts department.
         </p>
       </div>
-    </Card>
+    </div>
   );
 }
