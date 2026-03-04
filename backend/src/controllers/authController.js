@@ -199,3 +199,22 @@ exports.setPassword = async (req, res) => {
     res.status(500).json({ message: "Failed to set password" });
   }
 };
+
+// GET CURRENT USER FROM DATABASE (used by UI to always fetch fresh data)
+exports.getMe = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, name, email, role, department, prn, mobile, pan_card FROM users WHERE id = $1`,
+      [req.user.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.json(result.rows[0]);
+  } catch (error) {
+    console.error("getMe error:", error);
+    return res.status(500).json({ message: "Failed to fetch user" });
+  }
+};

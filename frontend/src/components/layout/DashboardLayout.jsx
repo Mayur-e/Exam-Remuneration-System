@@ -1,10 +1,12 @@
 import { Outlet, NavLink } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
     UserIcon,
     ChevronRightIcon,
     LogoutIcon
 } from "../icons/logo";
+import api from "../../services/api";
 
 /**
  * Shared Dashboard Layout Component
@@ -16,7 +18,20 @@ import {
  * @param {Object} props.branding - Branding configuration (title, subtitle, icon)
  */
 export default function DashboardLayout({ role, navItems, branding }) {
-    const user = JSON.parse(localStorage.getItem("user") || "null");
+    const [user, setUser] = useState(JSON.parse(localStorage.getItem("user") || "null"));
+
+    useEffect(() => {
+        api.get("/auth/me")
+            .then(res => {
+                setUser(res.data);
+                // Also keep localStorage in sync so other components see latest data
+                const stored = JSON.parse(localStorage.getItem("user") || "{}");
+                localStorage.setItem("user", JSON.stringify({ ...stored, ...res.data }));
+            })
+            .catch(() => {
+                // Silently fall back to cached localStorage value
+            });
+    }, []);
 
     const logout = () => {
         localStorage.clear();
