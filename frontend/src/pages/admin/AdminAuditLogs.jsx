@@ -1,15 +1,5 @@
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import api from "../../services/api";
-import { Card } from "../../components/ui/card";
-import { Input } from "../../components/ui/input";
-import { Button } from "../../components/ui/button";
-
-// Icons
-import {
-    ClipboardIcon,
-    FilterIcon
-} from "../../components/icons/logo";
 
 export default function AdminAuditLogs() {
     const [logs, setLogs] = useState([]);
@@ -59,242 +49,183 @@ export default function AdminAuditLogs() {
             date_from: "",
             date_to: ""
         });
+        // We could automatically fetch here or let the user click "Apply Filter"
     };
 
     const getActionBadge = (actionType) => {
         const badges = {
-            'REJECTED': 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800',
-            'APPROVED': 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800',
-            'SENT_BACK': 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800',
-            'SUBMITTED': 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800'
+            'REJECTED': 'bg-red-50 text-red-700 border-red-200',
+            'APPROVED': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+            'SENT_BACK': 'bg-amber-50 text-amber-700 border-amber-200',
+            'SUBMITTED': 'bg-blue-50 text-blue-700 border-blue-200'
         };
-        return badges[actionType] || 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700';
-    };
-
-    // Animation variants
-    const containerVariants = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: {
-                staggerChildren: 0.1
-            }
-        }
-    };
-
-    const itemVariants = {
-        hidden: { y: 20, opacity: 0 },
-        visible: {
-            y: 0,
-            opacity: 1,
-            transition: {
-                type: "spring",
-                stiffness: 100,
-                damping: 12
-            }
-        }
+        return badges[actionType] || 'bg-slate-50 text-slate-700 border-slate-200';
     };
 
     return (
-        <motion.div
-            className="space-y-6"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-        >
+        <div className="max-w-7xl mx-auto p-4 sm:p-8 space-y-8 font-display bg-background-light min-h-[calc(100vh-4rem)]">
             {/* Header */}
-            <div className="space-y-2">
-                <h1 className="text-3xl font-bold text-gray-800">Audit Logs</h1>
-                <p className="text-gray-600">System-wide immutable audit trail</p>
+            <div className="flex justify-between items-center">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Audit Logs</h1>
+                    <p className="text-slate-500 text-sm mt-1">System-wide immutable audit trail</p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-primary text-2xl bg-primary/10 p-2 rounded-xl">receipt_long</span>
+                </div>
             </div>
 
             {/* Filters */}
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-            >
-                <Card className="p-6 bg-card border-border">
-                    <h3 className="font-semibold mb-4 text-card-foreground">Filters</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-muted-foreground mb-1">
-                                Exam ID
-                            </label>
-                            <Input
-                                type="text"
-                                placeholder="Enter exam ID"
-                                value={filters.exam_id}
-                                onChange={(e) => handleFilterChange("exam_id", e.target.value)}
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-muted-foreground mb-1">
-                                Action Type
-                            </label>
-                            <motion.select
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider mb-4">Filters</h3>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            Exam ID
+                        </label>
+                        <input
+                            type="text"
+                            placeholder="Enter exam ID"
+                            value={filters.exam_id}
+                            onChange={(e) => handleFilterChange("exam_id", e.target.value)}
+                            className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all bg-slate-50"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            Action Type
+                        </label>
+                        <div className="relative">
+                            <select
                                 value={filters.action_type}
                                 onChange={(e) => handleFilterChange("action_type", e.target.value)}
-                                className="w-full border border-input bg-background rounded-lg p-2 text-sm text-foreground"
-                                whileHover={{ scale: 1.01 }}
+                                className="w-full pl-4 pr-10 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all bg-slate-50 appearance-none cursor-pointer"
                             >
                                 <option value="">All Actions</option>
                                 <option value="SUBMITTED">Submitted</option>
                                 <option value="APPROVED">Approved</option>
                                 <option value="REJECTED">Rejected</option>
                                 <option value="SENT_BACK">Sent Back</option>
-                            </motion.select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-muted-foreground mb-1">
-                                Date From
-                            </label>
-                            <Input
-                                type="date"
-                                value={filters.date_from}
-                                onChange={(e) => handleFilterChange("date_from", e.target.value)}
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-muted-foreground mb-1">
-                                Date To
-                            </label>
-                            <Input
-                                type="date"
-                                value={filters.date_to}
-                                onChange={(e) => handleFilterChange("date_to", e.target.value)}
-                            />
+                            </select>
+                            <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[20px]">expand_more</span>
                         </div>
                     </div>
-                    <div className="flex gap-3 mt-4">
-                        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                            <Button onClick={applyFilters} className="bg-purple-600 hover:bg-purple-700">
-                                <FilterIcon className="w-4 h-4 mr-2" />
-                                Apply Filters
-                            </Button>
-                        </motion.div>
-                        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                            <Button onClick={clearFilters} variant="outline">
-                                Clear
-                            </Button>
-                        </motion.div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            Date From
+                        </label>
+                        <input
+                            type="date"
+                            value={filters.date_from}
+                            onChange={(e) => handleFilterChange("date_from", e.target.value)}
+                            className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all bg-slate-50"
+                        />
                     </div>
-                </Card>
-            </motion.div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            Date To
+                        </label>
+                        <input
+                            type="date"
+                            value={filters.date_to}
+                            onChange={(e) => handleFilterChange("date_to", e.target.value)}
+                            className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all bg-slate-50"
+                        />
+                    </div>
+                </div>
+                <div className="flex gap-3 mt-6">
+                    <button onClick={applyFilters} className="bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-2">
+                        <span className="material-symbols-outlined text-[18px]">filter_list</span>
+                        Apply Filters
+                    </button>
+                    <button onClick={clearFilters} className="border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                        Clear Filters
+                    </button>
+                </div>
+            </div>
 
-            {/* Logs */}
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-            >
-                <Card className="bg-card border-border">
-                    <AnimatePresence mode="wait">
-                        {loading ? (
-                            <motion.div
-                                className="p-12 text-center"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                            >
-                                <motion.div
-                                    className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full mx-auto mb-4"
-                                    animate={{ rotate: 360 }}
-                                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                                />
-                                <p className="text-muted-foreground">Loading audit logs...</p>
-                            </motion.div>
-                        ) : logs.length === 0 ? (
-                            <motion.div
-                                className="p-12 text-center"
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.9 }}
-                            >
-                                <ClipboardIcon className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
-                                <h3 className="text-lg font-medium text-card-foreground mb-2">No audit logs found</h3>
-                                <p className="text-muted-foreground">Try adjusting your filters.</p>
-                            </motion.div>
-                        ) : (
-                            <motion.div
-                                className="divide-y divide-border"
-                                variants={containerVariants}
-                                initial="hidden"
-                                animate="visible"
-                            >
-                                {logs.map((log, idx) => (
-                                    <motion.div
-                                        key={idx}
-                                        className="p-6 hover:bg-accent transition-colors"
-                                        variants={itemVariants}
-                                        whileHover={{ x: 5 }}
-                                    >
-                                        <div className="flex items-start justify-between mb-3">
-                                            <div className="flex items-center gap-3">
-                                                <motion.span
-                                                    className={`px-3 py-1 text-xs font-semibold rounded-full border ${getActionBadge(log.action_type)}`}
-                                                    whileHover={{ scale: 1.05 }}
-                                                >
-                                                    {log.action_type}
-                                                </motion.span>
-                                                <span className="text-sm text-muted-foreground">
-                                                    Exam #{log.exam_id} - {log.subject_name || 'N/A'}
-                                                </span>
-                                            </div>
-                                            <span className="text-sm text-muted-foreground">
-                                                {new Date(log.action_at).toLocaleString()}
-                                            </span>
-                                        </div>
-                                        <div className="grid grid-cols-3 gap-4 text-sm">
-                                            <div>
-                                                <span className="text-muted-foreground">Action By:</span>
-                                                <span className="ml-2 font-medium text-card-foreground">
-                                                    {log.action_by_name} ({log.action_role})
-                                                </span>
-                                            </div>
-                                            <div>
-                                                <span className="text-muted-foreground">Exam Type:</span>
-                                                <span className="ml-2 font-medium text-card-foreground">{log.exam_type}</span>
-                                            </div>
-                                            <div>
-                                                <span className="text-muted-foreground">Faculty:</span>
-                                                <span className="ml-2 font-medium text-card-foreground">{log.faculty_name}</span>
-                                            </div>
-                                        </div>
-                                        {log.comment && (
-                                            <motion.div
-                                                className="mt-3 p-3 bg-accent rounded-lg"
-                                                initial={{ opacity: 0, height: 0 }}
-                                                animate={{ opacity: 1, height: "auto" }}
-                                                transition={{ delay: 0.1 }}
-                                            >
-                                                <p className="text-sm text-card-foreground">
-                                                    <span className="font-medium">Comment:</span> {log.comment}
-                                                </p>
-                                            </motion.div>
-                                        )}
-                                    </motion.div>
-                                ))}
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+            {/* Logs List */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                {loading ? (
+                    <div className="flex flex-col items-center justify-center h-64">
+                        <div className="w-10 h-10 border-4 border-slate-200 border-t-primary rounded-full animate-spin"></div>
+                        <p className="text-slate-500 mt-4 text-sm font-medium">Loading audit logs...</p>
+                    </div>
+                ) : logs.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center p-16 text-center">
+                        <span className="material-symbols-outlined text-6xl text-slate-300 mb-4">clinical_notes</span>
+                        <h3 className="text-lg font-bold text-slate-700 mb-1">No Audit Logs Found</h3>
+                        <p className="text-sm text-slate-500">No logs found matching the selected criteria.</p>
+                    </div>
+                ) : (
+                    <div className="divide-y divide-slate-100">
+                        {logs.map((log, idx) => (
+                            <div key={idx} className="p-6 hover:bg-slate-50/50 transition-colors">
+                                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-4">
+                                    <div className="flex items-center gap-3">
+                                        <span className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md border ${getActionBadge(log.action_type)}`}>
+                                            {log.action_type}
+                                        </span>
+                                        <span className="text-sm font-bold text-slate-700">
+                                            Exam #{log.exam_id} - <span className="text-slate-500 font-medium">{log.subject_name || 'N/A'}</span>
+                                        </span>
+                                    </div>
+                                    <span className="text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1 rounded-full whitespace-nowrap self-start">
+                                        {new Date(log.action_at).toLocaleString([], { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                </div>
 
-                    {/* Footer */}
-                    {logs.length > 0 && (
-                        <motion.div
-                            className="px-6 py-4 bg-accent border-t border-border"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 0.3 }}
-                        >
-                            <p className="text-sm text-muted-foreground">
-                                Showing <span className="font-semibold">{logs.length}</span> audit log entries
-                                {logs.length >= 500 && " (limited to 500 most recent)"}
-                            </p>
-                        </motion.div>
-                    )}
-                </Card>
-            </motion.div>
-        </motion.div>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-sm bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                                    <div>
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                                            <span className="material-symbols-outlined text-[14px]">person_check</span>
+                                            Action By
+                                        </div>
+                                        <span className="font-medium text-slate-900">
+                                            {log.action_by_name} <span className="text-slate-500">({log.action_role})</span>
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                                            <span className="material-symbols-outlined text-[14px]">school</span>
+                                            Exam Type
+                                        </div>
+                                        <span className="font-medium text-slate-900">{log.exam_type}</span>
+                                    </div>
+                                    <div>
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                                            <span className="material-symbols-outlined text-[14px]">person</span>
+                                            Faculty
+                                        </div>
+                                        <span className="font-medium text-slate-900">{log.faculty_name}</span>
+                                    </div>
+                                </div>
+
+                                {log.comment && (
+                                    <div className="mt-4 p-4 bg-amber-50 rounded-xl border border-amber-100/50">
+                                        <div className="text-[10px] font-bold text-amber-700/70 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                                            <span className="material-symbols-outlined text-[14px]">chat</span>
+                                            Comment
+                                        </div>
+                                        <p className="text-sm text-amber-900 italic font-medium whitespace-pre-wrap leading-relaxed">
+                                            "{log.comment}"
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {logs.length > 0 && (
+                    <div className="px-6 py-4 bg-slate-50 border-t border-slate-100">
+                        <p className="text-xs text-slate-500 font-medium">
+                            Showing <span className="font-bold text-slate-700">{logs.length}</span> audit log entries
+                            {logs.length >= 500 && " (limited to 500 most recent)"}
+                        </p>
+                    </div>
+                )}
+            </div>
+        </div>
     );
 }

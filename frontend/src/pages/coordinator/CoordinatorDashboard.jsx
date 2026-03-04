@@ -59,6 +59,8 @@ export default function CoordinatorDashboard() {
 
     const openDetails = async (claim) => {
         setSelectedClaim(claim);
+        setActionType("APPROVE"); // Default for review panel
+        setRejectReason("");
         setClaimDetails(null);
         setLoadingDetails(true);
         try {
@@ -71,21 +73,20 @@ export default function CoordinatorDashboard() {
         }
     };
 
-    const handleAction = (claim, type) => {
+    const handleAction = (claim) => {
         setActionClaim(claim);
-        setActionType(type);
         setRejectReason("");
         setSelectedClaim(null); // close detail modal
     };
 
-    const submitAction = async () => {
-        if (actionType === "REJECT" && !rejectReason.trim()) {
+    const submitActionWith = async (type) => {
+        if (type === "REJECT" && !rejectReason.trim()) {
             showToast("Please provide a reason for rejection", "error");
             return;
         }
         try {
             setProcessing(true);
-            if (actionType === "APPROVE") {
+            if (type === "APPROVE") {
                 await api.post("/coordinator/verify", { examId: actionClaim.id });
                 showToast("Claim verified and forwarded to billing", "success");
             } else {
@@ -93,6 +94,29 @@ export default function CoordinatorDashboard() {
                 showToast("Claim rejected", "success");
             }
             setActionClaim(null);
+            fetchClaims();
+        } catch (error) {
+            showToast(error.response?.data?.message || "Action failed", "error");
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const submitReview = async () => {
+        if (actionType === "REJECT" && !rejectReason.trim()) {
+            showToast("Please provide a reason for rejection", "error");
+            return;
+        }
+        try {
+            setProcessing(true);
+            if (actionType === "APPROVE") {
+                await api.post("/coordinator/verify", { examId: selectedClaim.id });
+                showToast("Claim verified and forwarded to billing", "success");
+            } else {
+                await api.post("/coordinator/reject", { examId: selectedClaim.id, reason: rejectReason });
+                showToast("Claim rejected", "success");
+            }
+            setSelectedClaim(null);
             fetchClaims();
         } catch (error) {
             showToast(error.response?.data?.message || "Action failed", "error");
@@ -109,41 +133,69 @@ export default function CoordinatorDashboard() {
     const isExternal = exam?.claim_form_type === "TEACHING_EXTERNAL";
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
+        <div className="p-4 sm:p-8 space-y-8 overflow-y-auto w-full max-w-7xl mx-auto font-display bg-background-light min-h-[calc(100vh-4rem)]">
+            <div className="flex justify-between items-end mb-2">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-foreground">Coordinator Dashboard</h1>
-                    <p className="text-muted-foreground mt-1">Review claims for courses assigned to you</p>
+                    <h3 className="text-2xl font-bold text-slate-800">Coordinator Dashboard</h3>
+                    <p className="text-slate-500">Review claims for courses assigned to you</p>
                 </div>
-                <Button onClick={fetchClaims} variant="outline">Refresh</Button>
+                <button
+                    onClick={fetchClaims}
+                    className="px-6 py-2 border border-slate-200 rounded-xl font-medium hover:bg-slate-50 transition-colors text-slate-600 flex items-center gap-2"
+                >
+                    <span className="material-symbols-outlined text-[18px]">refresh</span> Refresh
+                </button>
             </div>
 
             {/* Stats */}
-            <div className="grid gap-4 md:grid-cols-4">
-                <Card className="p-4 bg-yellow-50 border-yellow-200">
-                    <div className="text-yellow-600 font-medium text-sm">Waiting for me</div>
-                    <div className="text-2xl font-bold">{claims.filter(c => c.status === "UNDER_COORDINATOR_REVIEW").length}</div>
-                </Card>
-                <Card className="p-4 bg-purple-50 border-purple-200">
-                    <div className="text-purple-600 font-medium text-sm">Verified (to submit)</div>
-                    <div className="text-2xl font-bold">{claims.filter(c => c.status === "COORDINATOR_VERIFIED").length}</div>
-                </Card>
-                <Card className="p-4 bg-blue-50 border-blue-200">
-                    <div className="text-blue-600 font-medium text-sm">Sent to Billing</div>
-                    <div className="text-2xl font-bold">{claims.filter(c => c.status === "SENT_TO_BILLING").length}</div>
-                </Card>
-                <Card className="p-4 bg-green-50 border-green-200">
-                    <div className="text-green-600 font-medium text-sm">Approved/Paid</div>
-                    <div className="text-2xl font-bold">{claims.filter(c => ["approved", "paid"].includes(c.status)).length}</div>
-                </Card>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-orange-50/50 p-5 rounded-2xl shadow-sm border border-orange-100 flex justify-between items-start">
+                    <div>
+                        <p className="text-xs font-semibold text-orange-600 uppercase tracking-wider mb-1">Waiting for me</p>
+                        <p className="text-3xl font-bold text-orange-600">{claims.filter(c => c.status === "UNDER_COORDINATOR_REVIEW").length}</p>
+                    </div>
+                    <div className="bg-orange-100 p-2 rounded-xl">
+                        <span className="material-symbols-outlined text-orange-500 text-2xl">pending_actions</span>
+                    </div>
+                </div>
+
+                <div className="bg-purple-50/50 p-5 rounded-2xl shadow-sm border border-purple-100 flex justify-between items-start">
+                    <div>
+                        <p className="text-xs font-semibold text-purple-600 uppercase tracking-wider mb-1">Verified (to submit)</p>
+                        <p className="text-3xl font-bold text-purple-600">{claims.filter(c => c.status === "COORDINATOR_VERIFIED").length}</p>
+                    </div>
+                    <div className="bg-purple-100 p-2 rounded-xl">
+                        <span className="material-symbols-outlined text-purple-500 text-2xl">verified</span>
+                    </div>
+                </div>
+
+                <div className="bg-blue-50/50 p-5 rounded-2xl shadow-sm border border-blue-100 flex justify-between items-start">
+                    <div>
+                        <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-1">Sent to Billing</p>
+                        <p className="text-3xl font-bold text-blue-600">{claims.filter(c => c.status === "SENT_TO_BILLING").length}</p>
+                    </div>
+                    <div className="bg-blue-100 p-2 rounded-xl">
+                        <span className="material-symbols-outlined text-blue-500 text-2xl">account_balance</span>
+                    </div>
+                </div>
+
+                <div className="bg-green-50/50 p-5 rounded-2xl shadow-sm border border-green-100 flex justify-between items-start">
+                    <div>
+                        <p className="text-xs font-semibold text-green-600 uppercase tracking-wider mb-1">Approved/Paid</p>
+                        <p className="text-3xl font-bold text-green-600">{claims.filter(c => ["approved", "paid"].includes(c.status)).length}</p>
+                    </div>
+                    <div className="bg-green-100 p-2 rounded-xl">
+                        <span className="material-symbols-outlined text-green-500 text-2xl">check_circle</span>
+                    </div>
+                </div>
             </div>
 
             {/* Claims Table */}
-            <Card className="overflow-hidden">
-                <div className="p-4 border-b bg-muted/50 flex justify-between items-center">
-                    <h3 className="font-semibold">Review Claims</h3>
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div className="p-6 border-b border-slate-100 bg-white flex justify-between items-center">
+                    <h3 className="text-lg font-bold text-slate-800">Review Claims</h3>
                     {claims.some(c => c.status === "COORDINATOR_VERIFIED") && (
-                        <Button
+                        <button
                             onClick={async () => {
                                 try {
                                     setProcessing(true);
@@ -157,19 +209,19 @@ export default function CoordinatorDashboard() {
                                 }
                             }}
                             disabled={processing}
-                            className="bg-purple-600 hover:bg-purple-700 text-white"
+                            className="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition-colors shadow-sm disabled:opacity-50"
                         >
                             Submit Verified Claims to Billing
-                        </Button>
+                        </button>
                     )}
                 </div>
 
                 {claims.length === 0 ? (
-                    <div className="p-8 text-center text-muted-foreground">No claims found.</div>
+                    <div className="p-12 text-center text-slate-500 font-medium">No claims found.</div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="text-xs uppercase bg-muted/50 text-muted-foreground">
+                        <table className="w-full text-left border-collapse">
+                            <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 font-semibold text-xs tracking-wider uppercase">
                                 <tr>
                                     <th className="px-4 py-3">Date</th>
                                     <th className="px-4 py-3">Examiner</th>
@@ -215,18 +267,9 @@ export default function CoordinatorDashboard() {
                                         <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
                                             <div className="flex justify-end gap-2">
                                                 {claim.status === "UNDER_COORDINATOR_REVIEW" && (
-                                                    <>
-                                                        <Button size="sm" variant="outline"
-                                                            className="text-green-600 hover:text-green-700 hover:bg-green-50 text-[10px] h-7 px-2"
-                                                            onClick={() => handleAction(claim, "APPROVE")}>
-                                                            Verify
-                                                        </Button>
-                                                        <Button size="sm" variant="outline"
-                                                            className="text-red-600 hover:text-red-700 hover:bg-red-50 text-[10px] h-7 px-2"
-                                                            onClick={() => handleAction(claim, "REJECT")}>
-                                                            Reject
-                                                        </Button>
-                                                    </>
+                                                    <button onClick={() => handleAction(claim)} className="text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 py-1.5 px-3 rounded-lg font-semibold text-xs border border-blue-100/50 flex items-center gap-1 transition-colors shadow-sm">
+                                                        <span className="material-symbols-outlined text-[14px]">edit_document</span> Quick Action
+                                                    </button>
                                                 )}
                                                 {claim.status === "COORDINATOR_VERIFIED" && (
                                                     <span className="text-[10px] text-muted-foreground italic mr-2">Waiting for Submission</span>
@@ -242,248 +285,257 @@ export default function CoordinatorDashboard() {
                         </table>
                     </div>
                 )}
-            </Card>
+            </div>
 
             {/* ======================== CLAIM DETAIL MODAL ======================== */}
             {selectedClaim && (
-                <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 backdrop-blur-sm overflow-y-auto py-8 px-4">
-                    <div className="w-full max-w-4xl bg-card rounded-2xl shadow-2xl border border-border">
-                        {/* Header */}
-                        <div className="flex items-center justify-between p-6 border-b border-border">
-                            <div>
-                                <h2 className="text-xl font-bold text-foreground">Claim Details</h2>
-                                <p className="text-sm text-muted-foreground mt-0.5">
-                                    {selectedClaim.subject_code} — {selectedClaim.subject_name}
+                <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 backdrop-blur-sm overflow-y-auto py-8 px-4" onClick={() => setSelectedClaim(null)}>
+                    <div className="w-full max-w-6xl bg-slate-50 rounded-2xl shadow-2xl overflow-hidden font-display flex flex-col md:flex-row shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-slate-200" onClick={(e) => e.stopPropagation()}>
+                        {/* LEFT COLUMN: Data View */}
+                        <div className="flex-1 bg-slate-50 p-6 md:p-8 space-y-6 md:border-r border-slate-200">
+                            <div className="mb-8">
+                                <div className="flex items-center gap-2 text-sm text-slate-500 font-medium mb-3 cursor-pointer hover:text-slate-800 transition-colors" onClick={() => setSelectedClaim(null)}>
+                                    <span className="material-symbols-outlined text-[18px]">arrow_back</span> Back to Dashboard
+                                </div>
+                                <h2 className="text-3xl font-extrabold text-slate-900 mb-1">{exam?.faculty_name || exam?.external_examiner_name || selectedClaim.faculty_name}</h2>
+                                <p className="text-sm font-semibold text-slate-500 uppercase flex items-center gap-3">
+                                    <span>Exam Code: <span className="text-slate-700">{selectedClaim.subject_code}</span></span> •
+                                    <span>Type: <span className="text-slate-700">{selectedClaim.exam_type}</span></span>
+                                    {exam && (
+                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${statusColors[exam.status] || ""}`}>
+                                            {statusLabel[exam.status] || exam.status}
+                                        </span>
+                                    )}
                                 </p>
                             </div>
-                            <div className="flex items-center gap-3">
-                                {exam && (
-                                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase border ${statusColors[exam.status] || ""}`}>
-                                        {statusLabel[exam.status] || exam.status}
-                                    </span>
-                                )}
-                                <button onClick={() => setSelectedClaim(null)} className="text-muted-foreground hover:text-foreground text-2xl leading-none">&times;</button>
-                            </div>
+
+                            {loadingDetails ? (
+                                <div className="p-12 text-center flex flex-col items-center">
+                                    <span className="material-symbols-outlined text-4xl text-blue-500 animate-spin">progress_activity</span>
+                                    <p className="text-slate-500 text-sm mt-3 font-medium">Loading precise details...</p>
+                                </div>
+                            ) : claimDetails ? (
+                                <div className="space-y-6">
+                                    {/* Subject Stats Panel */}
+                                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-wrap items-center justify-between gap-4">
+                                        <div className="flex-1">
+                                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Students Info For Verification</h4>
+                                            <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                                                <p className="text-slate-700 font-bold text-sm">
+                                                    This Claim: <span className="text-blue-600 font-extrabold bg-blue-50 px-2 py-0.5 rounded">{exam.students_count}</span>
+                                                </p>
+                                                <p className="text-slate-700 font-bold text-sm flex items-center gap-1.5 border-l-2 border-slate-100 pl-6">
+                                                    Total Registered: <span className="text-emerald-600 font-extrabold bg-emerald-50 px-2 py-0.5 rounded">{claimDetails.total_registered_students || 0}</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right shrink-0">
+                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Course Activity</p>
+                                            <p className="text-slate-700 font-bold text-sm">
+                                                Other Pending/Verified Claims Total: <span className="text-orange-600 font-extrabold bg-orange-50 px-2 py-0.5 rounded">
+                                                    {claims.filter(c => c.subject_code === selectedClaim.subject_code && c.id !== selectedClaim.id).reduce((sum, c) => sum + (parseInt(c.students_count) || 0), 0)}
+                                                </span> Students
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Exam Details Box */}
+                                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                                        <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-blue-500">description</span>
+                                            <h3 className="font-bold text-slate-800">Exam Details</h3>
+                                        </div>
+                                        <div className="p-6 grid grid-cols-2 gap-y-6 gap-x-4">
+                                            <div>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Exam Name</p>
+                                                <p className="text-sm font-semibold text-slate-800">{exam.exam_type} {exam.academic_year}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Course Name</p>
+                                                <p className="text-sm font-semibold text-slate-800">{selectedClaim.subject_name}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Claim Type</p>
+                                                <p className="text-sm font-semibold text-slate-800">{exam.claim_form_type?.replace(/_/g, " ")}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Financials & Banks */}
+                                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                                        <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-emerald-500">monetization_on</span>
+                                            <h3 className="font-bold text-slate-800">Remuneration & Bank Details</h3>
+                                        </div>
+                                        <div className="p-6">
+                                            {claimDetails.calculation && (
+                                                <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4 mb-6 flex justify-between items-center">
+                                                    <div>
+                                                        <p className="text-[10px] font-bold text-blue-500 uppercase tracking-wider mb-1">Calculation Output Amount</p>
+                                                        <p className="text-3xl font-extrabold text-blue-600">₹{parseFloat(claimDetails.calculation.net_amount || claimDetails.calculation.total_amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</p>
+                                                    </div>
+                                                    <span className="material-symbols-outlined text-blue-200 text-5xl">payments</span>
+                                                </div>
+                                            )}
+                                            <div className="grid grid-cols-2 gap-y-6 gap-x-4">
+                                                <div>
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Bank Overview</p>
+                                                    <p className="text-sm font-semibold text-slate-800">{exam.faculty_bank_name || exam.external_bank_name || "N/A"}</p>
+                                                    <p className="text-xs text-slate-500">{exam.faculty_branch_name || exam.external_branch_name}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Account No.</p>
+                                                    <p className="text-sm font-semibold text-slate-800 font-mono tracking-wider">{exam.faculty_account_number || exam.external_account_number || "N/A"}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">IFSC</p>
+                                                    <p className="text-sm font-semibold text-slate-800 font-mono uppercase tracking-wider">{exam.faculty_ifsc_code || exam.external_ifsc_code || "N/A"}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            ) : null}
                         </div>
 
-                        {loadingDetails ? (
-                            <div className="p-12 text-center">
-                                <div className="w-10 h-10 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto mb-3" />
-                                <p className="text-muted-foreground text-sm">Loading details...</p>
-                            </div>
-                        ) : claimDetails ? (
-                            <div className="p-6 space-y-6">
+                        {/* RIGHT COLUMN: Review Dashboard */}
+                        <div className="w-full md:w-[400px] bg-white p-6 md:p-8 border-t md:border-t-0 border-slate-200 flex flex-col h-full md:min-h-full shrink-0">
+                            <h3 className="text-lg font-bold text-slate-800 mb-1">Review Actions</h3>
+                            <p className="text-sm text-slate-500 mb-6">Coordinator Approval Workflow</p>
 
-                                {/* Exam Info */}
-                                <section>
-                                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Exam Information</h3>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        {[
-                                            { label: "Exam Type", value: exam.exam_type },
-                                            { label: "Claim Type", value: exam.claim_form_type?.replace(/_/g, " ") },
-                                            { label: "Program", value: exam.program },
-                                            { label: "Level", value: exam.level },
-                                            { label: "Academic Year", value: exam.academic_year },
-                                            { label: "Semester", value: exam.semester },
-                                            { label: "Students Count", value: exam.students_count },
-                                            { label: "Exam Date", value: exam.exam_date ? new Date(exam.exam_date).toLocaleDateString() : "—" },
-                                        ].map(({ label, value }) => (
-                                            <div key={label} className="bg-muted/40 rounded-lg p-3">
-                                                <div className="text-[10px] text-muted-foreground uppercase font-semibold">{label}</div>
-                                                <div className="text-sm font-medium text-foreground mt-0.5">{value || "—"}</div>
-                                            </div>
-                                        ))}
+                            {/* Workflow form */}
+                            <div className="mb-6 space-y-5">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Set Status</label>
+                                    <div className="relative">
+                                        <select
+                                            className="w-full bg-white border border-slate-200 text-slate-800 rounded-lg p-3 pr-10 appearance-none font-semibold focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                            value={actionType}
+                                            onChange={e => setActionType(e.target.value)}
+                                            disabled={exam?.status !== "UNDER_COORDINATOR_REVIEW"}
+                                        >
+                                            <option value="APPROVE">Verify & Forward</option>
+                                            <option value="REJECT">Return to Faculty</option>
+                                        </select>
+                                        <span className="material-symbols-outlined absolute right-3 top-3.5 text-slate-400 pointer-events-none">expand_more</span>
                                     </div>
-                                </section>
+                                </div>
 
-                                {/* Examiner / Faculty Info */}
-                                <section>
-                                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                                        {isExternal ? "External Examiner Details" : "Faculty Details"}
-                                        {isExternal && (
-                                            <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] rounded font-bold">External</span>
-                                        )}
-                                    </h3>
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                        {(isExternal ? [
-                                            { label: "Name", value: exam.external_examiner_name },
-                                            { label: "Email", value: exam.external_examiner_email },
-                                            { label: "Mobile", value: exam.external_examiner_mobile },
-                                            { label: "Institute", value: exam.parent_institute },
-                                            { label: "PAN", value: exam.external_pan_number },
-                                            { label: "Travel Type", value: exam.is_local ? "Local (< 25km)" : "Outstation" },
-                                        ] : [
-                                            { label: "Name", value: exam.faculty_name },
-                                            { label: "Email", value: exam.faculty_email },
-                                            { label: "Mobile", value: exam.faculty_mobile },
-                                            { label: "Department", value: exam.faculty_department },
-                                        ]).map(({ label, value }) => (
-                                            <div key={label} className="bg-muted/40 rounded-lg p-3">
-                                                <div className="text-[10px] text-muted-foreground uppercase font-semibold">{label}</div>
-                                                <div className="text-sm font-medium text-foreground mt-0.5">{value || "—"}</div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </section>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Coordinator Remarks</label>
+                                    <textarea
+                                        className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-lg p-3 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none h-32 placeholder:text-slate-400 text-sm"
+                                        placeholder="Add your notes or justification here..."
+                                        value={rejectReason}
+                                        onChange={e => setRejectReason(e.target.value)}
+                                        disabled={exam?.status !== "UNDER_COORDINATOR_REVIEW"}
+                                    />
+                                </div>
 
-                                {/* Bank Details */}
-                                <section>
-                                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Bank Details</h3>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        {(isExternal ? [
-                                            { label: "Bank", value: exam.external_bank_name },
-                                            { label: "Branch", value: exam.external_branch_name },
-                                            { label: "Account No.", value: exam.external_account_number },
-                                            { label: "IFSC", value: exam.external_ifsc_code },
-                                        ] : [
-                                            { label: "Bank", value: exam.faculty_bank_name },
-                                            { label: "Branch", value: exam.faculty_branch_name },
-                                            { label: "Account No.", value: exam.faculty_account_number },
-                                            { label: "IFSC", value: exam.faculty_ifsc_code },
-                                        ]).map(({ label, value }) => (
-                                            <div key={label} className="bg-muted/40 rounded-lg p-3">
-                                                <div className="text-[10px] text-muted-foreground uppercase font-semibold">{label}</div>
-                                                <div className="text-sm font-medium text-foreground mt-0.5">{value || "—"}</div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </section>
-
-                                {/* Documents (External only) */}
-                                {isExternal && (exam.external_pan_url || exam.external_cheque_url || exam.travel_proof_url) && (
-                                    <section>
-                                        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Documents</h3>
-                                        <div className="flex gap-3 flex-wrap">
-                                            {exam.external_pan_url && (
-                                                <a href={`http://localhost:5000${exam.external_pan_url}`} target="_blank" rel="noreferrer"
-                                                    className="px-4 py-2 rounded-lg border border-border bg-muted text-sm font-medium hover:bg-accent transition-colors flex items-center gap-2">
-                                                    📄 View PAN Card
-                                                </a>
-                                            )}
-                                            {exam.external_cheque_url && (
-                                                <a href={`http://localhost:5000${exam.external_cheque_url}`} target="_blank" rel="noreferrer"
-                                                    className="px-4 py-2 rounded-lg border border-border bg-muted text-sm font-medium hover:bg-accent transition-colors flex items-center gap-2">
-                                                    📄 View Cancelled Cheque
-                                                </a>
-                                            )}
-                                            {exam.travel_proof_url && (
-                                                <a href={`http://localhost:5000${exam.travel_proof_url}`} target="_blank" rel="noreferrer"
-                                                    className="px-4 py-2 rounded-lg border border-border bg-muted text-sm font-medium hover:bg-accent transition-colors flex items-center gap-2">
-                                                    🚌 View Travel Proof
-                                                </a>
-                                            )}
-                                        </div>
-                                    </section>
-                                )}
-
-                                {/* Remuneration Calculation */}
-                                {claimDetails.calculation && (
-                                    <section>
-                                        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Remuneration</h3>
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                                                <div className="text-[10px] text-green-600 uppercase font-semibold">Gross Amount</div>
-                                                <div className="text-lg font-bold text-green-700 mt-0.5">₹{parseFloat(claimDetails.calculation.total_amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</div>
-                                            </div>
-                                            {claimDetails.calculation.net_amount && (
-                                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                                                    <div className="text-[10px] text-blue-600 uppercase font-semibold">Net Amount</div>
-                                                    <div className="text-lg font-bold text-blue-700 mt-0.5">₹{parseFloat(claimDetails.calculation.net_amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </section>
-                                )}
-
-                                {/* Action History */}
-                                {claimDetails.actions?.length > 0 && (
-                                    <section>
-                                        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Action History</h3>
-                                        <div className="space-y-2">
-                                            {claimDetails.actions.map((a, i) => (
-                                                <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-muted/40 border border-border text-sm">
-                                                    <div className="flex-1">
-                                                        <span className="font-semibold">{a.action_by_name}</span>
-                                                        <span className="text-muted-foreground text-xs ml-2">({a.action_by_role?.replace(/_/g, " ")})</span>
-                                                        <span className="ml-2 text-muted-foreground">— {a.action_type}</span>
-                                                        {(a.remarks || a.comment) && (
-                                                            <div className="text-xs text-muted-foreground mt-1 italic">"{a.remarks || a.comment}"</div>
-                                                        )}
-                                                    </div>
-                                                    <div className="text-xs text-muted-foreground whitespace-nowrap">
-                                                        {new Date(a.action_at).toLocaleString()}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </section>
-                                )}
-
-                                {/* Action Buttons */}
-                                {exam.status === "UNDER_COORDINATOR_REVIEW" && (
-                                    <div className="flex justify-end gap-3 pt-2 border-t border-border">
-                                        <Button variant="outline" className="text-red-600 hover:bg-red-50"
-                                            onClick={() => handleAction(selectedClaim, "REJECT")}>
-                                            Reject Claim
-                                        </Button>
-                                        <Button className="bg-green-600 hover:bg-green-700 text-white"
-                                            onClick={() => handleAction(selectedClaim, "APPROVE")}>
-                                            Verify & Approve
-                                        </Button>
+                                {exam?.status === "UNDER_COORDINATOR_REVIEW" ? (
+                                    <button
+                                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-[0_4px_14px_0_theme('colors.blue.300')] flex justify-center items-center gap-2"
+                                        onClick={submitReview}
+                                        disabled={processing}
+                                    >
+                                        <span className="material-symbols-outlined text-[20px]">check_circle</span>
+                                        {processing ? "Confirming..." : "Confirm Action"}
+                                    </button>
+                                ) : (
+                                    <div className="bg-slate-100 p-3 rounded-xl text-center text-slate-500 text-sm font-semibold">
+                                        No pending actions for this claim.
                                     </div>
                                 )}
                             </div>
-                        ) : null}
+
+                            {/* Action History visualizer */}
+                            {claimDetails?.actions?.length > 0 && (
+                                <div className="mt-8">
+                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Action History</h4>
+                                    <div className="space-y-4 relative before:absolute before:inset-0 before:ml-2.5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-300 before:to-transparent">
+                                        {claimDetails.actions.map((act, i) => (
+                                            <div key={i} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                                                <div className="flex items-center justify-center w-5 h-5 rounded-full border border-white bg-slate-300 group-[.is-active]:bg-emerald-500 text-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2">
+                                                </div>
+                                                <div className="w-[calc(100%-2.5rem)] md:w-[calc(50%-1.25rem)] bg-white p-3 rounded-lg border border-slate-100 shadow-sm">
+                                                    <div className="flex items-center justify-between space-x-2 mb-1">
+                                                        <div className="font-bold text-slate-800 text-sm">{act.action_type === "VERIFY" ? "Verified" : act.action_type === "SUBMIT_TO_BILLING" ? "Submitted" : act.action_type === "REJECT" ? "Returned" : "Action"}</div>
+                                                        <time className="font-mono text-slate-400 text-[9px]">{new Date(act.action_at).toLocaleString()}</time>
+                                                    </div>
+                                                    <div className="text-slate-500 text-xs">by {act.action_by_name}</div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                        </div>
                     </div>
                 </div>
             )}
 
             {/* ======================== CONFIRM ACTION MODAL ======================== */}
             {actionClaim && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-                    <Card className="w-full max-w-md p-6 m-4 shadow-xl">
-                        <h3 className="text-lg font-bold mb-4">
-                            {actionType === "APPROVE" ? "Verify Claim" : "Reject Claim"}
-                        </h3>
-
-                        <div className="mb-4 text-sm space-y-1">
-                            <p><strong>Examiner:</strong> {actionClaim.faculty_name}</p>
-                            <p><strong>Course:</strong> {actionClaim.subject_code} — {actionClaim.subject_name}</p>
-                            <p><strong>Exam Type:</strong> {actionClaim.exam_type}</p>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4" onClick={() => setActionClaim(null)}>
+                    <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden font-display" onClick={(e) => e.stopPropagation()}>
+                        <div className="p-6 border-b border-slate-100 flex items-start justify-between bg-white">
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2 mb-1">
+                                    <span className="material-symbols-outlined text-blue-600 text-2xl">check_box</span>
+                                    Action for Claim #{actionClaim.id || "N/A"}
+                                </h3>
+                                <p className="text-sm text-slate-500 font-medium flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                                    Examiner: <span className="text-slate-700 font-bold">{actionClaim.faculty_name}</span>
+                                </p>
+                            </div>
+                            <button onClick={() => setActionClaim(null)} className="text-slate-400 hover:text-slate-700 transition-colors">
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
                         </div>
 
-                        {actionType === "REJECT" && (
-                            <div className="mb-4">
-                                <label className="block text-sm font-medium mb-1">Reason for Rejection *</label>
+                        <div className="p-6 bg-white space-y-6">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-[18px] text-slate-400">chat_bubble</span>
+                                    Reviewer Remarks <span className="text-red-500">*</span>
+                                </label>
                                 <textarea
-                                    className="w-full p-2 border border-border rounded-md min-h-[100px] bg-background text-foreground"
-                                    placeholder="Please explain why this claim is being rejected..."
+                                    className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none h-28 text-sm placeholder:text-slate-400"
+                                    placeholder="Add comments for the accountant or reasons for rejection..."
                                     value={rejectReason}
                                     onChange={(e) => setRejectReason(e.target.value)}
                                     autoFocus
                                 />
+                                <p className="text-[11px] text-slate-400 mt-2 italic font-medium">Please provide detailed context if returning to the faculty.</p>
                             </div>
-                        )}
 
-                        {actionType === "APPROVE" && (
-                            <p className="mb-6 text-muted-foreground text-sm">
-                                Are you sure you want to verify this claim? It will be marked as verified and queued for billing.
-                            </p>
-                        )}
-
-                        <div className="flex justify-end gap-3">
-                            <Button variant="outline" onClick={() => setActionClaim(null)} disabled={processing}>
-                                Cancel
-                            </Button>
-                            <Button
-                                variant={actionType === "APPROVE" ? "default" : "destructive"}
-                                onClick={submitAction}
-                                disabled={processing}
-                            >
-                                {processing ? "Processing..." : (actionType === "APPROVE" ? "Confirm Verify" : "Confirm Reject")}
-                            </Button>
+                            <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-5 mt-2 border-t border-slate-100">
+                                <button
+                                    onClick={() => setActionClaim(null)}
+                                    className="w-full sm:w-auto px-6 py-2.5 rounded-lg font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition-colors sm:mr-auto"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={() => { submitActionWith("REJECT"); }}
+                                    disabled={processing}
+                                    className="w-full sm:w-auto px-5 py-2.5 rounded-lg font-bold text-red-600 bg-red-50 hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <span className="material-symbols-outlined text-[18px]">edit</span> Return to Faculty
+                                </button>
+                                <button
+                                    onClick={() => { submitActionWith("APPROVE"); }}
+                                    disabled={processing}
+                                    className="w-full sm:w-auto px-6 py-2.5 rounded-lg font-bold text-white bg-emerald-500 hover:bg-emerald-600 transition-colors shadow-sm flex items-center justify-center gap-2"
+                                >
+                                    <span className="material-symbols-outlined text-[18px]">check_circle</span> Verify & Forward
+                                </button>
+                            </div>
                         </div>
-                    </Card>
+                    </div>
                 </div>
             )}
         </div>

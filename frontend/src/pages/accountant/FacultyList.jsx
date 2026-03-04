@@ -1,22 +1,9 @@
 import { useEffect, useState } from "react";
-import api from "../../services/api";
 import { useNavigate } from "react-router-dom";
-import { Card } from "../../components/ui/card";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-
-// Icons
-import {
-  UsersIcon,
-  SearchIcon,
-  BuildingOfficeIcon,
-  MailIcon,
-  EyeIcon
-} from "../../components/icons/logo";
+import api from "../../services/api";
 
 export default function FacultyList() {
   const [faculty, setFaculty] = useState([]);
-  const [filteredFaculty, setFilteredFaculty] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
@@ -25,239 +12,187 @@ export default function FacultyList() {
     fetchFaculty();
   }, []);
 
-  useEffect(() => {
-    filterFaculty();
-  }, [faculty, searchTerm]);
-
   const fetchFaculty = async () => {
     try {
       const res = await api.get("/accountant/faculty");
       setFaculty(res.data);
-      setFilteredFaculty(res.data);
-    } catch (error) {
-      console.error("Failed to fetch faculty:", error);
+    } catch (err) {
+      console.error("Failed to fetch faculty:", err);
+      setFaculty([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const filterFaculty = () => {
-    let result = faculty;
+  const filteredFaculty = faculty.filter(f => {
+    const matchesSearch = f.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      f.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      f.department?.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesSearch;
+  });
 
-    // Apply search filter
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      result = result.filter(f =>
-        (f.name && f.name.toLowerCase().includes(term)) ||
-        (f.email && f.email.toLowerCase().includes(term))
-      );
-    }
-
-    setFilteredFaculty(result);
+  const clearFilters = () => {
+    setSearchTerm("");
   };
-
-
 
   if (loading) {
     return (
-      <Card className="p-6 bg-card border-border">
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading faculty list...</p>
-          </div>
-        </div>
-      </Card>
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] bg-background-light">
+        <div className="w-12 h-12 border-4 border-slate-200 border-t-primary rounded-full animate-spin mb-4"></div>
+        <p className="text-slate-500 font-medium">Loading faculty list...</p>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="max-w-7xl mx-auto p-4 sm:p-8 space-y-8 font-display bg-background-light min-h-[calc(100vh-4rem)] pb-20">
+      {/* Header section */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-card-foreground mb-2">Faculty Directory</h1>
-          <p className="text-muted-foreground">View and manage faculty members</p>
-        </div>
-        <div className="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-full">
-          {faculty.length} {faculty.length === 1 ? 'faculty' : 'faculty members'}
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">Faculty Directory</h1>
+          <p className="text-slate-500 font-medium">Monitor department faculty claims and profiles.</p>
         </div>
       </div>
 
-      {/* Stats Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-4 bg-card border-border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Total Faculty</p>
-              <p className="text-2xl font-bold text-card-foreground">{faculty.length}</p>
-            </div>
-            <UsersIcon className="w-8 h-8 text-blue-500" />
+      {/* Stats row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center">
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Faculty</p>
+            <h3 className="text-3xl font-black text-slate-900 tracking-tight">{faculty.length}</h3>
           </div>
-        </Card>
-
-
-
-        <Card className="p-4 bg-card border-border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Active Claims</p>
-              <p className="text-2xl font-bold text-card-foreground">
-                {faculty.reduce((sum, f) => sum + parseInt(f.active_claims || 0), 0)}
-              </p>
-            </div>
-            <EyeIcon className="w-8 h-8 text-purple-500" />
+          <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-sm">
+            <span className="material-symbols-outlined text-3xl">groups</span>
           </div>
-        </Card>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center">
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Claims</p>
+            <h3 className="text-3xl font-black text-slate-900 tracking-tight">
+              {faculty.reduce((sum, f) => sum + parseInt(f.total_claims || 0), 0)}
+            </h3>
+          </div>
+          <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-sm">
+            <span className="material-symbols-outlined text-3xl">receipt_long</span>
+          </div>
+        </div>
       </div>
 
-      {/* Filters */}
-      <Card className="p-4 bg-card border-border">
-        <div className="flex flex-col md:flex-row gap-4">
-          {/* Search */}
-          <div className="flex-1">
-            <div className="relative">
-              <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Search by name or email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 border-border"
-              />
+      {/* Global Search and Filter Bar */}
+      <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+          {/* Search Bar */}
+          <div className="md:col-span-11 relative group">
+            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Search Records</label>
+            <div className="absolute left-4 top-[38px] text-slate-400 group-focus-within:text-primary transition-colors flex items-center justify-center">
+              <span className="material-symbols-outlined text-[20px]">search</span>
             </div>
+            <input
+              type="text"
+              placeholder="Name, email, or department..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-11 pr-4 py-3 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+            />
           </div>
 
-          <Button
-            variant="outline"
-            onClick={() => {
-              setSearchTerm("");
-            }}
-          >
-            Clear Filters
-          </Button>
+          {/* Clear Button */}
+          <div className="md:col-span-1 flex justify-end">
+            <button
+              onClick={clearFilters}
+              disabled={!searchTerm}
+              className="w-full md:w-12 h-[46px] flex items-center justify-center bg-slate-50 hover:bg-slate-100 text-slate-500 border border-slate-200 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed group"
+              title="Clear Filters"
+            >
+              <span className="material-symbols-outlined text-[20px] group-hover:rotate-90 transition-transform duration-300">close</span>
+              <span className="md:hidden ml-2 font-medium text-sm">Clear Filters</span>
+            </button>
+          </div>
         </div>
-      </Card>
+      </div>
 
-      {/* Faculty Table */}
-      {
-        filteredFaculty.length === 0 ? (
-          <Card className="p-8 bg-card border-border">
-            <div className="text-center py-8">
-              <UsersIcon className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">
-                {faculty.length === 0 ? "No Faculty Found" : "No Matching Faculty"}
-              </h3>
-              <p className="text-muted-foreground">
-                {faculty.length === 0
-                  ? "No faculty members are registered in the system."
-                  : "Try changing your search or filter criteria."}
-              </p>
-            </div>
-          </Card>
-        ) : (
-          <Card className="p-0 overflow-hidden bg-card border-border">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-muted border-b border-border">
-                  <tr>
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">
-                      Faculty Member
-                    </th>
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">
-                      Department
-                    </th>
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">
-                      Contact
-                    </th>
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">
-                      Claims
-                    </th>
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">
-                      Actions
-                    </th>
+      {/* Table Section */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest w-[50%]">Faculty Member</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center w-[25%]">Total Claims</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right w-[25%]">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredFaculty.length === 0 ? (
+                <tr>
+                  <td colSpan="3" className="px-6 py-16 text-center">
+                    <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mx-auto mb-4 border border-slate-100">
+                      <span className="material-symbols-outlined text-3xl text-slate-400">group_off</span>
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-800 mb-1">No faculty found</h3>
+                    <p className="text-slate-500 max-w-sm mx-auto">
+                      We couldn't find any faculty members matching your current filters.
+                    </p>
+                    {searchTerm && (
+                      <button
+                        onClick={clearFilters}
+                        className="mt-4 text-primary font-bold text-sm hover:underline inline-flex items-center gap-1"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">clear_all</span>
+                        Clear Search
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ) : (
+                filteredFaculty.map((f) => (
+                  <tr key={f.id} className="hover:bg-slate-50/50 transition-colors group">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center font-bold text-sm shrink-0">
+                          {(f.name || 'U').charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-800 text-sm mb-0.5">{f.name || 'Unknown'}</p>
+                          <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                            <span className="material-symbols-outlined text-[14px]">mail</span>
+                            {f.email}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center align-middle">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white shadow-sm text-slate-700 text-xs font-bold w-max mx-auto">
+                        <span className="material-symbols-outlined text-[16px] text-primary">receipt_long</span>
+                        {f.total_claims || 0}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right align-middle">
+                      <button
+                        onClick={() => navigate(`/accountant/faculty/${f.id}`)}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200 text-slate-600 hover:text-primary hover:border-primary/30 hover:bg-primary/5 text-xs font-bold rounded-lg transition-all shadow-sm group-hover:shadow whitespace-nowrap ml-auto"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">visibility</span>
+                        View
+                      </button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {filteredFaculty.map((f) => (
-                    <tr
-                      key={f.id}
-                      className="hover:bg-muted transition-colors duration-150"
-                    >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-blue-50 border-2 border-blue-200 flex items-center justify-center mr-3">
-                            <span className="font-semibold text-blue-600">
-                              {f.name?.charAt(0) || "F"}
-                            </span>
-                          </div>
-                          <div>
-                            <p className="font-medium text-card-foreground">{f.name || "Unnamed Faculty"}</p>
-                            <p className="text-sm text-muted-foreground">{f.role || "Faculty"}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <BuildingOfficeIcon className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-foreground">{f.department || "No Department"}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <MailIcon className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-sm text-muted-foreground truncate max-w-xs">
-                            {f.email || "No Email"}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
-                            {parseInt(f.active_claims || 0)} active
-                          </span>
-                          <span className="text-sm text-muted-foreground">
-                            {parseInt(f.total_claims || 0)} total
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => navigate(`/accountant/faculty/${f.id}`)}
-                          className="flex items-center gap-2"
-                        >
-                          <EyeIcon className="w-4 h-4" />
-                          View Details
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        )
-      }
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
 
-      {/* Summary */}
-      {
-        filteredFaculty.length > 0 && (
-          <Card className="p-4 bg-muted border-border">
-            <div className="flex justify-between items-center">
-              <p className="text-sm text-muted-foreground">
-                Showing {filteredFaculty.length} of {faculty.length} faculty members
-              </p>
-              <div className="flex gap-4">
-                <p className="text-sm text-muted-foreground">
-                  <span className="font-medium">Total Claims:</span> {faculty.reduce((sum, f) => sum + parseInt(f.total_claims || 0), 0)}
-                </p>
-              </div>
-            </div>
-          </Card>
-        )
-      }
+        {/* Footer Count */}
+        {filteredFaculty.length > 0 && (
+          <div className="px-6 py-4 bg-slate-50 border-t border-slate-200">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest text-center">
+              Showing {filteredFaculty.length} of {faculty.length} faculty entries
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,24 +1,16 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
-import { Card } from "../../components/ui/card";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-
-// Icons
-import {
-    UsersIcon,
-    EyeIcon,
-    FileTextIcon,
-    CheckCircleIcon,
-    XCircleIcon
-} from "../../components/icons/logo";
 
 export default function AdminFacultyList() {
     const [faculty, setFaculty] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
+    const [selectedDepartment, setSelectedDepartment] = useState("");
     const navigate = useNavigate();
+
+    // Get unique departments for the dropdown
+    const departments = [...new Set(faculty.map(f => f.department).filter(Boolean))].sort();
 
     useEffect(() => {
         fetchFaculty();
@@ -36,143 +28,223 @@ export default function AdminFacultyList() {
         }
     };
 
-    const filteredFaculty = faculty.filter(f =>
-        f.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        f.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        f.department?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredFaculty = faculty.filter(f => {
+        const matchesSearch = f.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            f.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            f.department?.toLowerCase().includes(searchTerm.toLowerCase());
+
+        const matchesDepartment = selectedDepartment === "" || f.department === selectedDepartment;
+
+        return matchesSearch && matchesDepartment;
+    });
+
+    const clearFilters = () => {
+        setSearchTerm("");
+        setSelectedDepartment("");
+    };
+
+    if (loading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] bg-background-light">
+                <div className="w-12 h-12 border-4 border-slate-200 border-t-primary rounded-full animate-spin mb-4"></div>
+                <p className="text-slate-500 font-medium">Loading faculty list...</p>
+            </div>
+        );
+    }
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="space-y-2">
-                <h1 className="text-3xl font-bold text-card-foreground">Faculty Oversight</h1>
-                <p className="text-muted-foreground">Monitor faculty claims and profiles</p>
+        <div className="max-w-7xl mx-auto p-4 sm:p-8 space-y-8 font-display bg-background-light min-h-[calc(100vh-4rem)] pb-20">
+            {/* Header section */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">Faculty Oversight</h1>
+                    <p className="text-slate-500 font-medium">Monitor faculty claims and profiles.</p>
+                </div>
             </div>
 
-            {/* Search */}
-            <Card className="p-6 bg-card border-border">
-                <div className="relative">
-                    <Input
-                        type="text"
-                        placeholder="Search by name, email, or department..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10"
-                    />
-                    <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
+            {/* Stats row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center">
+                    <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Faculty</p>
+                        <h3 className="text-3xl font-black text-slate-900 tracking-tight">{faculty.length}</h3>
+                    </div>
+                    <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-sm">
+                        <span className="material-symbols-outlined text-3xl">groups</span>
+                    </div>
                 </div>
-            </Card>
 
-            {/* Faculty Table */}
-            <Card className="bg-card border-border">
-                {loading ? (
-                    <div className="p-12 text-center">
-                        <div className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto mb-4"></div>
-                        <p className="text-muted-foreground">Loading faculty...</p>
-                    </div>
-                ) : filteredFaculty.length === 0 ? (
-                    <div className="p-12 text-center">
-                        <UsersIcon className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-foreground mb-2">
-                            {faculty.length === 0 ? "No faculty found" : "No matching faculty"}
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center">
+                    <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Departments</p>
+                        <h3 className="text-3xl font-black text-slate-900 tracking-tight">
+                            {new Set(faculty.map(f => f.department).filter(Boolean)).size}
                         </h3>
-                        <p className="text-muted-foreground">
-                            {faculty.length === 0
-                                ? "There are no faculty members in the system."
-                                : "Try adjusting your search criteria."}
-                        </p>
                     </div>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-muted border-b border-border">
+                    <div className="w-14 h-14 rounded-2xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600 shadow-sm">
+                        <span className="material-symbols-outlined text-3xl">domain</span>
+                    </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center">
+                    <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Claims</p>
+                        <h3 className="text-3xl font-black text-slate-900 tracking-tight">
+                            {faculty.reduce((sum, f) => sum + parseInt(f.total_claims || 0), 0)}
+                        </h3>
+                    </div>
+                    <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-sm">
+                        <span className="material-symbols-outlined text-3xl">receipt_long</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Global Search and Filter Bar */}
+            <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+
+                    {/* Search Bar */}
+                    <div className="md:col-span-6 relative group">
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Search Records</label>
+                        <div className="absolute left-4 top-[38px] text-slate-400 group-focus-within:text-primary transition-colors flex items-center justify-center">
+                            <span className="material-symbols-outlined text-[20px]">search</span>
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Name, email, or department..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-11 pr-4 py-3 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                        />
+                    </div>
+
+                    {/* Department Filter */}
+                    <div className="md:col-span-5 relative">
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Department</label>
+                        <div className="relative">
+                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 flex items-center justify-center pointer-events-none">
+                                <span className="material-symbols-outlined text-[18px]">account_balance</span>
+                            </div>
+                            <select
+                                value={selectedDepartment}
+                                onChange={(e) => setSelectedDepartment(e.target.value)}
+                                className="w-full pl-11 pr-10 py-3 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all appearance-none cursor-pointer"
+                            >
+                                <option value="">All Departments</option>
+                                {departments.map(dept => (
+                                    <option key={dept} value={dept}>{dept}</option>
+                                ))}
+                            </select>
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none flex items-center justify-center">
+                                <span className="material-symbols-outlined text-[18px]">expand_more</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Clear Button */}
+                    <div className="md:col-span-1 flex justify-end">
+                        <button
+                            onClick={clearFilters}
+                            disabled={!searchTerm && !selectedDepartment}
+                            className="w-full md:w-12 h-[46px] flex items-center justify-center bg-slate-50 hover:bg-slate-100 text-slate-500 border border-slate-200 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed group"
+                            title="Clear Filters"
+                        >
+                            <span className="material-symbols-outlined text-[20px] group-hover:rotate-90 transition-transform duration-300">close</span>
+                            <span className="md:hidden ml-2 font-medium text-sm">Clear Filters</span>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
+            {/* Table Section */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-slate-50 border-b border-slate-200">
+                                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest w-[40%]">Faculty Member</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest w-[30%]">Department</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center w-[15%]">Total Claims</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right w-[15%]">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {filteredFaculty.length === 0 ? (
                                 <tr>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        Name
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        Email
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        Department
-                                    </th>
-                                    <th className="px-6 py-4 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        Total Claims
-                                    </th>
-                                    <th className="px-6 py-4 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        Pending
-                                    </th>
-                                    <th className="px-6 py-4 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        Rejected
-                                    </th>
-                                    <th className="px-6 py-4 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        Action
-                                    </th>
+                                    <td colSpan="4" className="px-6 py-16 text-center">
+                                        <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mx-auto mb-4 border border-slate-100">
+                                            <span className="material-symbols-outlined text-3xl text-slate-400">group_off</span>
+                                        </div>
+                                        <h3 className="text-lg font-bold text-slate-800 mb-1">No faculty found</h3>
+                                        <p className="text-slate-500 max-w-sm mx-auto">
+                                            We couldn't find any faculty members matching your current filters.
+                                        </p>
+                                        {(searchTerm || selectedDepartment) && (
+                                            <button
+                                                onClick={clearFilters}
+                                                className="mt-4 text-primary font-bold text-sm hover:underline inline-flex items-center gap-1"
+                                            >
+                                                <span className="material-symbols-outlined text-[16px]">clear_all</span>
+                                                Clear All Filters
+                                            </button>
+                                        )}
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200">
-                                {filteredFaculty.map((f) => (
-                                    <tr key={f.id} className="hover:bg-purple-50 transition-colors">
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="font-medium text-foreground">{f.name}</div>
+                            ) : (
+                                filteredFaculty.map((f) => (
+                                    <tr key={f.id} className="hover:bg-slate-50/50 transition-colors group">
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center font-bold text-sm shrink-0">
+                                                    {(f.name || 'U').charAt(0).toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-slate-800 text-sm mb-0.5">{f.name || 'Unknown'}</p>
+                                                    <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                                                        <span className="material-symbols-outlined text-[14px]">mail</span>
+                                                        {f.email}
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm text-foreground">{f.email}</div>
+                                        <td className="px-6 py-4">
+                                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-md">
+                                                <span className="material-symbols-outlined text-slate-400 text-[14px] shrink-0">domain</span>
+                                                <span className="text-[11px] font-bold text-slate-600 uppercase tracking-widest line-clamp-1 truncate max-w-[200px]">{f.department || 'N/A'}</span>
+                                            </div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className="text-sm text-foreground">{f.department || 'N/A'}</span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                <FileTextIcon className="w-3 h-3 mr-1" />
+                                        <td className="px-6 py-4 text-center align-middle">
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white shadow-sm text-slate-700 text-xs font-bold w-max mx-auto">
+                                                <span className="material-symbols-outlined text-[16px] text-primary">receipt_long</span>
                                                 {f.total_claims || 0}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                                                {f.pending_claims || 0}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                                            {f.rejected_claims > 0 ? (
-                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                                    <XCircleIcon className="w-3 h-3 mr-1" />
-                                                    {f.rejected_claims}
-                                                </span>
-                                            ) : (
-                                                <span className="text-muted-foreground">-</span>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right">
-                                            <Button
-                                                size="sm"
+                                        <td className="px-6 py-4 text-right align-middle">
+                                            <button
                                                 onClick={() => navigate(`/admin/faculty/${f.id}`)}
-                                                className="bg-purple-600 hover:bg-purple-700 text-white"
+                                                className="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200 text-slate-600 hover:text-primary hover:border-primary/30 hover:bg-primary/5 text-xs font-bold rounded-lg transition-all shadow-sm group-hover:shadow whitespace-nowrap ml-auto"
                                             >
-                                                <EyeIcon className="w-4 h-4 mr-1" />
-                                                View Profile
-                                            </Button>
+                                                <span className="material-symbols-outlined text-[16px]">visibility</span>
+                                                View
+                                            </button>
                                         </td>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
 
-                {/* Footer */}
+                {/* Footer Count */}
                 {filteredFaculty.length > 0 && (
-                    <div className="px-6 py-4 bg-muted border-t border-border">
-                        <p className="text-sm text-muted-foreground">
-                            Showing <span className="font-semibold">{filteredFaculty.length}</span> of{" "}
-                            <span className="font-semibold">{faculty.length}</span> faculty members
+                    <div className="px-6 py-4 bg-slate-50 border-t border-slate-200">
+                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest text-center">
+                            Showing {filteredFaculty.length} of {faculty.length} faculty entries
                         </p>
                     </div>
                 )}
-            </Card>
+            </div>
         </div>
     );
 }

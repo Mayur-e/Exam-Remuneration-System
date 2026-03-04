@@ -1,14 +1,9 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "../../hooks/useToast";
-import { Card } from "../../components/ui/card";
-import { Button } from "../../components/ui/button";
 import ProfileSettings from "../../components/settings/ProfileSettings";
 import SecuritySettings from "../../components/settings/SecuritySettings";
 import RatesManagement from "../../components/settings/RatesManagement";
 import StudentCountManagement from "../../components/settings/StudentCountManagement";
-import { SettingsIcon, CheckCircleIcon, AlertCircleIcon } from "../../components/icons/logo";
-import { MailIcon } from "../../components/icons/logo";
 
 export default function AdminSettings() {
     const [activeTab, setActiveTab] = useState("profile");
@@ -23,7 +18,6 @@ export default function AdminSettings() {
 
     const handleSaveProfile = async (data) => {
         try {
-            // API call would go here
             // API call would go here
             await new Promise(resolve => setTimeout(resolve, 1000)); // Simulated delay
             showToast("Profile updated successfully!", "success");
@@ -88,106 +82,51 @@ export default function AdminSettings() {
             name: "email",
             label: "Email",
             type: "email",
-            icon: MailIcon,
             placeholder: "Enter your email",
             hint: "Email cannot be changed"
         }
     ];
 
-    const tabVariants = {
-        hidden: { opacity: 0, x: -20 },
-        visible: {
-            opacity: 1,
-            x: 0,
-            transition: {
-                duration: 0.3,
-                ease: "easeOut"
-            }
-        },
-        exit: {
-            opacity: 0,
-            x: 20,
-            transition: {
-                duration: 0.2
-            }
-        }
-    };
+    const tabs = [
+        { id: "profile", label: "Profile", icon: "person" },
+        { id: "system", label: "System Config", icon: "settings" },
+        { id: "counts", label: "Student Counts", icon: "groups" }
+    ];
 
     return (
-        <motion.div
-            className="space-y-6"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-        >
-            {/* Header */}
-            <motion.div
-                className="space-y-2"
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-            >
-                <h1 className="text-3xl font-bold text-card-foreground">Admin Settings</h1>
-                <p className="text-muted-foreground">Manage your profile and system preferences</p>
-            </motion.div>
+        <div className="max-w-7xl mx-auto p-4 sm:p-8 space-y-6 font-display bg-background-light min-h-[calc(100vh-4rem)] pb-20">
+            {/* Header section */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">Admin Settings</h1>
+                    <p className="text-slate-500 font-medium">Manage your profile and system preferences.</p>
+                </div>
+            </div>
 
-            {/* Tabs */}
-            <motion.div
-                className="border-b border-border"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-            >
-                <nav className="flex gap-4">
-                    <motion.button
-                        onClick={() => setActiveTab("profile")}
-                        className={`px-4 py-2 font-medium border-b-2 transition-colors ${activeTab === "profile"
-                            ? "border-purple-600 text-purple-600"
-                            : "border-transparent text-muted-foreground hover:text-card-foreground"
-                            }`}
-                        whileHover={{ y: -2 }}
-                        whileTap={{ scale: 0.98 }}
-                    >
-                        Profile
-                    </motion.button>
-                    <motion.button
-                        onClick={() => setActiveTab("system")}
-                        className={`px-4 py-2 font-medium border-b-2 transition-colors ${activeTab === "system"
-                            ? "border-purple-600 text-purple-600"
-                            : "border-transparent text-muted-foreground hover:text-card-foreground"
-                            }`}
-                        whileHover={{ y: -2 }}
-                        whileTap={{ scale: 0.98 }}
-                    >
-                        System Configuration
-                    </motion.button>
-                    <motion.button
-                        onClick={() => setActiveTab("counts")}
-                        className={`px-4 py-2 font-medium border-b-2 transition-colors ${activeTab === "counts"
-                            ? "border-purple-600 text-purple-600"
-                            : "border-transparent text-muted-foreground hover:text-card-foreground"
-                            }`}
-                        whileHover={{ y: -2 }}
-                        whileTap={{ scale: 0.98 }}
-                    >
-                        Student Counts
-                    </motion.button>
-                </nav>
-            </motion.div>
-
-
+            {/* Flat Tabs */}
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                {tabs.map((tab) => {
+                    const isActive = activeTab === tab.id;
+                    return (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm whitespace-nowrap transition-all duration-200 border ${isActive
+                                    ? 'bg-primary text-white border-primary shadow-md'
+                                    : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50 shadow-sm'
+                                }`}
+                        >
+                            <span className="material-symbols-outlined text-[18px]">{tab.icon}</span>
+                            {tab.label}
+                        </button>
+                    );
+                })}
+            </div>
 
             {/* Tab Content */}
-            <AnimatePresence mode="wait">
+            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                 {activeTab === "profile" && (
-                    <motion.div
-                        key="profile"
-                        className="grid grid-cols-1 lg:grid-cols-2 gap-8"
-                        variants={tabVariants}
-                        initial="hidden"
-                        animate="visible"
-                        exit="exit"
-                    >
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         <ProfileSettings
                             initialData={profileData}
                             onSave={handleSaveProfile}
@@ -197,36 +136,24 @@ export default function AdminSettings() {
 
                         <SecuritySettings
                             onSave={handleChangePassword}
-                            primaryColor="purple-600"
+                            primaryColor="primary"
                         />
-                    </motion.div>
+                    </div>
                 )}
 
                 {activeTab === "system" && (
-                    <motion.div
-                        key="system"
-                        variants={tabVariants}
-                        initial="hidden"
-                        animate="visible"
-                        exit="exit"
-                    >
+                    <div>
                         <RatesManagement />
-                    </motion.div>
+                    </div>
                 )}
 
                 {activeTab === "counts" && (
-                    <motion.div
-                        key="counts"
-                        variants={tabVariants}
-                        initial="hidden"
-                        animate="visible"
-                        exit="exit"
-                    >
+                    <div>
                         <StudentCountManagement />
-                    </motion.div>
+                    </div>
                 )}
-            </AnimatePresence>
-        </motion.div>
+            </div>
+        </div>
     );
 }
 

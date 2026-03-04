@@ -1,29 +1,13 @@
 import { useEffect, useState, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
-import { Card } from "../../components/ui/card";
-import { Input } from "../../components/ui/input";
-import { Button } from "../../components/ui/button";
-
-// Icons
-import {
-    UserIcon,
-    CheckCircleIcon,
-    XCircleIcon,
-    AlertCircleIcon,
-    EyeIcon,
-    ChevronDownIcon,
-    ChevronUpIcon,
-    DocumentTextIcon
-} from "../../components/icons/logo";
 
 export default function AccountantExternalSupervision() {
     const navigate = useNavigate();
     const [externalExaminers, setExternalExaminers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
-    const [departmentFilter, setDepartmentFilter] = useState("");
-    const [statusFilter, setStatusFilter] = useState("");
+        const [statusFilter, setStatusFilter] = useState("");
     const [expandedRows, setExpandedRows] = useState(new Set());
 
     useEffect(() => {
@@ -42,9 +26,7 @@ export default function AccountantExternalSupervision() {
         }
     };
 
-    // Get unique departments for filter
-    const departments = [...new Set(externalExaminers.map(e => e.department).filter(Boolean))];
-
+    
     const filteredExaminers = externalExaminers.filter(examiner => {
         const matchesSearch =
             examiner.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -52,7 +34,7 @@ export default function AccountantExternalSupervision() {
             examiner.parent_institute?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             examiner.generated_by?.toLowerCase().includes(searchTerm.toLowerCase());
 
-        const matchesDepartment = !departmentFilter || examiner.department === departmentFilter;
+        const matchesDepartment = true;
 
         const matchesStatus = !statusFilter ||
             (statusFilter === "submitted" && examiner.claim_status === "submitted") ||
@@ -68,9 +50,9 @@ export default function AccountantExternalSupervision() {
         const hasPan = !!examiner.pan_document_url;
         const hasCheque = !!examiner.cancelled_cheque_url;
 
-        if (hasPan && hasCheque) return { label: 'Complete', color: 'text-green-600', icon: CheckCircleIcon };
-        if (!hasPan && !hasCheque) return { label: 'Pending', color: 'text-muted-foreground', icon: AlertCircleIcon };
-        return { label: 'Incomplete', color: 'text-red-600', icon: XCircleIcon };
+        if (hasPan && hasCheque) return { label: 'Complete', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', icon: 'check_circle' };
+        if (!hasPan && !hasCheque) return { label: 'Pending', color: 'text-slate-500', bg: 'bg-slate-50', border: 'border-slate-200', icon: 'pending' };
+        return { label: 'Incomplete', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', icon: 'error' };
     };
 
     const toggleRow = (examinerId) => {
@@ -85,348 +67,391 @@ export default function AccountantExternalSupervision() {
 
     const clearFilters = () => {
         setSearchTerm("");
-        setDepartmentFilter("");
-        setStatusFilter("");
+                setStatusFilter("");
     };
 
+    if (loading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] bg-background-light">
+                <div className="w-12 h-12 border-4 border-slate-200 border-t-primary rounded-full animate-spin mb-4"></div>
+                <p className="text-slate-500 font-medium">Loading external examiners...</p>
+            </div>
+        );
+    }
+
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="space-y-2">
-                <h1 className="text-3xl font-bold text-card-foreground">External Examiner Supervision</h1>
-                <p className="text-muted-foreground">Monitor external examiners, their documents, and claim submissions</p>
+        <div className="max-w-7xl mx-auto p-4 sm:p-8 space-y-8 font-display bg-background-light min-h-[calc(100vh-4rem)] pb-20">
+            {/* Header section w/ Title & Overview text */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">External Supervision</h1>
+                    <p className="text-slate-500 font-medium">Monitor external examiners, their documents, and claim submissions.</p>
+                </div>
             </div>
 
-            {/* Filters */}
-            <Card className="p-6 bg-card border-border">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    {/* Search */}
-                    <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-foreground mb-1">Search</label>
-                        <div className="relative">
-                            <Input
-                                type="text"
-                                placeholder="Search by name, email, institute, or faculty..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10"
-                            />
-                            <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                        </div>
-                    </div>
+            {/* Global Search and Filter Bar */}
+            <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
 
-                    {/* Department Filter */}
-                    <div>
-                        <label className="block text-sm font-medium text-foreground mb-1">Department</label>
-                        <select
-                            value={departmentFilter}
-                            onChange={(e) => setDepartmentFilter(e.target.value)}
-                            className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        >
-                            <option value="">All Departments</option>
-                            {departments.map(dept => (
-                                <option key={dept} value={dept}>{dept}</option>
-                            ))}
-                        </select>
+                    {/* Search Bar */}
+                    <div className="md:col-span-5 relative group">
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Search Records</label>
+                        <div className="absolute left-4 top-[38px] text-slate-400 group-focus-within:text-primary transition-colors flex items-center justify-center">
+                            <span className="material-symbols-outlined text-[20px]">search</span>
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Name, email, institute..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-11 pr-4 py-3 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                        />
                     </div>
 
                     {/* Status Filter */}
-                    <div>
-                        <label className="block text-sm font-medium text-foreground mb-1">Claim Status</label>
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                            className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        >
-                            <option value="">All Status</option>
-                            <option value="pending">Pending</option>
-                            <option value="submitted">Submitted</option>
-                            <option value="approved">Approved</option>
-                            <option value="paid">Paid</option>
-                            <option value="rejected">Rejected</option>
-                        </select>
+                    <div className="md:col-span-3">
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Claim Status</label>
+                        <div className="relative">
+                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 flex items-center justify-center pointer-events-none">
+                                <span className="material-symbols-outlined text-[18px]">rule</span>
+                            </div>
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                                className="w-full pl-11 pr-10 py-3 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all appearance-none cursor-pointer"
+                            >
+                                <option value="">All Statuses</option>
+                                <option value="pending">Pending</option>
+                                <option value="submitted">Submitted</option>
+                                <option value="approved">Approved</option>
+                                <option value="paid">Paid</option>
+                                <option value="rejected">Rejected</option>
+                            </select>
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none flex items-center justify-center">
+                                <span className="material-symbols-outlined text-[18px]">expand_more</span>
+                            </div>
+                        </div>
                     </div>
-                </div>
 
-                {/* Clear Filters */}
-                {(searchTerm || departmentFilter || statusFilter) && (
-                    <div className="mt-4">
-                        <Button variant="outline" size="sm" onClick={clearFilters}>
-                            Clear Filters
-                        </Button>
+                    {/* Clear Button */}
+                    <div className="md:col-span-1 flex justify-end">
+                        <button
+                            onClick={clearFilters}
+                            disabled={!searchTerm && !statusFilter}
+                            className="w-full md:w-12 h-[46px] flex items-center justify-center bg-slate-50 hover:bg-slate-100 text-slate-500 border border-slate-200 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed group"
+                            title="Clear Filters"
+                        >
+                            <span className="material-symbols-outlined text-[20px] group-hover:rotate-90 transition-transform duration-300">close</span>
+                            <span className="md:hidden ml-2 font-medium text-sm">Clear Filters</span>
+                        </button>
                     </div>
-                )}
-            </Card>
+
+                </div>
+            </div>
 
             {/* External Examiners Table */}
-            <Card className="bg-card border-border">
-                {loading ? (
-                    <div className="p-12 text-center">
-                        <div className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto mb-4"></div>
-                        <p className="text-muted-foreground">Loading external examiners...</p>
-                    </div>
-                ) : filteredExaminers.length === 0 ? (
-                    <div className="p-12 text-center">
-                        <UserIcon className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-foreground mb-2">
-                            {externalExaminers.length === 0 ? "No external examiners found" : "No matching examiners"}
-                        </h3>
-                        <p className="text-muted-foreground">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                {filteredExaminers.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+                        <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mb-4 border border-slate-100">
+                            <span className="material-symbols-outlined text-3xl text-slate-400">person_search</span>
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-800 mb-1">No examiners found</h3>
+                        <p className="text-slate-500 max-w-sm">
                             {externalExaminers.length === 0
                                 ? "No external examiner claims have been submitted yet."
-                                : "Try adjusting your search criteria."}
+                                : "We couldn't find any examiners matching your current filters."}
                         </p>
+                        {(searchTerm  || statusFilter) && (
+                            <button
+                                onClick={clearFilters}
+                                className="mt-4 text-primary font-bold text-sm hover:underline inline-flex items-center gap-1"
+                            >
+                                <span className="material-symbols-outlined text-[16px]">clear_all</span>
+                                Clear All Filters
+                            </button>
+                        )}
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-muted border-b border-border">
-                                <tr>
-                                    <th className="px-4 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-8">
-                                        {/* Expand column */}
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-slate-50 border-b border-slate-200">
+                                    <th className="px-4 py-4 w-12 text-center text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                        Docs
                                     </th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        External Examiner
+                                    <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                        Examiner details
                                     </th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        Institute
+                                    <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest hidden lg:table-cell">
+                                        Institute & Status
                                     </th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        Exam Details
+                                    <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest hidden md:table-cell">
+                                        Assigned Exam
                                     </th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        Generated By
+                                    <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest hidden xl:table-cell">
+                                        Creator
                                     </th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        Documents
+                                    <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                        Docs Status
                                     </th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        Claim Status
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        Actions
+                                    <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
+                                        Claim
                                     </th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="divide-y divide-slate-100">
                                 {filteredExaminers.map((examiner) => {
                                     const docStatus = getDocumentStatus(examiner);
-                                    const DocIcon = docStatus.icon;
                                     const isExpanded = expandedRows.has(examiner.id);
 
                                     return (
                                         <Fragment key={examiner.id}>
-                                            <tr className="hover:bg-purple-50 transition-colors border-b border-border">
-                                                <td className="px-4 py-4">
+                                            <tr className={`hover:bg-slate-50/50 transition-colors ${isExpanded ? 'bg-primary/5' : ''}`}>
+                                                <td className="px-4 py-4 text-center">
                                                     <button
                                                         onClick={() => toggleRow(examiner.id)}
-                                                        className="text-muted-foreground hover:text-purple-600 transition-colors p-1 rounded hover:bg-purple-100"
+                                                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors mx-auto ${isExpanded ? 'bg-primary text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-800'
+                                                            }`}
                                                         title="View documents"
                                                     >
-                                                        {isExpanded ? (
-                                                            <ChevronUpIcon className="w-5 h-5" />
-                                                        ) : (
-                                                            <ChevronDownIcon className="w-5 h-5" />
-                                                        )}
+                                                        <span className="material-symbols-outlined text-[18px]">
+                                                            {isExpanded ? 'keyboard_arrow_up' : 'keyboard_arrow_down'}
+                                                        </span>
                                                     </button>
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
-                                                            <UserIcon className="w-5 h-5 text-purple-600" />
+                                                        <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0 text-blue-600">
+                                                            <span className="material-symbols-outlined text-[20px]">badge</span>
                                                         </div>
                                                         <div>
-                                                            <div className="text-sm font-medium text-foreground">
+                                                            <div className="text-sm font-bold text-slate-800">
                                                                 {examiner.full_name}
                                                             </div>
-                                                            <div className="text-xs text-muted-foreground">{examiner.email}</div>
+                                                            <div className="text-xs font-medium text-slate-500 flex items-center gap-1.5 mt-0.5">
+                                                                <span className="material-symbols-outlined text-[14px]">mail</span>
+                                                                {examiner.email}
+                                                            </div>
                                                             {examiner.mobile && (
-                                                                <div className="text-xs text-muted-foreground">{examiner.mobile}</div>
+                                                                <div className="text-xs font-medium text-slate-500 flex items-center gap-1.5 mt-0.5 hidden sm:flex">
+                                                                    <span className="material-symbols-outlined text-[14px]">call</span>
+                                                                    {examiner.mobile}
+                                                                </div>
                                                             )}
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="text-sm text-foreground">
+                                                <td className="px-6 py-4 hidden lg:table-cell align-top">
+                                                    <div className="text-sm font-bold text-slate-700">
                                                         {examiner.parent_institute || 'N/A'}
                                                     </div>
-                                                    <div className="text-xs text-muted-foreground">
-                                                        {examiner.is_local ? 'Local (< 25km)' : 'Outstation'}
+                                                    <div className="inline-flex items-center gap-1 px-2 py-0.5 mt-1 text-[10px] font-bold uppercase tracking-wider rounded-md border text-slate-600 bg-slate-50 border-slate-200">
+                                                        <span className="material-symbols-outlined text-[12px]">{examiner.is_local ? 'location_on' : 'flight'}</span>
+                                                        {examiner.is_local ? 'Local' : 'Outstation'}
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="text-sm font-medium text-foreground">
+                                                <td className="px-6 py-4 hidden md:table-cell align-top">
+                                                    <div className="text-sm font-bold text-slate-700">
                                                         {examiner.subject_name || 'N/A'}
                                                     </div>
-                                                    <div className="text-xs text-muted-foreground">
-                                                        {examiner.exam_type} • {examiner.program}
+                                                    <div className="text-xs text-slate-500 mt-0.5 truncate max-w-[150px]">
+                                                        {examiner.exam_type} &bull; {examiner.program}
                                                     </div>
-                                                    <div className="text-xs text-muted-foreground">
-                                                        Exam #{examiner.exam_id}
+                                                    <div className="text-[10px] font-mono text-slate-400 mt-0.5">
+                                                        #{examiner.exam_id}
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="text-sm text-foreground">{examiner.generated_by}</div>
-                                                    <div className="text-xs text-muted-foreground">{examiner.department}</div>
+                                                <td className="px-6 py-4 hidden xl:table-cell align-top">
+                                                    <div className="text-sm font-bold text-slate-700">{examiner.generated_by}</div>
+                                                    <div className="text-xs border border-slate-200 bg-slate-50 rounded px-1.5 py-0.5 text-slate-500 inline-block mt-1 font-medium truncate max-w-[100px]">{examiner.department}</div>
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className={`flex items-center gap-2 ${docStatus.color} mb-1`}>
-                                                        <DocIcon className="w-4 h-4" />
-                                                        <span className="text-sm font-medium">{docStatus.label}</span>
+                                                <td className="px-6 py-4 align-top">
+                                                    <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 ${docStatus.bg} ${docStatus.color} border ${docStatus.border} rounded-md mb-2 w-max`}>
+                                                        <span className="material-symbols-outlined text-[14px]">{docStatus.icon}</span>
+                                                        <span className="text-[11px] font-bold uppercase tracking-widest">{docStatus.label}</span>
                                                     </div>
-                                                    <div className="space-y-0.5">
+                                                    <div className="flex gap-1 flex-wrap">
                                                         {examiner.pan_document_url && (
-                                                            <div className="text-xs text-green-600">✓ PAN</div>
+                                                            <span className="w-5 h-5 flex items-center justify-center rounded bg-emerald-100 text-emerald-600 border border-emerald-200" title="PAN Document">
+                                                                <span className="material-symbols-outlined text-[12px] font-bold">description</span>
+                                                            </span>
                                                         )}
                                                         {examiner.cancelled_cheque_url && (
-                                                            <div className="text-xs text-green-600">✓ Cheque</div>
+                                                            <span className="w-5 h-5 flex items-center justify-center rounded bg-emerald-100 text-emerald-600 border border-emerald-200" title="Cancelled Cheque">
+                                                                <span className="material-symbols-outlined text-[12px] font-bold">account_balance</span>
+                                                            </span>
                                                         )}
                                                         {examiner.travel_proof_url && (
-                                                            <div className="text-xs text-green-600">✓ Travel</div>
+                                                            <span className="w-5 h-5 flex items-center justify-center rounded bg-emerald-100 text-emerald-600 border border-emerald-200" title="Travel Proof">
+                                                                <span className="material-symbols-outlined text-[12px] font-bold">directions_car</span>
+                                                            </span>
                                                         )}
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    {examiner.claim_status ? (
-                                                        <span className={`px-3 py-1 text-xs font-semibold rounded-full border ${examiner.claim_status === 'paid' ? 'bg-green-100 text-green-700 border-green-200' :
-                                                            examiner.claim_status === 'approved' ? 'bg-blue-100 text-blue-700 border-blue-200' :
-                                                                examiner.claim_status === 'submitted' ? 'bg-orange-100 text-orange-700 border-orange-200' :
-                                                                    examiner.claim_status === 'rejected' ? 'bg-red-100 text-red-700 border-red-200' :
-                                                                        'bg-accent text-foreground border-border'
-                                                            }`}>
-                                                            {examiner.claim_status}
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-sm text-muted-foreground">Pending</span>
-                                                    )}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => navigate(`/accountant/bills/${examiner.exam_id}`)}
-                                                        className="flex items-center gap-2"
-                                                    >
-                                                        <EyeIcon className="w-4 h-4" />
-                                                        View Claim
-                                                    </Button>
+                                                <td className="px-6 py-4 text-right align-middle">
+                                                    <div className="flex flex-col items-end gap-2">
+                                                        {examiner.claim_status ? (
+                                                            <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest rounded-md border ${examiner.claim_status === 'paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                                                    examiner.claim_status === 'approved' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                                                        examiner.claim_status === 'submitted' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                                                                            examiner.claim_status === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
+                                                                                'bg-slate-50 text-slate-700 border-slate-200'
+                                                                }`}>
+                                                                {examiner.claim_status}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest rounded-md border bg-slate-50 text-slate-500 border-slate-200">
+                                                                Pending
+                                                            </span>
+                                                        )}
+                                                        <button
+                                                            onClick={() => navigate(`/accountant/bills/${examiner.exam_id}`)}
+                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-slate-600 rounded-lg text-xs font-bold shadow-sm transition-all"
+                                                        >
+                                                            <span className="material-symbols-outlined text-[14px]">visibility</span>
+                                                            View
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
 
                                             {/* Expanded Document Row */}
                                             {isExpanded && (
-                                                <tr className="bg-purple-50 border-b border-border">
-                                                    <td colSpan="8" className="px-6 py-6">
-                                                        <div className="space-y-4">
-                                                            <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                                                                <DocumentTextIcon className="w-5 h-5 text-purple-600" />
-                                                                Uploaded Documents
-                                                            </h4>
+                                                <tr className="bg-slate-50/80 border-b border-primary/20 shadow-inner">
+                                                    <td colSpan="7" className="px-6 py-6 border-l-4 border-l-primary">
+                                                        <div className="flex items-center gap-2 mb-4">
+                                                            <span className="material-symbols-outlined text-primary text-[20px]">folder_open</span>
+                                                            <h4 className="text-sm font-bold text-slate-800">Uploaded Documents</h4>
+                                                        </div>
 
-                                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                                {/* PAN Document */}
-                                                                <div className="bg-card rounded-lg border border-border p-4 shadow-sm">
-                                                                    <div className="flex items-center gap-2 mb-3">
-                                                                        <DocumentTextIcon className="w-5 h-5 text-purple-600" />
-                                                                        <h5 className="font-medium text-foreground">PAN Card</h5>
+                                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                                            {/* PAN Document */}
+                                                            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                                                                <div className="px-4 py-3 bg-slate-50 border-b border-slate-100 flex items-center gap-2">
+                                                                    <div className="w-6 h-6 rounded bg-blue-100 text-blue-600 flex items-center justify-center">
+                                                                        <span className="material-symbols-outlined text-[14px]">credit_card</span>
                                                                     </div>
+                                                                    <h5 className="font-bold text-slate-700 text-xs uppercase tracking-wider">PAN Card</h5>
+                                                                </div>
+                                                                <div className="p-4 flex-grow flex flex-col space-y-3">
                                                                     {examiner.pan_document_url ? (
-                                                                        <div className="space-y-2">
-                                                                            <div className="relative group">
-                                                                                <img
-                                                                                    src={`http://localhost:5000${examiner.pan_document_url}`}
-                                                                                    alt="PAN Document"
-                                                                                    className="w-full h-48 object-contain bg-muted rounded border cursor-pointer hover:shadow-lg transition-shadow"
-                                                                                    onClick={() => window.open(`http://localhost:5000${examiner.pan_document_url}`, '_blank')}
-                                                                                />
-                                                                            </div>
+                                                                        <>
                                                                             <a
                                                                                 href={`http://localhost:5000${examiner.pan_document_url}`}
                                                                                 target="_blank"
                                                                                 rel="noopener noreferrer"
-                                                                                className="block text-center text-sm text-purple-600 hover:text-purple-700 font-medium"
+                                                                                className="block relative aspect-video bg-slate-100 rounded-lg border border-slate-200 overflow-hidden group/img"
                                                                             >
-                                                                                Open in New Tab →
+                                                                                <img
+                                                                                    src={`http://localhost:5000${examiner.pan_document_url}`}
+                                                                                    className="w-full h-full object-contain"
+                                                                                    alt="PAN Card"
+                                                                                />
+                                                                                <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                                                                                    <span className="material-symbols-outlined text-white text-3xl drop-shadow-md">open_in_new</span>
+                                                                                </div>
                                                                             </a>
-                                                                            <p className="text-xs text-muted-foreground text-center">PAN: {examiner.pan_number || 'N/A'}</p>
-                                                                        </div>
+                                                                            <div className="mt-auto pt-2 border-t border-slate-100">
+                                                                                <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">PAN Number</p>
+                                                                                <p className="text-sm font-mono font-bold text-slate-800 uppercase">{examiner.pan_number || 'NOT PROVIDED'}</p>
+                                                                            </div>
+                                                                        </>
                                                                     ) : (
-                                                                        <div className="text-center py-8 bg-muted rounded">
-                                                                            <XCircleIcon className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
-                                                                            <p className="text-sm text-muted-foreground">Not uploaded</p>
+                                                                        <div className="flex-grow flex flex-col items-center justify-center py-6 bg-slate-50/50 rounded-lg border border-dashed border-slate-200">
+                                                                            <span className="material-symbols-outlined text-3xl text-slate-300 mb-2">image_not_supported</span>
+                                                                            <p className="text-xs font-medium text-slate-500">Not uploaded</p>
                                                                         </div>
                                                                     )}
                                                                 </div>
+                                                            </div>
 
-                                                                {/* Cancelled Cheque */}
-                                                                <div className="bg-card rounded-lg border border-border p-4 shadow-sm">
-                                                                    <div className="flex items-center gap-2 mb-3">
-                                                                        <DocumentTextIcon className="w-5 h-5 text-purple-600" />
-                                                                        <h5 className="font-medium text-foreground">Cancelled Cheque</h5>
+                                                            {/* Cancelled Cheque */}
+                                                            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                                                                <div className="px-4 py-3 bg-slate-50 border-b border-slate-100 flex items-center gap-2">
+                                                                    <div className="w-6 h-6 rounded bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                                                                        <span className="material-symbols-outlined text-[14px]">account_balance</span>
                                                                     </div>
+                                                                    <h5 className="font-bold text-slate-700 text-xs uppercase tracking-wider">Cancelled Cheque</h5>
+                                                                </div>
+                                                                <div className="p-4 flex-grow flex flex-col space-y-3">
                                                                     {examiner.cancelled_cheque_url ? (
-                                                                        <div className="space-y-2">
-                                                                            <div className="relative group">
-                                                                                <img
-                                                                                    src={`http://localhost:5000${examiner.cancelled_cheque_url}`}
-                                                                                    alt="Cancelled Cheque"
-                                                                                    className="w-full h-48 object-contain bg-muted rounded border cursor-pointer hover:shadow-lg transition-shadow"
-                                                                                    onClick={() => window.open(`http://localhost:5000${examiner.cancelled_cheque_url}`, '_blank')}
-                                                                                />
-                                                                            </div>
+                                                                        <>
                                                                             <a
                                                                                 href={`http://localhost:5000${examiner.cancelled_cheque_url}`}
                                                                                 target="_blank"
                                                                                 rel="noopener noreferrer"
-                                                                                className="block text-center text-sm text-purple-600 hover:text-purple-700 font-medium"
+                                                                                className="block relative aspect-video bg-slate-100 rounded-lg border border-slate-200 overflow-hidden group/img"
                                                                             >
-                                                                                Open in New Tab →
+                                                                                <img
+                                                                                    src={`http://localhost:5000${examiner.cancelled_cheque_url}`}
+                                                                                    className="w-full h-full object-contain"
+                                                                                    alt="Cancelled Cheque"
+                                                                                />
+                                                                                <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                                                                                    <span className="material-symbols-outlined text-white text-3xl drop-shadow-md">open_in_new</span>
+                                                                                </div>
                                                                             </a>
-                                                                        </div>
+                                                                            <div className="mt-auto pt-2 border-t border-slate-100">
+                                                                                <p className="text-[10px] uppercase font-bold text-emerald-600 tracking-wider flex items-center gap-1">
+                                                                                    <span className="material-symbols-outlined text-[12px]">check_circle</span>
+                                                                                    Document present
+                                                                                </p>
+                                                                            </div>
+                                                                        </>
                                                                     ) : (
-                                                                        <div className="text-center py-8 bg-muted rounded">
-                                                                            <XCircleIcon className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
-                                                                            <p className="text-sm text-muted-foreground">Not uploaded</p>
+                                                                        <div className="flex-grow flex flex-col items-center justify-center py-6 bg-slate-50/50 rounded-lg border border-dashed border-slate-200">
+                                                                            <span className="material-symbols-outlined text-3xl text-slate-300 mb-2">image_not_supported</span>
+                                                                            <p className="text-xs font-medium text-slate-500">Not uploaded</p>
                                                                         </div>
                                                                     )}
                                                                 </div>
+                                                            </div>
 
-                                                                {/* Travel Proof */}
-                                                                <div className="bg-card rounded-lg border border-border p-4 shadow-sm">
-                                                                    <div className="flex items-center gap-2 mb-3">
-                                                                        <DocumentTextIcon className="w-5 h-5 text-purple-600" />
-                                                                        <h5 className="font-medium text-foreground">Travel Proof</h5>
+                                                            {/* Travel Proof */}
+                                                            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                                                                <div className="px-4 py-3 bg-slate-50 border-b border-slate-100 flex items-center gap-2">
+                                                                    <div className="w-6 h-6 rounded bg-purple-100 text-purple-600 flex items-center justify-center">
+                                                                        <span className="material-symbols-outlined text-[14px]">directions_car</span>
                                                                     </div>
+                                                                    <h5 className="font-bold text-slate-700 text-xs uppercase tracking-wider">Travel Proof</h5>
+                                                                </div>
+                                                                <div className="p-4 flex-grow flex flex-col space-y-3">
                                                                     {examiner.travel_proof_url ? (
-                                                                        <div className="space-y-2">
-                                                                            <div className="relative group">
-                                                                                <img
-                                                                                    src={`http://localhost:5000${examiner.travel_proof_url}`}
-                                                                                    alt="Travel Proof"
-                                                                                    className="w-full h-48 object-contain bg-muted rounded border cursor-pointer hover:shadow-lg transition-shadow"
-                                                                                    onClick={() => window.open(`http://localhost:5000${examiner.travel_proof_url}`, '_blank')}
-                                                                                />
-                                                                            </div>
+                                                                        <>
                                                                             <a
                                                                                 href={`http://localhost:5000${examiner.travel_proof_url}`}
                                                                                 target="_blank"
                                                                                 rel="noopener noreferrer"
-                                                                                className="block text-center text-sm text-purple-600 hover:text-purple-700 font-medium"
+                                                                                className="block relative aspect-video bg-slate-100 rounded-lg border border-slate-200 overflow-hidden group/img"
                                                                             >
-                                                                                Open in New Tab →
+                                                                                <img
+                                                                                    src={`http://localhost:5000${examiner.travel_proof_url}`}
+                                                                                    className="w-full h-full object-contain"
+                                                                                    alt="Travel Proof"
+                                                                                />
+                                                                                <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                                                                                    <span className="material-symbols-outlined text-white text-3xl drop-shadow-md">open_in_new</span>
+                                                                                </div>
                                                                             </a>
-                                                                            <p className="text-xs text-muted-foreground text-center">
-                                                                                {examiner.is_local ? `Local: ₹${examiner.travel_allowance || 0}` : `Outstation: ₹${examiner.travel_allowance || 0}`}
-                                                                            </p>
-                                                                        </div>
+                                                                            <div className="mt-auto pt-2 border-t border-slate-100">
+                                                                                <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">Allowance Claimed</p>
+                                                                                <p className="text-sm font-bold text-slate-800">₹{examiner.travel_allowance || 0} <span className="text-xs font-medium text-slate-500 ml-1">({examiner.is_local ? 'Local' : 'Outstation'})</span></p>
+                                                                            </div>
+                                                                        </>
                                                                     ) : (
-                                                                        <div className="text-center py-8 bg-muted rounded">
-                                                                            <AlertCircleIcon className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
-                                                                            <p className="text-sm text-muted-foreground">
-                                                                                {examiner.is_local ? 'Not required for local' : 'Not uploaded'}
-                                                                            </p>
+                                                                        <div className="flex-grow flex flex-col items-center justify-center py-6 bg-slate-50/50 rounded-lg border border-dashed border-slate-200">
+                                                                            {examiner.is_local ? (
+                                                                                <>
+                                                                                    <span className="material-symbols-outlined text-3xl text-emerald-300 mb-2">location_on</span>
+                                                                                    <p className="text-xs font-medium text-slate-500 text-center px-4">Not required for local<br />(base allowance applies)</p>
+                                                                                </>
+                                                                            ) : (
+                                                                                <>
+                                                                                    <span className="material-symbols-outlined text-3xl text-slate-300 mb-2">image_not_supported</span>
+                                                                                    <p className="text-xs font-medium text-slate-500">Not uploaded</p>
+                                                                                </>
+                                                                            )}
                                                                         </div>
                                                                     )}
                                                                 </div>
@@ -443,16 +468,15 @@ export default function AccountantExternalSupervision() {
                     </div>
                 )}
 
-                {/* Footer */}
+                {/* Footer Count */}
                 {filteredExaminers.length > 0 && (
-                    <div className="px-6 py-4 bg-muted border-t border-border">
-                        <p className="text-sm text-muted-foreground">
-                            Showing <span className="font-semibold">{filteredExaminers.length}</span> of{" "}
-                            <span className="font-semibold">{externalExaminers.length}</span> external examiners
+                    <div className="px-6 py-4 bg-slate-50 border-t border-slate-200">
+                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest text-center">
+                            Showing {filteredExaminers.length} of {externalExaminers.length} records
                         </p>
                     </div>
                 )}
-            </Card>
+            </div>
         </div>
     );
 }

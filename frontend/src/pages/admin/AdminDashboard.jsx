@@ -1,24 +1,17 @@
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
-import { Card } from "../../components/ui/card";
-import { Button } from "../../components/ui/button";
-
-// Icons
-import {
-  FileTextIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  ClockIcon,
-  AlertCircleIcon,
-  UsersIcon
-} from "../../components/icons/logo";
 import ExportFilterModal from "../../components/ExportFilterModal";
+import {
+  PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend
+} from 'recharts';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [alerts, setAlerts] = useState(null);
+  const [deptExpenditures, setDeptExpenditures] = useState(null);
+  const [recentClaims, setRecentClaims] = useState(null);
   const [loading, setLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("");
@@ -30,11 +23,15 @@ export default function AdminDashboard() {
       .then(res => {
         setStats(res.data.stats);
         setAlerts(res.data.alerts);
+        setDeptExpenditures(res.data.department_expenditures);
+        setRecentClaims(res.data.recent_claims);
       })
       .catch(err => {
         console.error("Dashboard error:", err);
         setStats(null);
         setAlerts(null);
+        setDeptExpenditures(null);
+        setRecentClaims(null);
         setToastMessage("Failed to load dashboard statistics");
         setToastType("error");
         setTimeout(() => setToastMessage(""), 3000);
@@ -44,7 +41,6 @@ export default function AdminDashboard() {
 
   const handleExport = async (filters) => {
     try {
-      // Loading toast
       setToastMessage("Generating export...");
       setToastType("info");
 
@@ -67,11 +63,9 @@ export default function AdminDashboard() {
       link.setAttribute('download', `Billing_Sheet_Export_${new Date().toISOString().split('T')[0]}.xlsx`);
       document.body.appendChild(link);
       link.click();
-
       link.parentNode.removeChild(link);
       window.URL.revokeObjectURL(url);
 
-      // Success toast
       setToastMessage("Export downloaded successfully!");
       setToastType("success");
       setTimeout(() => setToastMessage(""), 3000);
@@ -83,128 +77,61 @@ export default function AdminDashboard() {
     }
   };
 
-  // Animation variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.2
-      }
-    }
-  };
-
-  const statCardVariants = {
-    hidden: { y: 20, opacity: 0, scale: 0.9 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      scale: 1,
-      transition: {
-        type: "spring",
-        stiffness: 120,
-        damping: 15
-      }
-    }
-  };
-
-  const statNumberVariants = {
-    hidden: { scale: 0.8, opacity: 0 },
-    visible: {
-      scale: 1,
-      opacity: 1,
-      transition: {
-        type: "spring",
-        stiffness: 200,
-        damping: 15,
-        delay: 0.3
-      }
-    }
-  };
-
   if (loading) {
     return (
-      <motion.div
-        className="flex items-center justify-center min-h-screen"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-      >
-        <div className="text-center space-y-4">
-          <motion.div
-            className="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full mx-auto"
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          />
-          <p className="text-muted-foreground">Loading dashboard...</p>
-        </div>
-      </motion.div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-10 h-10 border-4 border-slate-200 border-t-primary rounded-full animate-spin"></div>
+      </div>
     );
   }
 
   if (!stats) {
     return (
-      <motion.div
-        className="flex items-center justify-center min-h-screen"
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ type: "spring", stiffness: 200, damping: 25 }}
-      >
-        <Card className="p-8 text-center max-w-md">
-          <motion.div
-            animate={{
-              x: [0, -5, 5, -5, 5, 0],
-              transition: { duration: 0.6 }
-            }}
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <span className="material-symbols-outlined text-4xl text-red-400 mb-4 block">error</span>
+          <p className="text-red-600 text-lg font-bold mb-2">Failed to load dashboard statistics</p>
+          <p className="text-slate-500 mb-6">Please check your connection and try again</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2.5 bg-red-50 text-red-600 font-bold rounded-lg hover:bg-red-100 transition-colors"
           >
-            <XCircleIcon className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          </motion.div>
-          <p className="text-red-600 text-lg font-medium mb-2">Failed to load dashboard statistics</p>
-          <p className="text-muted-foreground mb-6">Please check your connection and try again</p>
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Button
-              onClick={() => window.location.reload()}
-              className="bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600"
-            >
-              <motion.span
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                className="w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"
-              />
-              Retry Loading
-            </Button>
-          </motion.div>
-        </Card>
-      </motion.div>
+            Retry Loading
+          </button>
+        </div>
+      </div>
     );
   }
 
-  return (
-    <div className="space-y-8">
-      {/* Custom Toast Animation */}
-      <AnimatePresence>
-        {toastMessage && (
-          <motion.div
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 50 }}
-            transition={{ duration: 0.3 }}
-            className={`fixed top-4 right-4 px-4 py-2 rounded shadow-lg z-50 ${toastType === "success"
-                ? "bg-green-600 text-white"
-                : toastType === "error"
-                  ? "bg-red-600 text-white"
-                  : "bg-blue-600 text-white"
-              }`}
-          >
-            {toastMessage}
-          </motion.div>
-        )}
-      </AnimatePresence>
+  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#14b8a6', '#84cc16'];
 
-      {/* Header */}
+  const chartData = deptExpenditures ? deptExpenditures.map((dept, index) => ({
+    name: dept.department,
+    value: Number(dept.total_expenditure) || 0,
+    color: COLORS[index % COLORS.length]
+  })).filter(item => item.value > 0) : [];
+
+  const barData = deptExpenditures ? deptExpenditures.map((dept) => ({
+    name: dept.department,
+    Expenditure: Number(dept.total_expenditure) || 0
+  })).filter(item => item.Expenditure > 0) : [];
+
+  return (
+    <div className="max-w-7xl mx-auto p-4 sm:p-8 space-y-8 font-display bg-background-light min-h-[calc(100vh-4rem)]">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className={`fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 font-bold transition-all animate-in slide-in-from-top-2 flex items-center gap-2 ${toastType === "success" ? "bg-emerald-50 text-emerald-600 border border-emerald-200" :
+          toastType === "error" ? "bg-red-50 text-red-600 border border-red-200" :
+            "bg-blue-50 text-blue-600 border border-blue-200"
+          }`}>
+          <span className="material-symbols-outlined text-[20px]">
+            {toastType === "success" ? "check_circle" : toastType === "error" ? "error" : "info"}
+          </span>
+          {toastMessage}
+        </div>
+      )}
+
+      {/* Export Modal */}
       <ExportFilterModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
@@ -212,134 +139,221 @@ export default function AdminDashboard() {
         isAdmin={true}
       />
 
-      <motion.div
-        className="space-y-2"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, type: "spring" }}
-      >
-        <div className="flex items-center gap-3">
-          <motion.div
-            whileHover={{ rotate: 360 }}
-            transition={{ duration: 0.6 }}
-            className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-600 to-purple-500 flex items-center justify-center"
-          >
-            <FileTextIcon className="w-6 h-6 text-white" />
-          </motion.div>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Admin Dashboard</h1>
-            <p className="text-muted-foreground">System-wide overview and supervision</p>
-          </div>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Admin Dashboard</h1>
+          <p className="text-slate-500 text-sm mt-1">System-wide overview and supervision</p>
         </div>
-      </motion.div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsExportModalOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold rounded-xl transition-colors text-sm"
+          >
+            <span className="material-symbols-outlined text-[20px]">upgrade</span>
+            Export Excel
+          </button>
+          <span className="material-symbols-outlined text-primary text-2xl bg-primary/10 p-2 rounded-xl">dashboard</span>
+        </div>
+      </div>
 
       {/* System Summary Cards */}
-      <motion.div
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        <StatCard
-          title="Total Claims"
-          value={stats.total_claims || 0}
-          subtitle="All claims"
-          icon={<FileTextIcon className="w-6 h-6" />}
-          bgColor="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-card/80"
-          borderColor="border-blue-200 dark:border-blue-800/50"
-          textColor="text-blue-700 dark:text-blue-300"
-          iconBg="bg-blue-100 dark:bg-blue-900/30"
-          iconColor="text-blue-600 dark:text-blue-400"
-        />
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center transition-shadow hover:shadow-md border-l-4 border-l-slate-400">
+          <div className="flex justify-between items-center mb-2">
+            <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Total Claims</p>
+            <span className="material-symbols-outlined text-slate-400 text-[18px]">receipt_long</span>
+          </div>
+          <div className="flex items-end justify-between">
+            <h3 className="text-2xl font-black text-slate-900">{stats.total_claims || 0}</h3>
+            <p className="text-sm font-bold text-slate-500">₹{Number(stats.total_amount || 0).toLocaleString()}</p>
+          </div>
+        </div>
 
-        <StatCard
-          title="Submitted Claims"
-          value={stats.submitted_claims || 0}
-          subtitle="Pending review"
-          icon={<ClockIcon className="w-6 h-6" />}
-          bgColor="bg-gradient-to-br from-orange-50 to-white dark:from-orange-950/30 dark:to-card/80"
-          borderColor="border-orange-200 dark:border-orange-800/50"
-          textColor="text-orange-700 dark:text-orange-300"
-          iconBg="bg-orange-100 dark:bg-orange-900/30"
-          iconColor="text-orange-600 dark:text-orange-400"
-          animateIcon={true}
-        />
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center transition-shadow hover:shadow-md border-l-4 border-l-amber-500">
+          <div className="flex justify-between items-center mb-2">
+            <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Submitted</p>
+            <span className="material-symbols-outlined text-amber-500 text-[18px]">pending_actions</span>
+          </div>
+          <div className="flex items-end justify-between">
+            <h3 className="text-2xl font-black text-slate-900">{stats.submitted_claims || 0}</h3>
+            <p className="text-sm font-bold text-amber-600">₹{Number(stats.submitted_amount || 0).toLocaleString()}</p>
+          </div>
+        </div>
 
-        <StatCard
-          title="Approved Claims"
-          value={stats.approved_claims || 0}
-          subtitle="Ready for payment"
-          icon={<CheckCircleIcon className="w-6 h-6" />}
-          bgColor="bg-gradient-to-br from-green-50 to-white dark:from-green-950/30 dark:to-card/80"
-          borderColor="border-green-200 dark:border-green-800/50"
-          textColor="text-green-700 dark:text-green-300"
-          iconBg="bg-green-100 dark:bg-green-900/30"
-          iconColor="text-green-600 dark:text-green-400"
-        />
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center transition-shadow hover:shadow-md border-l-4 border-l-blue-500">
+          <div className="flex justify-between items-center mb-2">
+            <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Approved</p>
+            <span className="material-symbols-outlined text-blue-500 text-[18px]">fact_check</span>
+          </div>
+          <div className="flex items-end justify-between">
+            <h3 className="text-2xl font-black text-slate-900">{stats.approved_claims || 0}</h3>
+            <p className="text-sm font-bold text-blue-600">₹{Number(stats.approved_amount || 0).toLocaleString()}</p>
+          </div>
+        </div>
 
-        <StatCard
-          title="Paid Claims"
-          value={stats.paid_claims || 0}
-          subtitle="Completed"
-          icon={<CheckCircleIcon className="w-6 h-6" />}
-          bgColor="bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/30 dark:to-card/80"
-          borderColor="border-emerald-200 dark:border-emerald-800/50"
-          textColor="text-emerald-700 dark:text-emerald-300"
-          iconBg="bg-emerald-100 dark:bg-emerald-900/30"
-          iconColor="text-emerald-600 dark:text-emerald-400"
-          pulseIcon={true}
-        />
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center transition-shadow hover:shadow-md border-l-4 border-l-emerald-500">
+          <div className="flex justify-between items-center mb-2">
+            <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Paid</p>
+            <span className="material-symbols-outlined text-emerald-500 text-[18px]">payments</span>
+          </div>
+          <div className="flex items-end justify-between">
+            <h3 className="text-2xl font-black text-slate-900">{stats.paid_claims || 0}</h3>
+            <p className="text-sm font-bold text-emerald-600">₹{Number(stats.paid_amount || 0).toLocaleString()}</p>
+          </div>
+        </div>
 
-        <StatCard
-          title="Rejected Claims"
-          value={stats.rejected_claims || 0}
-          subtitle="Needs correction"
-          icon={<XCircleIcon className="w-6 h-6" />}
-          bgColor="bg-gradient-to-br from-red-50 to-white dark:from-red-950/30 dark:to-card/80"
-          borderColor="border-red-200 dark:border-red-800/50"
-          textColor="text-red-700 dark:text-red-300"
-          iconBg="bg-red-100 dark:bg-red-900/30"
-          iconColor="text-red-600 dark:text-red-400"
-        />
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center transition-shadow hover:shadow-md border-l-4 border-l-red-500">
+          <div className="flex justify-between items-center mb-2">
+            <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Rejected</p>
+            <span className="material-symbols-outlined text-red-500 text-[18px]">cancel</span>
+          </div>
+          <div className="flex items-end justify-between">
+            <h3 className="text-2xl font-black text-slate-900">{stats.rejected_claims || 0}</h3>
+            <p className="text-sm font-bold text-red-600">₹{Number(stats.rejected_amount || 0).toLocaleString()}</p>
+          </div>
+        </div>
+      </div>
 
-        <StatCard
-          title="External Claims"
-          value={stats.external_claims || 0}
-          subtitle="External examiners"
-          icon={<UsersIcon className="w-6 h-6" />}
-          bgColor="bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/30 dark:to-card/80"
-          borderColor="border-purple-200 dark:border-purple-800/50"
-          textColor="text-purple-700 dark:text-purple-300"
-          iconBg="bg-purple-100 dark:bg-purple-900/30"
-          iconColor="text-purple-600 dark:text-purple-400"
-        />
-      </motion.div>
-
-      {/* Alerts Section */}
-      <AnimatePresence>
-        {alerts && (
-          <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 150, damping: 20, delay: 0.3 }}
-          >
-            <Card className="p-6 bg-card border-border hover:shadow-lg transition-shadow duration-300">
-              <div className="flex items-center gap-3 mb-6">
-                <motion.div
-                  animate={{
-                    scale: [1, 1.2, 1],
-                    transition: { duration: 2, repeat: Infinity }
-                  }}
-                >
-                  <AlertCircleIcon className="w-6 h-6 text-orange-600 dark:text-orange-400" />
-                </motion.div>
-                <h2 className="text-xl font-semibold text-foreground">System Alerts</h2>
+      {/* Recent Claims Section */}
+      <div className="space-y-4 mt-8">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="material-symbols-outlined text-slate-400 text-[20px]">history</span>
+          <h2 className="text-lg font-bold text-slate-800">Recent Claims</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {recentClaims && recentClaims.length > 0 ? (
+            recentClaims.map((claim) => (
+              <div key={claim.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                <div>
+                  <div className="flex justify-between items-start mb-3">
+                    <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold uppercase tracking-wider">
+                      {claim.exam_type?.replace(/_/g, ' ') || 'Exam'}
+                    </span>
+                    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${claim.status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
+                      claim.status === 'approved' ? 'bg-blue-100 text-blue-700' :
+                        claim.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                          'bg-amber-100 text-amber-700'
+                      }`}>
+                      {claim.status}
+                    </span>
+                  </div>
+                  <h3 className="font-bold text-slate-900 text-sm mb-1 line-clamp-2" title={claim.subject_name}>
+                    {claim.subject_name}
+                  </h3>
+                  <p className="text-xs text-slate-500 mb-4">{claim.claimant_name} &bull; {claim.department || 'External'}</p>
+                </div>
+                <div className="flex items-end justify-between mt-auto">
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Amount</p>
+                    <p className="font-black text-lg text-slate-900">
+                      {claim.net_amount ? `₹${claim.net_amount}` : 'Pending'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => navigate(`/admin/claims/${claim.id}`)}
+                    className="w-8 h-8 rounded-full bg-slate-50 hover:bg-primary/10 text-slate-400 hover:text-primary flex items-center justify-center transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                  </button>
+                </div>
               </div>
+            ))
+          ) : (
+            <div className="col-span-1 md:col-span-2 lg:col-span-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-center text-slate-500 text-sm">
+              No recent claims available.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Analytics Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+          <div className="flex justify-between items-center mb-6">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-purple-500 text-[20px]">pie_chart</span>
+              <h2 className="text-lg font-bold text-slate-800">Expenditures Ratio</h2>
+            </div>
+          </div>
+          <div className="flex-1 min-h-[300px]">
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={chartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={70}
+                    outerRadius={100}
+                    paddingAngle={5}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontWeight: 'bold' }}
+                    itemStyle={{ fontWeight: 'bold' }}
+                  />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 'bold', color: '#64748b' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center text-slate-400">
+                <span className="material-symbols-outlined text-4xl mb-2 text-slate-300">pie_chart</span>
+                <p className="font-medium text-sm">No data available</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+          <div className="flex justify-between items-center mb-6">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-blue-500 text-[20px]">bar_chart</span>
+              <h2 className="text-lg font-bold text-slate-800">Department Expenditures</h2>
+            </div>
+          </div>
+          <div className="flex-1 min-h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={barData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 'bold' }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 'bold' }} />
+                <RechartsTooltip
+                  cursor={{ fill: '#f8fafc' }}
+                  contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontWeight: 'bold' }}
+                />
+                <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 'bold', color: '#64748b' }} />
+                <Bar dataKey="Expenditure" radius={[4, 4, 0, 0]} barSize={40}>
+                  {barData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Alerts Section */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="material-symbols-outlined text-slate-400 text-[20px]">notifications_active</span>
+            <h2 className="text-lg font-bold text-slate-800">System Alerts</h2>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm min-h-[200px]">
+            {alerts && (
               <div className="space-y-3">
                 {alerts.pending_beyond_limit > 0 && (
                   <AlertItem
                     type="warning"
+                    icon="warning"
                     message={`${alerts.pending_beyond_limit} claim(s) pending beyond 7 days`}
                     action={() => navigate("/admin/claims?status=submitted")}
                     actionLabel="View Claims"
@@ -349,8 +363,9 @@ export default function AdminDashboard() {
                 {alerts.repeated_rejections > 0 && (
                   <AlertItem
                     type="error"
-                    message={`${alerts.repeated_rejections} claim(s) with previous rejections (Resubmitted)`}
-                    action={() => navigate("/admin/claims?status=submitted&rejection_history=true")}
+                    icon="error"
+                    message={`${alerts.repeated_rejections} claim(s) with previous rejections`}
+                    action={() => navigate("/admin/claims?status=submitted")}
                     actionLabel="Review"
                   />
                 )}
@@ -358,6 +373,7 @@ export default function AdminDashboard() {
                 {alerts.external_without_docs > 0 && (
                   <AlertItem
                     type="warning"
+                    icon="description"
                     message={`${alerts.external_without_docs} external claim(s) without complete documents`}
                     action={() => navigate("/admin/external")}
                     actionLabel="Verify"
@@ -367,6 +383,7 @@ export default function AdminDashboard() {
                 {alerts.rate_mismatch_flags > 0 && (
                   <AlertItem
                     type="info"
+                    icon="info"
                     message={`${alerts.rate_mismatch_flags} claim(s) with minimum rate applied`}
                     action={() => navigate("/admin/claims")}
                     actionLabel="Review"
@@ -374,209 +391,87 @@ export default function AdminDashboard() {
                 )}
 
                 {!alerts.pending_beyond_limit && !alerts.repeated_rejections && !alerts.external_without_docs && !alerts.rate_mismatch_flags && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="text-center py-4 text-muted-foreground"
-                  >
-                    <motion.div
-                      whileHover={{ rotate: 360 }}
-                      transition={{ duration: 0.8 }}
-                    >
-                      <CheckCircleIcon className="w-12 h-12 mx-auto mb-2 text-green-500 dark:text-green-400" />
-                    </motion.div>
-                    <p>No alerts at this time. System is running smoothly.</p>
-                  </motion.div>
+                  <div className="flex flex-col items-center justify-center py-8 text-slate-400">
+                    <span className="material-symbols-outlined text-4xl text-emerald-100 mb-2 block">task_alt</span>
+                    <p className="font-medium text-slate-500">No alerts at this time. System is running smoothly.</p>
+                  </div>
                 )}
               </div>
-            </Card>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Quick Actions */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ type: "spring", stiffness: 150, damping: 20, delay: 0.4 }}
-      >
-        <Card className="p-6 bg-card border-border hover:shadow-lg transition-shadow duration-300">
-          <h2 className="text-xl font-semibold text-foreground mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <motion.div
-              whileHover={{ scale: 1.05, y: -3 }}
-              whileTap={{ scale: 0.95 }}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
-            >
-              <Button
-                onClick={() => navigate("/admin/claims")}
-                className="w-full bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
-              >
-                <FileTextIcon className="w-5 h-5 mr-2" />
-                View All Claims
-              </Button>
-            </motion.div>
-
-            <motion.div
-              whileHover={{ scale: 1.05, y: -3 }}
-              whileTap={{ scale: 0.95 }}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
-            >
-              <Button
-                onClick={() => navigate("/admin/faculty")}
-                variant="outline"
-                className="w-full border-purple-600 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 font-semibold"
-              >
-                <UsersIcon className="w-5 h-5 mr-2" />
-                Faculty Oversight
-              </Button>
-            </motion.div>
-
-            <motion.div
-              whileHover={{ scale: 1.05, y: -3 }}
-              whileTap={{ scale: 0.95 }}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
-            >
-              <Button
-                onClick={() => navigate("/admin/audit-logs")}
-                variant="outline"
-                className="w-full border-purple-600 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 font-semibold"
-              >
-                <FileTextIcon className="w-5 h-5 mr-2" />
-                Audit Logs
-              </Button>
-            </motion.div>
-
-            <motion.div
-              whileHover={{ scale: 1.05, y: -3 }}
-              whileTap={{ scale: 0.95 }}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
-            >
-              <Button
-                onClick={() => setIsExportModalOpen(true)}
-                variant="outline"
-                className="w-full border-green-600 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 font-semibold"
-              >
-                <FileTextIcon className="w-5 h-5 mr-2" />
-                Export Billing Excel
-              </Button>
-            </motion.div>
+            )}
           </div>
-        </Card>
-      </motion.div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="material-symbols-outlined text-slate-400 text-[20px]">bolt</span>
+            <h2 className="text-lg font-bold text-slate-800">Quick Actions</h2>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-3">
+            <button
+              onClick={() => navigate("/admin/claims")}
+              className="w-full flex items-center gap-3 p-4 rounded-xl border border-slate-200 hover:border-primary/30 hover:bg-primary/5 text-slate-700 font-bold transition-all text-left group"
+            >
+              <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                <span className="material-symbols-outlined">receipt_long</span>
+              </div>
+              <span className="flex-1">View All Claims</span>
+              <span className="material-symbols-outlined text-slate-300 group-hover:text-primary transition-colors">chevron_right</span>
+            </button>
+
+            <button
+              onClick={() => navigate("/admin/faculty")}
+              className="w-full flex items-center gap-3 p-4 rounded-xl border border-slate-200 hover:border-primary/30 hover:bg-primary/5 text-slate-700 font-bold transition-all text-left group"
+            >
+              <div className="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                <span className="material-symbols-outlined">groups</span>
+              </div>
+              <span className="flex-1">Faculty Oversight</span>
+              <span className="material-symbols-outlined text-slate-300 group-hover:text-primary transition-colors">chevron_right</span>
+            </button>
+
+            <button
+              onClick={() => navigate("/admin/audit-logs")}
+              className="w-full flex items-center gap-3 p-4 rounded-xl border border-slate-200 hover:border-primary/30 hover:bg-primary/5 text-slate-700 font-bold transition-all text-left group"
+            >
+              <div className="w-10 h-10 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                <span className="material-symbols-outlined">history</span>
+              </div>
+              <span className="flex-1">Audit Logs</span>
+              <span className="material-symbols-outlined text-slate-300 group-hover:text-primary transition-colors">chevron_right</span>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
-function StatCard({ title, value, subtitle, icon, bgColor, borderColor, textColor, iconBg, iconColor, animateIcon = false, pulseIcon = false }) {
-  return (
-    <motion.div
-      variants={{
-        hidden: { y: 20, opacity: 0, scale: 0.9 },
-        visible: {
-          y: 0,
-          opacity: 1,
-          scale: 1,
-          transition: {
-            type: "spring",
-            stiffness: 120,
-            damping: 15
-          }
-        }
-      }}
-      whileHover={{ y: -5, scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
-      transition={{ type: "spring", stiffness: 400, damping: 25 }}
-    >
-      <Card className={`p-6 ${bgColor} border ${borderColor} hover:shadow-lg transition-all duration-300`}>
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex-1">
-            <p className="text-sm font-medium text-muted-foreground mb-1">{title}</p>
-            <motion.h3
-              key={value}
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.3 }}
-              className={`text-2xl font-bold ${textColor}`}
-            >
-              {value}
-            </motion.h3>
-            {subtitle && (
-              <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
-            )}
-          </div>
-          <motion.div
-            className={`p-3 rounded-lg ${iconBg}`}
-            animate={
-              animateIcon
-                ? { rotate: [0, 10, 0, -10, 0], transition: { duration: 4, repeat: Infinity, ease: "linear" } }
-                : pulseIcon
-                  ? { scale: [1, 1.1, 1], transition: { duration: 2, repeat: Infinity } }
-                  : {}
-            }
-            whileHover={!animateIcon && !pulseIcon ? { rotate: 360 } : {}}
-            transition={{ duration: 0.6 }}
-          >
-            <div className={`${iconColor}`}>
-              {icon}
-            </div>
-          </motion.div>
-        </div>
-      </Card>
-    </motion.div>
-  );
-}
+function AlertItem({ type, icon, message, action, actionLabel }) {
+  const styles = {
+    warning: "bg-orange-50 border-orange-200 text-orange-900 icon-orange-500",
+    error: "bg-red-50 border-red-200 text-red-900 icon-red-500",
+    info: "bg-blue-50 border-blue-200 text-blue-900 icon-blue-500"
+  }[type];
 
-function AlertItem({ type, message, action, actionLabel }) {
-  const colors = {
-    warning: "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 text-orange-800 dark:text-orange-300",
-    error: "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300",
-    info: "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300"
-  };
-
-  const iconColors = {
-    warning: "text-orange-600 dark:text-orange-400",
-    error: "text-red-600 dark:text-red-400",
-    info: "text-blue-600 dark:text-blue-400"
-  };
-
-  const iconAnimations = {
-    warning: { scale: [1, 1.2, 1], transition: { duration: 2, repeat: Infinity } },
-    error: { x: [0, -2, 2, -2, 2, 0], transition: { duration: 0.5, repeat: Infinity } },
-    info: { rotate: [0, 5, 0, -5, 0], transition: { duration: 3, repeat: Infinity } }
-  };
+  // Extract base classes for icon color mapping
+  const iconColorClass = type === 'warning' ? 'text-orange-500' : type === 'error' ? 'text-red-500' : 'text-blue-500';
 
   return (
-    <motion.div
-      className={`${colors[type]} border rounded-lg p-4 flex items-center justify-between`}
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ type: "spring", stiffness: 100, damping: 12 }}
-      whileHover={{ scale: 1.01, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
-    >
-      <div className="flex items-center gap-3">
-        <motion.div
-          animate={iconAnimations[type]}
-        >
-          <AlertCircleIcon className={`w-5 h-5 ${iconColors[type]}`} />
-        </motion.div>
-        <p className="font-medium">{message}</p>
+    <div className={`p-4 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${styles}`}>
+      <div className="flex items-center gap-3 flex-1">
+        <span className={`material-symbols-outlined ${iconColorClass} text-[24px]`}>{icon}</span>
+        <p className="font-bold text-sm">{message}</p>
       </div>
       {action && (
-        <motion.div
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+        <button
+          onClick={action}
+          className="px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-bold text-xs rounded-lg transition-colors whitespace-nowrap shadow-sm shrink-0"
         >
-          <Button
-            onClick={action}
-            size="sm"
-            variant="outline"
-            className="ml-4"
-          >
-            {actionLabel}
-          </Button>
-        </motion.div>
+          {actionLabel}
+        </button>
       )}
-    </motion.div>
+    </div>
   );
 }

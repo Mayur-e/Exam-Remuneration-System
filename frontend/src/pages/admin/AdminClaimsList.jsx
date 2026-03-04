@@ -1,20 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "../../services/api";
-import { Card } from "../../components/ui/card";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-
-// Icons
-import {
-    FileTextIcon,
-    ClockIcon,
-    CheckCircleIcon,
-    XCircleIcon,
-    CurrencyRupeeIcon,
-    EyeIcon,
-    FilterIcon
-} from "../../components/icons/logo";
 
 export default function AdminClaimsList() {
     const [claims, setClaims] = useState([]);
@@ -24,20 +10,21 @@ export default function AdminClaimsList() {
     const navigate = useNavigate();
 
     const status = searchParams.get("status") || "";
-    const department = searchParams.get("department") || "";
+    // Note: department filter is handled frontend-only now to maintain the full dropdown list.
+    const [selectedDepartment, setSelectedDepartment] = useState("");
     const examType = searchParams.get("exam_type") || "";
     const claimFormType = searchParams.get("claim_form_type") || "";
 
     useEffect(() => {
         fetchClaims();
-    }, [status, department, examType, claimFormType]);
+    }, [status, examType, claimFormType]);
 
     const fetchClaims = async () => {
         setLoading(true);
         try {
             const params = new URLSearchParams();
             if (status) params.append("status", status);
-            if (department) params.append("department", department);
+            // Department isn't appended here anymore to allow the dropdown to have all local options
             if (examType) params.append("exam_type", examType);
             if (claimFormType) params.append("claim_form_type", claimFormType);
 
@@ -51,258 +38,285 @@ export default function AdminClaimsList() {
         }
     };
 
-    const filteredClaims = claims.filter(claim =>
-        claim.faculty_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        claim.claimant_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        claim.subject_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        claim.exam_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        claim.department?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredClaims = claims.filter(claim => {
+        const matchesSearch = claim.faculty_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            claim.claimant_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            claim.subject_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            claim.exam_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            claim.department?.toLowerCase().includes(searchTerm.toLowerCase());
+
+        const matchesDepartment = selectedDepartment === "" || claim.department === selectedDepartment;
+
+        return matchesSearch && matchesDepartment;
+    });
+
+    const departments = [...new Set(claims.map(c => c.department).filter(Boolean))].sort();
 
     const getClaimTypeBadge = (type) => {
         const badges = {
-            'TEACHING_INTERNAL': { label: 'Teaching Internal', color: 'bg-blue-100 text-blue-700' },
-            'TEACHING_EXTERNAL': { label: 'Teaching External', color: 'bg-green-100 text-green-700' },
-            'NON_TEACHING': { label: 'Non-Teaching', color: 'bg-purple-100 text-purple-700' }
+            'TEACHING_INTERNAL': { label: 'Internal', color: 'bg-blue-50 text-blue-700' },
+            'TEACHING_EXTERNAL': { label: 'External', color: 'bg-emerald-50 text-emerald-700' },
+            'NON_TEACHING': { label: 'Non-Teaching', color: 'bg-purple-50 text-purple-700' }
         };
-        return badges[type] || { label: type, color: 'bg-accent text-foreground' };
-    };
-
-    const getStatusBadge = (status) => {
-        const badges = {
-            'submitted': { label: 'Submitted', color: 'bg-orange-100 text-orange-700 border-orange-200' },
-            'approved': { label: 'Approved', color: 'bg-blue-100 text-blue-700 border-blue-200' },
-            'paid': { label: 'Paid', color: 'bg-green-100 text-green-700 border-green-200' },
-            'rejected': { label: 'Rejected', color: 'bg-red-100 text-red-700 border-red-200' }
-        };
-        return badges[status] || { label: status, color: 'bg-accent text-foreground border-border' };
+        return badges[type] || { label: type, color: 'bg-slate-50 text-slate-700' };
     };
 
     const clearFilters = () => {
         setSearchParams({});
         setSearchTerm("");
+        setSelectedDepartment("");
     };
 
-    const hasActiveFilters = status || department || examType || claimFormType;
+    const hasActiveFilters = status || examType || claimFormType || selectedDepartment;
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <div className="w-10 h-10 border-4 border-slate-200 border-t-primary rounded-full animate-spin"></div>
+            </div>
+        );
+    }
 
     return (
-        <div className="space-y-6">
+        <div className="max-w-7xl mx-auto p-4 sm:p-8 space-y-8 font-display bg-background-light min-h-[calc(100vh-4rem)]">
+
             {/* Header */}
-            <div className="space-y-2">
-                <h1 className="text-3xl font-bold text-card-foreground">Claims Management</h1>
-                <p className="text-muted-foreground">Supervise and oversee all examination claims</p>
+            <div className="flex justify-between items-center">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Claims Management</h1>
+                    <p className="text-slate-500 text-sm mt-1">Supervise and oversee all examination claims</p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-primary text-2xl bg-primary/10 p-2 rounded-xl">shield_person</span>
+                </div>
             </div>
 
-            {/* Filters */}
-            <Card className="p-6 bg-card border-border">
-                <div className="space-y-4">
-                    {/* Status Filter Tabs */}
-                    <div className="flex flex-wrap gap-2">
-                        <Button
-                            onClick={() => setSearchParams({})}
-                            variant={!status ? "default" : "outline"}
-                            size="sm"
-                            className={!status ? "bg-purple-600 hover:bg-purple-700" : ""}
-                        >
-                            All Claims
-                        </Button>
-                        <Button
-                            onClick={() => setSearchParams({ status: "submitted" })}
-                            variant={status === "submitted" ? "default" : "outline"}
-                            size="sm"
-                            className={status === "submitted" ? "bg-orange-600 hover:bg-orange-700" : ""}
-                        >
-                            <ClockIcon className="w-4 h-4 mr-1" />
-                            Submitted
-                        </Button>
-                        <Button
-                            onClick={() => setSearchParams({ status: "approved" })}
-                            variant={status === "approved" ? "default" : "outline"}
-                            size="sm"
-                            className={status === "approved" ? "bg-blue-600 hover:bg-blue-700" : ""}
-                        >
-                            <CheckCircleIcon className="w-4 h-4 mr-1" />
-                            Approved
-                        </Button>
-                        <Button
-                            onClick={() => setSearchParams({ status: "paid" })}
-                            variant={status === "paid" ? "default" : "outline"}
-                            size="sm"
-                            className={status === "paid" ? "bg-green-600 hover:bg-green-700" : ""}
-                        >
-                            <CheckCircleIcon className="w-4 h-4 mr-1" />
-                            Paid
-                        </Button>
-                        <Button
-                            onClick={() => setSearchParams({ status: "rejected" })}
-                            variant={status === "rejected" ? "default" : "outline"}
-                            size="sm"
-                            className={status === "rejected" ? "bg-red-600 hover:bg-red-700" : ""}
-                        >
-                            <XCircleIcon className="w-4 h-4 mr-1" />
-                            Rejected
-                        </Button>
+            {/* Stats row */}
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center transition-shadow hover:shadow-md border-l-4 border-l-amber-500">
+                    <div className="flex justify-between items-center mb-2">
+                        <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Pending</p>
+                        <span className="material-symbols-outlined text-amber-500 text-[18px]">pending_actions</span>
                     </div>
-
-                    {/* Search and Advanced Filters */}
-                    <div className="flex flex-col md:flex-row gap-4">
-                        {/* Search */}
-                        <div className="relative flex-1">
-                            <Input
-                                type="text"
-                                placeholder="Search by faculty, subject, exam type, or department..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10"
-                            />
-                            <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                        </div>
-
-                        {/* Clear Filters */}
-                        {(hasActiveFilters || searchTerm) && (
-                            <Button
-                                onClick={clearFilters}
-                                variant="outline"
-                                size="sm"
-                                className="whitespace-nowrap"
-                            >
-                                <FilterIcon className="w-4 h-4 mr-2" />
-                                Clear Filters
-                            </Button>
-                        )}
-                    </div>
+                    <h3 className="text-2xl font-black text-slate-900">
+                        {claims.filter(c => c.status === 'submitted').length}
+                    </h3>
                 </div>
-            </Card>
 
-            {/* Claims Table */}
-            <Card className="bg-card border-border">
-                {loading ? (
-                    <div className="p-12 text-center">
-                        <div className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto mb-4"></div>
-                        <p className="text-muted-foreground">Loading claims...</p>
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center transition-shadow hover:shadow-md border-l-4 border-l-blue-500">
+                    <div className="flex justify-between items-center mb-2">
+                        <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Review</p>
+                        <span className="material-symbols-outlined text-blue-500 text-[18px]">rate_review</span>
                     </div>
-                ) : filteredClaims.length === 0 ? (
-                    <div className="p-12 text-center">
-                        <FileTextIcon className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-foreground mb-2">
-                            {claims.length === 0 ? "No claims found" : "No matching claims"}
-                        </h3>
-                        <p className="text-muted-foreground">
-                            {claims.length === 0
-                                ? "There are no claims matching your filters."
-                                : "Try adjusting your search criteria."}
-                        </p>
+                    <h3 className="text-2xl font-black text-slate-900">
+                        {claims.filter(c => ['review', 'under_review', 'verified', 'coordinator_submitted', 'under_coordinator_review'].includes(c.status?.toLowerCase())).length}
+                    </h3>
+                </div>
+
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center transition-shadow hover:shadow-md border-l-4 border-l-emerald-500">
+                    <div className="flex justify-between items-center mb-2">
+                        <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Approved</p>
+                        <span className="material-symbols-outlined text-emerald-500 text-[18px]">check_circle</span>
                     </div>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-muted border-b border-border">
+                    <h3 className="text-2xl font-black text-slate-900">
+                        {claims.filter(c => ['approved', 'paid'].includes(c.status?.toLowerCase())).length}
+                    </h3>
+                </div>
+
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center transition-shadow hover:shadow-md border-l-4 border-l-red-500">
+                    <div className="flex justify-between items-center mb-2">
+                        <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Rejected</p>
+                        <span className="material-symbols-outlined text-red-500 text-[18px]">cancel</span>
+                    </div>
+                    <h3 className="text-2xl font-black text-slate-900">
+                        {claims.filter(c => ['rejected', 'coordinator_rejected'].includes(c.status?.toLowerCase())).length}
+                    </h3>
+                </div>
+            </div>
+
+            {/* Filter / Search Bar */}
+            <div className="flex flex-col xl:flex-row gap-4 justify-between items-center bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
+
+                {/* Status Pills */}
+                <div className="flex gap-1 p-1 bg-slate-50 rounded-lg flex-1 xl:flex-none flex-wrap hide-scrollbar overflow-x-auto">
+                    <button
+                        onClick={() => setSearchParams({})}
+                        className={`px-4 py-2 text-sm font-bold rounded-md transition-colors whitespace-nowrap ${!status ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                    >
+                        All Claims
+                    </button>
+                    <button
+                        onClick={() => setSearchParams({ status: "submitted" })}
+                        className={`px-4 py-2 text-sm font-bold rounded-md transition-colors whitespace-nowrap ${status === "submitted" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                    >
+                        Pending
+                    </button>
+                    <button
+                        onClick={() => setSearchParams({ status: "approved" })}
+                        className={`px-4 py-2 text-sm font-bold rounded-md transition-colors whitespace-nowrap ${status === "approved" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                    >
+                        Approved
+                    </button>
+                    <button
+                        onClick={() => setSearchParams({ status: "paid" })}
+                        className={`px-4 py-2 text-sm font-bold rounded-md transition-colors whitespace-nowrap ${status === "paid" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                    >
+                        Paid
+                    </button>
+                    <button
+                        onClick={() => setSearchParams({ status: "rejected" })}
+                        className={`px-4 py-2 text-sm font-bold rounded-md transition-colors whitespace-nowrap ${status === "rejected" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                    >
+                        Rejected
+                    </button>
+                </div>
+
+                <div className="flex items-center gap-3 w-full xl:w-auto overflow-hidden">
+                    <div className="relative flex-1 xl:w-80">
+                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">search</span>
+                        <input
+                            type="text"
+                            placeholder="Search by faculty, subject..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-700"
+                        />
+                    </div>
+                    <div className="w-full sm:w-auto min-w-[200px] relative">
+                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">domain</span>
+                        <select
+                            value={selectedDepartment}
+                            onChange={(e) => setSelectedDepartment(e.target.value)}
+                            className="w-full pl-10 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all appearance-none cursor-pointer"
+                        >
+                            <option value="">All Departments</option>
+                            {departments.map((dept, idx) => (
+                                <option key={idx} value={dept}>{dept}</option>
+                            ))}
+                        </select>
+                        <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[20px]">expand_more</span>
+                    </div>
+                    {hasActiveFilters || searchTerm ? (
+                        <button
+                            onClick={clearFilters}
+                            className="px-4 py-2.5 bg-white border border-slate-200 text-slate-600 text-sm font-bold rounded-lg hover:bg-slate-50 transition-colors whitespace-nowrap shadow-sm"
+                        >
+                            Clear
+                        </button>
+                    ) : null}
+                </div>
+            </div>
+
+            {/* Table Section */}
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-slate-50/50 border-b border-slate-100">
+                                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Faculty Details</th>
+                                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest hidden lg:table-cell">Dept</th>
+                                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Subject</th>
+                                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Duty Type</th>
+                                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Amount</th>
+                                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Status</th>
+                                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {filteredClaims.length === 0 ? (
                                 <tr>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        Claimant
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        Department
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        Subject
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        Exam Type
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        Claim Type
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        Amount
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        Status
-                                    </th>
-                                    <th className="px-6 py-4 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        Action
-                                    </th>
+                                    <td colSpan="7" className="px-6 py-12 text-center text-slate-500">
+                                        <span className="material-symbols-outlined text-4xl text-slate-300 mb-2 block">folder_off</span>
+                                        <p className="font-medium">No claims match the given filters</p>
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200">
-                                {filteredClaims.map((claim) => {
-                                    const claimTypeBadge = getClaimTypeBadge(claim.claim_form_type);
-                                    const statusBadge = getStatusBadge(claim.status);
+                            ) : (
+                                filteredClaims.map((claim) => {
+                                    const badge = getClaimTypeBadge(claim.claim_form_type);
                                     return (
-                                        <tr key={claim.id} className="hover:bg-purple-50 transition-colors">
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="font-medium text-foreground">
-                                                    {claim.claimant_name || claim.faculty_name || 'Unknown'}
-                                                </div>
-                                                {claim.claim_form_type === 'TEACHING_EXTERNAL' && claim.faculty_name && (
-                                                    <div className="text-xs text-blue-600 mt-1">
-                                                        Ref: {claim.faculty_name}
+                                        <tr key={claim.id} className="hover:bg-slate-50/50 transition-colors group">
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm shrink-0">
+                                                        {(claim.claimant_name || claim.faculty_name || 'U').charAt(0).toUpperCase()}
                                                     </div>
-                                                )}
+                                                    <div>
+                                                        <p className="font-bold text-slate-700 text-sm line-clamp-1">{claim.claimant_name || claim.faculty_name || 'Unknown'}</p>
+                                                        {claim.claim_form_type === 'TEACHING_EXTERNAL' && claim.faculty_name && (
+                                                            <p className="text-xs text-blue-600 font-medium mt-0.5 line-clamp-1">Ref: {claim.faculty_name}</p>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className="text-sm text-foreground">{claim.department || 'N/A'}</span>
+                                            <td className="px-6 py-4 hidden lg:table-cell">
+                                                <span className="text-sm font-medium text-slate-600 line-clamp-2">{claim.department || 'N/A'}</span>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="text-sm text-foreground">{claim.subject_name || 'N/A'}</div>
-                                                {claim.program && (
-                                                    <div className="text-xs text-muted-foreground">{claim.program} {claim.level}</div>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className="px-2 py-1 text-xs font-medium bg-accent text-foreground rounded">
-                                                    {claim.exam_type}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className={`px-2 py-1 text-xs font-medium rounded ${claimTypeBadge.color}`}>
-                                                    {claimTypeBadge.label}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="flex items-center text-foreground font-semibold">
-                                                    <CurrencyRupeeIcon className="w-4 h-4 mr-1" />
-                                                    {Number(claim.total_amount || 0).toLocaleString('en-IN')}
+                                                <div className="flex items-center gap-2">
+                                                    <span className="material-symbols-outlined text-slate-400 text-[16px] shrink-0">book</span>
+                                                    <div>
+                                                        <p className="text-sm font-medium text-slate-600 line-clamp-2">{claim.subject_name || 'N/A'}</p>
+                                                        {claim.program && (
+                                                            <p className="text-[10px] text-slate-400 mt-0.5">{claim.program} {claim.level}</p>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                {claim.min_applied && (
-                                                    <div className="text-xs text-orange-600 mt-1">Min applied</div>
-                                                )}
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className={`px-3 py-1 text-xs font-semibold rounded-full border ${statusBadge.color}`}>
-                                                    {statusBadge.label}
+                                            <td className="px-6 py-4">
+                                                <div className="flex flex-col gap-1 items-start">
+                                                    <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wider uppercase ${badge.color}`}>
+                                                        {badge.label}
+                                                    </span>
+                                                    <span className="text-[11px] text-slate-500 font-semibold uppercase">{claim.exam_type}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <span className="text-sm font-bold text-slate-900 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 whitespace-nowrap">
+                                                    ₹{Number(claim.total_amount || 0).toLocaleString('en-IN')}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-right">
-                                                <Button
-                                                    size="sm"
+                                            <td className="px-6 py-4">
+                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold leading-none capitalize ${claim.status === 'paid' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                                                    claim.status === 'approved' ? 'bg-blue-50 text-blue-700 border border-blue-100' :
+                                                        claim.status === 'rejected' ? 'bg-red-50 text-red-700 border border-red-100' :
+                                                            'bg-amber-50 text-amber-700 border border-amber-100'
+                                                    }`}>
+                                                    <span className={`w-1.5 h-1.5 rounded-full ${claim.status === 'paid' ? 'bg-emerald-500' :
+                                                        claim.status === 'approved' ? 'bg-blue-500' :
+                                                            claim.status === 'rejected' ? 'bg-red-500' :
+                                                                'bg-amber-500'
+                                                        }`}></span>
+                                                    {claim.status === 'submitted' || claim.status === 'SENT_TO_BILLING' ? 'Pending' : claim.status}
+                                                </span>
+                                                {claim.min_applied && (
+                                                    <p className="text-[10px] text-orange-600 font-bold mt-1">Min applied</p>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <button
                                                     onClick={() => navigate(`/admin/claims/${claim.id}`)}
-                                                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                                                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200 text-slate-600 hover:text-primary hover:border-primary/30 hover:bg-primary/5 text-sm font-bold rounded-lg transition-all shadow-sm group-hover:shadow whitespace-nowrap"
                                                 >
-                                                    <EyeIcon className="w-4 h-4 mr-1" />
-                                                    View
-                                                </Button>
+                                                    <span className="material-symbols-outlined text-[18px]">visibility</span>
+                                                    Review
+                                                </button>
                                             </td>
                                         </tr>
                                     );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                                })
+                            )}
+                        </tbody>
+                    </table>
+                </div>
 
-                {/* Footer */}
-                {filteredClaims.length > 0 && (
-                    <div className="px-6 py-4 bg-muted border-t border-border">
-                        <p className="text-sm text-muted-foreground">
-                            Showing <span className="font-semibold">{filteredClaims.length}</span> of{" "}
-                            <span className="font-semibold">{claims.length}</span> claims
-                        </p>
-                    </div>
-                )}
-            </Card>
+                {/* Footer info matching UI */}
+                <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 flex justify-between items-center">
+                    <p className="text-xs font-semibold text-slate-500">
+                        Showing {filteredClaims.length} of {claims.length} claims
+                    </p>
+                </div>
+            </div>
+
         </div>
     );
 }

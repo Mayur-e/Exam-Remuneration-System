@@ -2,24 +2,10 @@ import { useEffect, useState } from "react";
 import { useToast } from "../../hooks/useToast";
 import api from "../../services/api";
 import { useParams, useNavigate } from "react-router-dom";
-import { Button } from "../../components/ui/button";
-import { Card } from "../../components/ui/card";
-import { Input } from "../../components/ui/input";
 import BillSummary from "../faculty/BillSummary";
 import PaymentModal from "./PaymentModal";
 import RejectModal from "./RejectModal";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
-
-// Icons
-import {
-  ArrowLeftIcon,
-  UserIcon,
-  BuildingOfficeIcon,
-  CreditCardIcon,
-  FileTextIcon,
-  CheckCircleIcon,
-  CurrencyRupeeIcon
-} from "../../components/icons/logo";
 
 export default function BillView() {
   const { id } = useParams();
@@ -46,7 +32,6 @@ export default function BillView() {
       const res = await api.get(`/accountant/claims/${id}`);
       setData(res.data);
 
-      // Initialize allowances from calculation data
       if (res.data.calculation) {
         setAllowances({
           chairman_allowance: res.data.calculation.chairman_allowance || 0,
@@ -66,7 +51,7 @@ export default function BillView() {
       await api.post(`/accountant/claims/${id}/pay`, paymentData);
       showToast("Payment processed successfully!", "success");
       setShowPaymentModal(false);
-      fetchDetails(); // Refresh
+      fetchDetails();
     } catch (err) {
       showToast(err.response?.data?.message || "Payment failed", "error");
     } finally {
@@ -80,7 +65,7 @@ export default function BillView() {
       await api.post(`/accountant/claims/${id}/approve`);
       showToast("Claim approved successfully!", "success");
       setShowApproveConfirm(false);
-      fetchDetails(); // Refresh
+      fetchDetails();
     } catch (err) {
       showToast(err.response?.data?.message || "Failed to approve claim", "error");
     } finally {
@@ -94,7 +79,7 @@ export default function BillView() {
       await api.post(`/accountant/claims/${id}/reject`, { reason });
       showToast("Claim rejected successfully!", "success");
       setShowRejectModal(false);
-      fetchDetails(); // Refresh
+      fetchDetails();
     } catch (err) {
       showToast(err.response?.data?.message || "Failed to reject claim", "error");
     } finally {
@@ -105,17 +90,16 @@ export default function BillView() {
   const handleUpdateAllowances = async () => {
     setProcessing(true);
     try {
-      // Force chairman allowance to 0 for practical exams or non-coordinators
-      const isPractical = ['PR', 'OR', 'TW'].includes(exam.exam_type);
+      const isPractical = ['PR', 'OR', 'TW'].includes(data.exam.exam_type);
       const updatedAllowances = {
         ...allowances,
-        chairman_allowance: (isPractical || !exam.is_coordinator) ? 0 : allowances.chairman_allowance
+        chairman_allowance: (isPractical || !data.exam.is_coordinator) ? 0 : allowances.chairman_allowance
       };
 
       await api.put(`/accountant/claims/${id}/allowances`, updatedAllowances);
       showToast("Allowances updated successfully!", "success");
       setEditingAllowances(false);
-      fetchDetails(); // Refresh to get updated calculations
+      fetchDetails();
     } catch (err) {
       showToast(err.response?.data?.message || "Failed to update allowances", "error");
     } finally {
@@ -123,415 +107,402 @@ export default function BillView() {
     }
   };
 
-  if (loading) return <div className="p-8 text-center">Loading details...</div>;
-  if (!data) return <div className="p-8 text-center text-red-500">Claim not found</div>;
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] bg-background-light">
+        <div className="w-12 h-12 border-4 border-slate-200 border-t-primary rounded-full animate-spin mb-4"></div>
+        <p className="text-slate-500 font-medium">Loading claim details...</p>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] bg-background-light">
+        <span className="material-symbols-outlined text-6xl text-red-300 mb-4">error</span>
+        <h3 className="text-xl font-bold text-slate-800">Claim Not Found</h3>
+        <p className="text-slate-500 mt-2">The requested claim could not be found.</p>
+        <button onClick={() => navigate(-1)} className="mt-6 text-primary hover:underline font-medium inline-flex items-center gap-2">
+          <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+          Go Back
+        </button>
+      </div>
+    );
+  }
 
   const { exam, staff, payment, actions } = data;
   const isPaid = exam.status === 'paid';
-  const canPay = exam.status === 'submitted' || exam.status === 'approved';
-
-  // Determine which bank details to show
+  const canPay = exam.status === 'submitted' || exam.status === 'approved' || exam.status === 'SENT_TO_BILLING';
   const isExternal = exam.claim_form_type === 'TEACHING_EXTERNAL';
-  const showFacultyBank = !isExternal;
 
-  // External Examiner Logic
   const examinerName = isExternal ? exam.external_examiner_name : exam.faculty_name;
   const examinerEmail = isExternal ? exam.external_examiner_email : exam.faculty_email;
   const bankName = isExternal ? exam.external_bank_name : exam.faculty_bank_name;
   const accNumber = isExternal ? exam.external_account_number : exam.faculty_account_number;
   const ifsc = isExternal ? exam.external_ifsc_code : exam.faculty_ifsc_code;
-  const pan = isExternal ? exam.external_pan_number : exam.faculty_pan_number;
   const panUrl = isExternal ? exam.external_pan_url : exam.faculty_pan_url;
   const chequeUrl = isExternal ? exam.external_cheque_url : exam.faculty_cheque_url;
+  const pan = isExternal ? exam.external_pan_number : (exam.faculty_pan_card || exam.faculty_pan_number);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" onClick={() => navigate(-1)}>
-          <ArrowLeftIcon className="w-5 h-5 mr-2" />
-          Back
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold">Claim #{exam.id} Details</h1>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>{exam.claim_form_type}</span>
-            <span>•</span>
-            <span className={`capitalize font-medium ${exam.status === 'paid' ? 'text-green-600' :
-              exam.status === 'approved' ? 'text-blue-600' :
-                'text-orange-600'
-              }`}>
-              {exam.status}
-            </span>
+    <div className="max-w-7xl mx-auto p-4 sm:p-8 space-y-8 font-display bg-background-light min-h-[calc(100vh-4rem)] pb-20">
+      {/* Header section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate(-1)}
+            className="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-sm shrink-0"
+          >
+            <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+          </button>
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Claim #{exam.id}</h1>
+              <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest rounded-md ${exam.status === 'paid' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                exam.status === 'approved' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                  exam.status === 'rejected' ? 'bg-red-50 text-red-700 border border-red-200' :
+                    'bg-amber-50 text-amber-700 border border-amber-200'
+                }`}>
+                {exam.status === 'submitted' || exam.status === 'SENT_TO_BILLING' ? 'Pending' : exam.status}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 mt-1.5 text-sm font-medium text-slate-500">
+              <span className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[16px]">category</span>
+                {exam.claim_form_type.replace(/_/g, ' ')}
+              </span>
+            </div>
           </div>
         </div>
 
-        <div className="ml-auto flex gap-3">
-          {/* Approve button for submitted claims */}
+        {/* Action Buttons */}
+        <div className="flex flex-wrap gap-3">
           {(exam.status === 'submitted' || exam.status === 'SENT_TO_BILLING') && (
-            <Button
+            <button
               onClick={() => setShowApproveConfirm(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 border border-blue-700 text-white hover:bg-blue-700 rounded-lg text-sm font-bold shadow-sm transition-colors"
             >
-              <CheckCircleIcon className="w-5 h-5 mr-2" />
-              Approve Claim
-            </Button>
+              <span className="material-symbols-outlined text-[18px]">check_circle</span>
+              Approve
+            </button>
           )}
 
-          {/* Process Payment button for approved claims */}
           {exam.status === 'approved' && (
-            <Button
+            <button
               onClick={() => setShowPaymentModal(true)}
-              className="bg-green-600 hover:bg-green-700 text-white shadow-md hover:shadow-lg transition-all"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 border border-emerald-700 text-white hover:bg-emerald-700 rounded-lg text-sm font-bold shadow-sm transition-colors"
             >
-              <CreditCardIcon className="w-5 h-5 mr-2" />
+              <span className="material-symbols-outlined text-[18px]">credit_card</span>
               Process Payment
-            </Button>
+            </button>
           )}
 
-          {/* Reject button for submitted/approved claims */}
-          {(exam.status === 'submitted' || exam.status === 'SENT_TO_BILLING' || exam.status === 'approved') && (
-            <Button
+          {(canPay || exam.status === 'approved' || exam.status === 'review') && exam.status !== 'rejected' && exam.status !== 'paid' && (
+            <button
               onClick={() => setShowRejectModal(true)}
-              className="bg-red-600 hover:bg-red-700 text-white shadow-md hover:shadow-lg transition-all"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white border border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 rounded-lg text-sm font-bold shadow-sm transition-colors"
             >
-              Reject Claim
-            </Button>
+              <span className="material-symbols-outlined text-[18px]">cancel</span>
+              Reject
+            </button>
           )}
 
-          {/* Paid status badge */}
           {isPaid && (
-            <div className="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-lg border border-green-200">
-              <CheckCircleIcon className="w-5 h-5" />
-              <span className="font-semibold">Paid on {new Date(payment?.payment_date).toLocaleDateString()}</span>
+            <div className="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-4 py-2 rounded-lg border border-emerald-200">
+              <span className="material-symbols-outlined text-[20px]">check_circle</span>
+              <span className="font-semibold text-sm">Paid on {new Date(payment?.payment_date).toLocaleDateString()}</span>
             </div>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Exam & Bank Info */}
+      <div className="grid lg:grid-cols-3 gap-6 items-start">
         <div className="lg:col-span-2 space-y-6">
-          {/* Exam Details */}
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <FileTextIcon className="w-5 h-5 text-blue-600" />
-              Exam Information
-            </h3>
-            <div className="grid grid-cols-2 gap-y-4 text-sm">
-              <div>
-                <p className="text-muted-foreground">Subject</p>
-                <p className="font-medium">{exam.subject_name || 'N/A'}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Exam Type</p>
-                <p className="font-medium">{exam.exam_type}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Date</p>
-                <p className="font-medium">{new Date(exam.exam_date).toLocaleDateString()}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Students</p>
-                <p className="font-medium">{exam.students_count}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Program</p>
-                <p className="font-medium">{exam.program}</p>
-              </div>
-              {exam.second_examiner && (
-                <div className="col-span-2 mt-2 pt-2 border-t border-gray-100">
-                  <p className="text-muted-foreground">Second Examiner</p>
-                  <p className="font-medium text-card-foreground">{exam.second_examiner}</p>
-                </div>
-              )}
+          {/* Exam Information */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center gap-3">
+              <span className="material-symbols-outlined text-primary text-xl">description</span>
+              <h2 className="font-bold text-slate-800 uppercase tracking-wide text-sm">Exam Details</h2>
             </div>
-          </Card>
-
-          {/* Payee Information */}
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <UserIcon className="w-5 h-5 text-blue-600" />
-              Payee Details ({isExternal ? 'External Examiner' : 'Faculty'})
-            </h3>
-
-            <div className="grid grid-cols-2 gap-y-4 text-sm mb-6">
+            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-y-6 gap-x-8">
               <div>
-                <p className="text-muted-foreground">Name</p>
-                <p className="font-medium">{examinerName}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Subject</p>
+                <p className="text-sm font-bold text-slate-800">{exam.subject_name || 'N/A'}</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Email</p>
-                <p className="font-medium">{examinerEmail}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Exam Type</p>
+                <p className="text-sm font-bold text-slate-800 uppercase">{exam.exam_type}</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Mobile</p>
-                <p className="font-medium">
-                  {isExternal ? (exam.external_examiner_mobile || 'N/A') : (exam.faculty_mobile || 'N/A')}
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Date</p>
+                <p className="text-sm font-bold text-slate-800">
+                  {new Date(exam.exam_date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
                 </p>
               </div>
-              {isExternal && (
-                <div>
-                  <p className="text-muted-foreground">Institute</p>
-                  <p className="font-medium">{exam.parent_institute}</p>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Students Count</p>
+                <p className="text-sm font-bold text-slate-800">{exam.students_count}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Program</p>
+                <p className="text-sm font-bold text-slate-800">{exam.program}</p>
+              </div>
+              {exam.second_examiner && (
+                <div className="sm:col-span-2 pt-4 border-t border-slate-100 mt-2">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Second Examiner</p>
+                  <p className="text-sm font-bold text-slate-800">{exam.second_examiner}</p>
                 </div>
               )}
             </div>
+          </div>
 
-            <div className="bg-muted p-4 rounded-lg border border-gray-100">
-              <h4 className="font-medium text-foreground mb-3 flex items-center gap-2">
-                <BuildingOfficeIcon className="w-4 h-4" />
-                Bank Account Details
-              </h4>
-              <div className="grid grid-cols-2 gap-y-3 text-sm">
+          {/* Payee Info */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center gap-3">
+              <span className="material-symbols-outlined text-primary text-xl">person</span>
+              <h2 className="font-bold text-slate-800 uppercase tracking-wide text-sm">Payee Details ({isExternal ? 'External Examiner' : 'Faculty'})</h2>
+            </div>
+            <div className="p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-6 gap-x-8 mb-6">
                 <div>
-                  <p className="text-muted-foreground">Bank Name</p>
-                  <p className="font-medium">{bankName || 'Not provided'}</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Name</p>
+                  <p className="text-sm font-bold text-slate-800">{examinerName || 'N/A'}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Account Number</p>
-                  <p className="font-medium">{accNumber || 'Not provided'}</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Email</p>
+                  <p className="text-sm font-bold text-slate-800">{examinerEmail || 'N/A'}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">IFSC Code</p>
-                  <p className="font-medium">{ifsc || 'Not provided'}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">PAN Number</p>
-                  <p className="font-medium">
-                    {isExternal
-                      ? (exam.external_pan_number || 'Not provided')
-                      : (exam.faculty_pan_card || exam.faculty_pan_number || 'Not provided')}
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Mobile</p>
+                  <p className="text-sm font-bold text-slate-800">
+                    {isExternal ? (exam.external_examiner_mobile || 'N/A') : (exam.faculty_mobile || 'N/A')}
                   </p>
                 </div>
+                {isExternal && (
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Institute</p>
+                    <p className="text-sm font-bold text-slate-800">{exam.parent_institute || 'N/A'}</p>
+                  </div>
+                )}
               </div>
 
-              {/* Documents */}
-              <div className="mt-4 flex gap-4">
-                {panUrl && (
-                  <a href={`http://localhost:5000${panUrl}`} target="_blank" rel="noreferrer" className="text-sm text-blue-600 hover:underline">
-                    View PAN Card
-                  </a>
-                )}
-                {chequeUrl && (
-                  <a href={`http://localhost:5000${chequeUrl}`} target="_blank" rel="noreferrer" className="text-sm text-blue-600 hover:underline">
-                    View Cancelled Cheque
-                  </a>
-                )}
+              <div className="bg-slate-50 rounded-xl border border-slate-200 p-5 mt-4">
+                <h4 className="font-bold text-sm text-slate-700 flex items-center gap-2 mb-4 uppercase tracking-widest">
+                  <span className="material-symbols-outlined text-[18px]">account_balance</span>
+                  Bank Information
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8">
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Bank Name</p>
+                    <p className="text-sm font-bold text-slate-800">{bankName || 'NOT PROVIDED'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Account Number</p>
+                    <p className="text-sm font-mono font-bold text-slate-800">{accNumber || 'NOT PROVIDED'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">IFSC Code</p>
+                    <p className="text-sm font-mono font-bold text-slate-800">{ifsc || 'NOT PROVIDED'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">PAN Number</p>
+                    <p className="text-sm font-mono font-bold text-slate-800">{pan || 'NOT PROVIDED'}</p>
+                  </div>
+                </div>
+                <div className="mt-5 pt-4 border-t border-slate-200 flex gap-4">
+                  {panUrl && (
+                    <a href={`http://localhost:5000${panUrl}`} target="_blank" rel="noreferrer" className="text-xs text-primary font-bold hover:underline flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                      View PAN
+                    </a>
+                  )}
+                  {chequeUrl && (
+                    <a href={`http://localhost:5000${chequeUrl}`} target="_blank" rel="noreferrer" className="text-xs text-primary font-bold hover:underline flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                      View Cheque
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
-          </Card>
+          </div>
 
-          {/* Staff Table for Non-Teaching Claims */}
+          {/* Staff Table */}
           {exam.claim_form_type === 'NON_TEACHING' && staff && staff.length > 0 && (
-            <Card className="p-6 lg:col-span-2">
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-                Supporting Staff Details
-              </h3>
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center gap-3">
+                <span className="material-symbols-outlined text-primary text-xl">group</span>
+                <h2 className="font-bold text-slate-800 uppercase tracking-wide text-sm">Supporting Staff</h2>
+              </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm border-collapse">
-                  <thead>
-                    <tr className="bg-blue-50 border-b-2 border-blue-200">
-                      <th className="px-4 py-3 text-left font-semibold text-foreground">Name</th>
-                      <th className="px-4 py-3 text-left font-semibold text-foreground">Designation</th>
-                      <th className="px-4 py-3 text-right font-semibold text-foreground">Rate (₹)</th>
-                      <th className="px-4 py-3 text-right font-semibold text-foreground">Prep & Clean Rs</th>
-                      <th className="px-4 py-3 text-right font-semibold text-foreground">Batch Rs</th>
-                      <th className="px-4 py-3 text-right font-semibold text-foreground">Total Amount</th>
+                <table className="w-full text-left text-sm whitespace-nowrap">
+                  <thead className="bg-white border-b border-slate-200">
+                    <tr>
+                      <th className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Name</th>
+                      <th className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Designation</th>
+                      <th className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Rate</th>
+                      <th className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Prep/Clean</th>
+                      <th className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Batch</th>
+                      <th className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right text-primary">Total</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {staff.map((s, idx) => {
-                      const prepClean = Number(s.prep_clean_amount || 0);
-                      const batch = Number(s.batch_amount || 0);
-                      const total = Number(s.total_amount || 0);
-                      const rate = Number(s.rate || 0);
-
-                      return (
-                        <tr key={idx} className="hover:bg-muted">
-                          <td className="px-4 py-3 font-medium text-foreground">{s.staff_name}</td>
-                          <td className="px-4 py-3 text-muted-foreground">{s.staff_role}</td>
-                          <td className="px-4 py-3 text-right text-foreground">₹{rate.toFixed(2)}</td>
-                          <td className="px-4 py-3 text-right text-green-600 font-medium">
-                            {prepClean > 0 ? `₹${prepClean.toFixed(2)}` : 'N/A'}
-                          </td>
-                          <td className="px-4 py-3 text-right text-blue-600 font-medium">₹{batch.toFixed(2)}</td>
-                          <td className="px-4 py-3 text-right text-purple-600 font-bold">₹{total.toFixed(2)}</td>
-                        </tr>
-                      );
-                    })}
-                    <tr className="bg-blue-50 border-t-2 border-blue-200 font-bold">
-                      <td colSpan="5" className="px-4 py-3 text-right text-foreground">Grand Total:</td>
-                      <td className="px-4 py-3 text-right text-blue-700 text-lg">
+                  <tbody className="divide-y divide-slate-100">
+                    {staff.map((s, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50/50">
+                        <td className="px-6 py-4 font-bold text-slate-700">{s.staff_name}</td>
+                        <td className="px-6 py-4 text-slate-500 font-medium">{s.staff_role}</td>
+                        <td className="px-6 py-4 text-right text-slate-700">₹{Number(s.rate || 0).toFixed(2)}</td>
+                        <td className="px-6 py-4 text-right text-emerald-600 font-medium">₹{Number(s.prep_clean_amount || 0).toFixed(2)}</td>
+                        <td className="px-6 py-4 text-right text-blue-600 font-medium">₹{Number(s.batch_amount || 0).toFixed(2)}</td>
+                        <td className="px-6 py-4 text-right text-primary font-black">₹{Number(s.total_amount || 0).toFixed(2)}</td>
+                      </tr>
+                    ))}
+                    <tr className="bg-slate-50 font-bold border-t border-slate-200">
+                      <td colSpan="5" className="px-6 py-4 text-right text-slate-600 uppercase tracking-widest text-[10px]">Grand Total</td>
+                      <td className="px-6 py-4 text-right text-primary text-base font-black tracking-tight">
                         ₹{staff.reduce((sum, s) => sum + Number(s.total_amount || 0), 0).toFixed(2)}
                       </td>
                     </tr>
                   </tbody>
                 </table>
               </div>
-            </Card>
+            </div>
           )}
 
           {/* Payment Record Display if Paid */}
           {isPaid && payment && (
-            <Card className="p-6 bg-green-50 border-green-200">
-              <h3 className="text-lg font-semibold text-green-900 mb-4 flex items-center gap-2">
-                <CheckCircleIcon className="w-5 h-5" />
-                Payment Record
-              </h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="bg-white rounded-2xl shadow-sm border border-emerald-200 overflow-hidden relative">
+              <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none">
+                <span className="material-symbols-outlined text-[100px] text-emerald-500">task_alt</span>
+              </div>
+              <div className="px-6 py-4 bg-emerald-50 border-b border-emerald-100 flex items-center gap-3">
+                <span className="material-symbols-outlined text-emerald-600 text-xl">check_circle</span>
+                <h2 className="font-bold text-emerald-800 uppercase tracking-wide text-sm">Payment Record</h2>
+              </div>
+              <div className="p-6 grid grid-cols-2 gap-y-6 gap-x-8">
                 <div>
-                  <p className="text-green-700">Payment Date</p>
-                  <p className="font-medium text-green-900">{new Date(payment.payment_date).toLocaleDateString()}</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Payment Date</p>
+                  <p className="text-sm font-bold text-slate-800">{new Date(payment.payment_date).toLocaleDateString()}</p>
                 </div>
                 <div>
-                  <p className="text-green-700">Amount Paid</p>
-                  <p className="font-medium text-green-900">₹{Number(payment.amount).toLocaleString('en-IN')}</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Amount Paid</p>
+                  <p className="text-lg font-black text-emerald-600">₹{Number(payment.amount).toLocaleString('en-IN')}</p>
                 </div>
                 <div>
-                  <p className="text-green-700">Method</p>
-                  <p className="font-medium text-green-900">{payment.payment_method}</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Method</p>
+                  <p className="text-sm font-bold text-slate-800">{payment.payment_method}</p>
                 </div>
                 <div>
-                  <p className="text-green-700">Reference No</p>
-                  <p className="font-medium text-green-900">{payment.reference_number}</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Reference No</p>
+                  <p className="text-sm font-mono font-bold text-slate-800">{payment.reference_number}</p>
                 </div>
                 {payment.notes && (
                   <div className="col-span-2">
-                    <p className="text-green-700">Notes</p>
-                    <p className="font-medium text-green-900">{payment.notes}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Notes</p>
+                    <p className="text-sm font-medium text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100">{payment.notes}</p>
                   </div>
                 )}
               </div>
-            </Card>
+            </div>
           )}
         </div>
 
-        {/* Right Column: Calculation Summary */}
+        {/* Right Column */}
         <div className="space-y-6">
           <BillSummary examId={id} billData={data.calculation} />
 
-          {/* Allowances Management - Only for non-paid claims */}
+          {/* Allowances */}
           {!isPaid && (
-            <Card className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-card-foreground flex items-center gap-2">
-                  <CurrencyRupeeIcon className="w-5 h-5 text-blue-600" />
-                  Manage Allowances
-                </h3>
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative">
+              <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-amber-500 text-xl">price_change</span>
+                  <h2 className="font-bold text-slate-800 uppercase tracking-wide text-sm">Manage Allowances</h2>
+                </div>
                 {!editingAllowances && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                  <button
                     onClick={() => setEditingAllowances(true)}
-                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-100"
+                    className="text-xs font-bold text-primary hover:text-blue-700 bg-blue-50 px-2.5 py-1 rounded border border-blue-100 transition-colors"
                   >
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
                     Edit
-                  </Button>
+                  </button>
                 )}
               </div>
-
-              <div className="space-y-4">
-                {/* Chairman Allowance */}
+              <div className="p-6 space-y-5">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
                     Chairman Allowance (₹)
                     {(['PR', 'OR', 'TW'].includes(exam.exam_type) || !exam.is_coordinator) && (
-                      <span className="relative group cursor-help">
-                        <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                        </svg>
-                        <span className="absolute left-6 top-0 w-48 bg-gray-900 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none font-normal">
-                          {['PR', 'OR', 'TW'].includes(exam.exam_type)
-                            ? 'Not applicable for Practical/Oral/TW exams'
-                            : 'Only allowed for assigned Course Coordinators'}
-                        </span>
-                      </span>
+                      <div className="relative group flex items-center">
+                        <span className="material-symbols-outlined text-[15px] text-red-400 cursor-help transition-transform group-hover:scale-110">info</span>
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[220px] p-2.5 bg-slate-800 text-white text-xs rounded-lg shadow-xl opacity-0 translate-y-1 group-hover:translate-y-0 group-hover:opacity-100 transition-all pointer-events-none z-50 font-medium normal-case tracking-normal text-center leading-snug">
+                          Not applicable for Practical exams or non-coordinators
+                          <div className="border-[6px] border-transparent border-t-slate-800 absolute top-full left-1/2 -translate-x-1/2"></div>
+                        </div>
+                      </div>
                     )}
                   </label>
                   {editingAllowances ? (
-                    <Input
+                    <input
                       type="number"
                       value={allowances.chairman_allowance}
                       onChange={(e) => setAllowances({ ...allowances, chairman_allowance: e.target.value })}
-                      placeholder="0"
-                      min="0"
-                      className={`bg-card ${(['PR', 'OR', 'TW'].includes(exam.exam_type) || !exam.is_coordinator) ? 'border-2 border-red-400 bg-red-50 cursor-not-allowed' : ''}`}
+                      className={`w-full px-3 py-2 border rounded-lg text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors ${(['PR', 'OR', 'TW'].includes(exam.exam_type) || !exam.is_coordinator) ? 'border-red-200 bg-red-50 text-red-400 cursor-not-allowed' : 'border-slate-200 text-slate-800'}`}
                       disabled={['PR', 'OR', 'TW'].includes(exam.exam_type) || !exam.is_coordinator}
                     />
                   ) : (
-                    <div className={`p-3 rounded-lg border ${(['PR', 'OR', 'TW'].includes(exam.exam_type) || !exam.is_coordinator) ? 'bg-red-50 border-red-200' : 'bg-card border-border'}`}>
-                      <p className="font-semibold text-foreground">
-                        {(['PR', 'OR', 'TW'].includes(exam.exam_type) || !exam.is_coordinator)
-                          ? 'N/A'
-                          : `₹${Number(allowances.chairman_allowance).toFixed(2)}`
-                        }
-                      </p>
-                    </div>
+                    <p className="text-sm font-bold text-slate-800">
+                      {(['PR', 'OR', 'TW'].includes(exam.exam_type) || !exam.is_coordinator)
+                        ? 'N/A'
+                        : `₹${Number(allowances.chairman_allowance).toFixed(2)}`
+                      }
+                    </p>
                   )}
                 </div>
 
-                {/* Conveyance Amount */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
                     Conveyance Amount (₹)
-                    {isExternal ? (
-                      <span className="ml-2 text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded">
-                        For External Examiner
-                      </span>
-                    ) : (
-                      <span className="relative group cursor-help ml-2">
-                        <svg className="w-4 h-4 text-red-500 inline" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                        </svg>
-                        <span className="absolute left-6 top-0 w-48 bg-gray-900 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none font-normal">
+                    {!isExternal && (
+                      <div className="relative group flex items-center">
+                        <span className="material-symbols-outlined text-[15px] text-red-400 cursor-help transition-transform group-hover:scale-110">info</span>
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[220px] p-2.5 bg-slate-800 text-white text-xs rounded-lg shadow-xl opacity-0 translate-y-1 group-hover:translate-y-0 group-hover:opacity-100 transition-all pointer-events-none z-50 font-medium normal-case tracking-normal text-center leading-snug">
                           Only applicable for External claims
-                        </span>
-                      </span>
+                          <div className="border-[6px] border-transparent border-t-slate-800 absolute top-full left-1/2 -translate-x-1/2"></div>
+                        </div>
+                      </div>
                     )}
                   </label>
                   {editingAllowances ? (
-                    <Input
+                    <input
                       type="number"
                       value={allowances.conveyance_amount}
                       onChange={(e) => setAllowances({ ...allowances, conveyance_amount: e.target.value })}
-                      placeholder="0"
-                      min="0"
-                      className={`bg-card ${!isExternal ? 'border-2 border-red-400 bg-red-50 cursor-not-allowed' : ''}`}
+                      className={`w-full px-3 py-2 border rounded-lg text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors ${!isExternal ? 'border-red-200 bg-red-50 text-red-400 cursor-not-allowed' : 'border-slate-200 text-slate-800'}`}
                       disabled={!isExternal}
                     />
                   ) : (
-                    <div className={`p-3 rounded-lg border ${!isExternal ? 'bg-red-50 border-red-200' : 'bg-card border-border'}`}>
-                      <p className="font-semibold text-foreground">
-                        {!isExternal
-                          ? 'N/A'
-                          : `₹${Number(allowances.conveyance_amount).toFixed(2)}`
-                        }
-                      </p>
-                    </div>
+                    <p className="text-sm font-bold text-slate-800">
+                      {!isExternal
+                        ? 'N/A'
+                        : `₹${Number(allowances.conveyance_amount).toFixed(2)}`
+                      }
+                    </p>
                   )}
                 </div>
 
-                {/* Action Buttons */}
                 {editingAllowances && (
-                  <div className="flex gap-2 pt-2">
-                    <Button
+                  <div className="flex gap-2 pt-3 border-t border-slate-100">
+                    <button
                       onClick={handleUpdateAllowances}
                       disabled={processing}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                      className="flex-1 bg-primary text-white text-xs font-bold py-2 rounded-lg hover:bg-blue-700 transition"
                     >
-                      {processing ? "Saving..." : "Save & Recalculate"}
-                    </Button>
-                    <Button
-                      variant="ghost"
+                      {processing ? "Saving..." : "Save"}
+                    </button>
+                    <button
                       onClick={() => {
                         setEditingAllowances(false);
-                        // Reset to original values
                         if (data.calculation) {
                           setAllowances({
                             chairman_allowance: data.calculation.chairman_allowance || 0,
@@ -540,46 +511,43 @@ export default function BillView() {
                         }
                       }}
                       disabled={processing}
-                      className="flex-1"
+                      className="flex-1 bg-slate-100 text-slate-600 text-xs font-bold py-2 rounded-lg hover:bg-slate-200 transition"
                     >
                       Cancel
-                    </Button>
+                    </button>
                   </div>
                 )}
-
-                {/* Info Notice */}
-                <div className="p-3 bg-blue-100 border border-blue-200 rounded-lg">
-                  <p className="text-xs text-blue-800">
-                    <span className="font-semibold">ℹ️ Note:</span> Updating allowances will automatically recalculate the total bill amount and update the payee's view.
-                  </p>
-                </div>
               </div>
-            </Card>
+            </div>
+          )}
+
+          {/* Rejections */}
+          {actions && actions.filter(a => a.action_type === 'REJECTED').length > 0 && (
+            <div className="bg-red-50 rounded-2xl shadow-sm border border-red-200 overflow-hidden">
+              <div className="px-6 py-4 bg-red-100/50 border-b border-red-200 flex items-center gap-3">
+                <span className="material-symbols-outlined text-red-600 text-xl">history</span>
+                <h2 className="font-bold text-red-800 uppercase tracking-wide text-sm">Rejection History</h2>
+              </div>
+              <div className="p-6 space-y-4">
+                {actions.filter(a => a.action_type === 'REJECTED').map((action, idx) => (
+                  <div key={idx} className="bg-white p-4 rounded-xl border border-red-100 shadow-sm relative pl-4">
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500 rounded-l-xl"></div>
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="font-bold text-slate-800 text-sm">{action.action_by_name}</span>
+                      <span className="text-[10px] uppercase font-bold text-slate-400">
+                        {new Date(action.action_at).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-slate-600 text-sm">{action.comment}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Rejection History */}
-      {actions && actions.filter(a => a.action_type === 'REJECTED').length > 0 && (
-        <Card className="p-6 mt-6 bg-red-50 border-red-200">
-          <h3 className="font-semibold text-red-900 mb-3">Rejection History</h3>
-          <div className="space-y-3">
-            {actions.filter(a => a.action_type === 'REJECTED').map((action, idx) => (
-              <div key={idx} className="bg-card p-4 rounded-lg border border-red-200">
-                <div className="flex justify-between items-start mb-2">
-                  <span className="font-medium text-foreground">{action.action_by_name}</span>
-                  <span className="text-sm text-muted-foreground">
-                    {new Date(action.action_at).toLocaleString()}
-                  </span>
-                </div>
-                <p className="text-foreground text-sm">{action.comment}</p>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {/* Payment Modal */}
+      {/* Modals */}
       <PaymentModal
         open={showPaymentModal}
         onClose={() => setShowPaymentModal(false)}
@@ -587,16 +555,12 @@ export default function BillView() {
         amount={data.calculation?.net_amount || 0}
         loading={processing}
       />
-
-      {/* Reject Modal */}
       <RejectModal
         isOpen={showRejectModal}
         onClose={() => setShowRejectModal(false)}
         onReject={handleReject}
         processing={processing}
       />
-
-      {/* Approve Confirmation Dialog */}
       <ConfirmDialog
         isOpen={showApproveConfirm}
         onClose={() => setShowApproveConfirm(false)}
@@ -607,11 +571,6 @@ export default function BillView() {
         cancelText="Cancel"
         confirmColor="blue"
         loading={processing}
-        icon={
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        }
       />
     </div>
   );

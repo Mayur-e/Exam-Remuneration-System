@@ -1,61 +1,58 @@
 import DashboardLayout from "../../components/layout/DashboardLayout";
-import {
-  DashboardIcon,
-  FileTextIcon,
-  UsersIcon,
-  QueryIcon,
-  SettingsIcon,
-  HomeIcon
-} from "../../components/icons/logo";
 
 export default function AccountantLayout() {
   const navItems = [
     {
       to: "/accountant/dashboard",
       label: "Dashboard",
-      icon: <DashboardIcon className="w-5 h-5" />
+      icon: <span className="material-symbols-outlined text-[20px]">dashboard</span>
     },
     {
       to: "/accountant/bills",
       label: "Bills",
-      icon: <FileTextIcon className="w-5 h-5" />
+      icon: <span className="material-symbols-outlined text-[20px]">receipt_long</span>
     },
     {
       to: "/accountant/faculty",
       label: "Faculty",
-      icon: <UsersIcon className="w-5 h-5" />
+      icon: <span className="material-symbols-outlined text-[20px]">groups</span>
+    },
+    {
+      to: "/accountant/external",
+      label: "External",
+      icon: <span className="material-symbols-outlined text-[20px]">public</span>
     },
     {
       to: "/accountant/coordinators",
       label: "Coordinators",
-      icon: <UsersIcon className="w-5 h-5" />
+      icon: <span className="material-symbols-outlined text-[20px]">badge</span>
     },
     {
       to: "/accountant/queries",
       label: "Queries",
-      icon: <QueryIcon className="w-5 h-5" />
+      icon: <span className="material-symbols-outlined text-[20px]">help_center</span>
     },
     {
       to: "/accountant/settings",
       label: "Settings",
-      icon: <SettingsIcon className="w-5 h-5" />
+      icon: <span className="material-symbols-outlined text-[20px]">settings</span>
     }
   ];
 
   const branding = {
-    title: "Billing Incharge Panel",
+    title: "Billing Panel",
     subtitle: "Department Bills",
-    icon: <HomeIcon className="w-5 h-5 text-white" />,
+    icon: <span className="material-symbols-outlined text-white text-[24px]">account_balance_wallet</span>,
     headerSubtitle: "Manage claims and process payments",
     footerSuffix: ""
   };
 
   const theme = {
-    gradient: "from-green-50 via-white to-blue-50",
-    primary: "green-600",
-    secondary: "green-500",
-    hover: "green-50",
-    hoverText: "green-600"
+    gradient: "from-blue-50 via-white to-blue-50",
+    primary: "blue-600",
+    secondary: "blue-500",
+    hover: "blue-50",
+    hoverText: "blue-600"
   };
 
   return (
