@@ -5,16 +5,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import api from "../../services/api";
 import { validateName, validateEmail, validatePassword, validateRequired } from "../../utils/validation";
 
-// UI components
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-import { Card } from "../../components/ui/card";
 import GoogleSignupModal from "../../components/auth/GoogleSignupModal";
-import { ThemeToggle } from "../../components/ui/theme-toggle";
 import { useToast } from "../../hooks/useToast";
 
 // Icons
-import { MailIcon, LockIcon, UserIcon, BuildingOfficeIcon } from "../../components/icons/logo";
+// Icons (Optional if not used anymore, but let's keep Mail/Lock just in case, though the new design uses Material Symbols)
 import { PROGRAM_DEPARTMENTS } from "../../constants/departments";
 
 export default function Register() {
@@ -22,6 +17,7 @@ export default function Register() {
 
   const [form, setForm] = useState({
     name: "",
+    prn: "",
     email: "",
     password: "",
     department: "",
@@ -40,14 +36,15 @@ export default function Register() {
 
   // Toast hook
   const { showToast } = useToast();
-  const [toastMessage, setToastMessage] = useState("");
-  const [toastType, setToastType] = useState("success");
 
   const validateForm = () => {
     const newErrors = {};
 
     const nameError = validateName(form.name, "Full name");
     if (nameError) newErrors.name = nameError;
+
+    const prnError = validateRequired(form.prn, "Employee ID");
+    if (prnError) newErrors.prn = prnError;
 
     const emailError = validateEmail(form.email);
     if (emailError) newErrors.email = emailError;
@@ -90,9 +87,8 @@ export default function Register() {
     try {
       await api.post("/auth/register", form);
 
-      // Custom toast animation
-      setToastMessage("Registered successfully! Redirecting to login...");
-      setToastType("success");
+      // Trigger unified global toast
+      showToast("Registered successfully! Redirecting to login...", "success");
       setSuccessMessage("Registered successfully! Redirecting to login...");
 
       // Redirect to login after 2 seconds
@@ -101,16 +97,16 @@ export default function Register() {
         setSuccessMessage("");
         setForm({
           name: "",
+          prn: "",
           email: "",
           password: "",
           department: "",
           role: "FACULTY",
         });
-        setToastMessage("");
       }, 2000);
     } catch (err) {
       if (err.response?.status === 409) {
-        setErrors({ general: "Email already exists. Please use a different email." });
+        setErrors({ general: err.response.data.message || "User or PRN already exists" });
       } else if (err.response?.status === 400) {
         setErrors({ general: "Invalid data. Please check your inputs." });
       } else if (err.response?.status === 403) {
@@ -119,9 +115,7 @@ export default function Register() {
         setErrors({ general: "An error occurred. Please try again." });
       }
       // Error toast
-      setToastMessage(err.response?.data?.message || "Registration failed");
-      setToastType("error");
-      setTimeout(() => setToastMessage(""), 3000);
+      showToast(err.response?.data?.message || "Registration failed", "error");
     } finally {
       setIsLoading(false);
     }
@@ -192,10 +186,8 @@ export default function Register() {
 
       const { token: authToken, user, needsBankDetails } = res.data;
 
-      // Custom toast animation
-      setToastMessage("Registration successful! Welcome.");
-      setToastType("success");
-      setTimeout(() => setToastMessage(""), 3000);
+      // Trigger unified global toast
+      showToast("Registration successful! Welcome.", "success");
 
       localStorage.setItem("token", authToken);
       localStorage.setItem("user", JSON.stringify(user));
@@ -222,9 +214,7 @@ export default function Register() {
         setErrors({ general: "Registration failed. Please try again." });
       }
       // Error toast
-      setToastMessage("Registration failed");
-      setToastType("error");
-      setTimeout(() => setToastMessage(""), 3000);
+      showToast("Registration failed", "error");
       setShowSignupModal(false);
     } finally {
       setIsGoogleLoading(false);
@@ -232,368 +222,285 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-white to-blue-50 dark:from-background dark:via-background dark:to-accent p-4">
+    <div className="bg-background-light font-display text-slate-900 antialiased min-h-screen flex flex-col">
+      <header className="w-full bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-50">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary">
+            <span className="material-symbols-outlined">school</span>
+          </div>
+          <h2 className="text-lg font-bold tracking-tight text-slate-900">ExamPay</h2>
+        </div>
+      </header>
 
-      {/* Custom Toast Animation */}
-      <AnimatePresence>
-        {toastMessage && (
-          <motion.div
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 50 }}
-            transition={{ duration: 0.3 }}
-            className={`fixed top-4 right-16 px-4 py-2 rounded shadow-lg z-50 ${toastType === "success"
-                ? "bg-green-600 text-white"
-                : "bg-red-600 text-white"
-              }`}
-          >
-            {toastMessage}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <main className="flex-1 w-full flex flex-col md:flex-row h-[calc(100vh-73px)] overflow-hidden">
+        {/* Left Banner Side */}
+        <div className="hidden md:flex md:w-5/12 lg:w-1/2 bg-primary relative overflow-hidden flex-col justify-between p-12 text-white">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary via-blue-700 to-indigo-900 opacity-90"></div>
+          <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(#ffffff 1px, transparent 1px)", backgroundSize: "24px 24px" }}></div>
+          <div className="relative z-10 mt-10">
+            <div className="w-16 h-1 bg-white/30 mb-8 rounded-full"></div>
+            <h1 className="text-4xl lg:text-5xl font-bold leading-tight mb-6">Empowering Faculty with Effortless Remuneration</h1>
+            <p className="text-lg text-blue-100 max-w-md leading-relaxed">
+              Streamline your examination duty claims, track payments, and manage your academic profile in one dedicated portal designed specifically for PCCOE staff.
+            </p>
+          </div>
+          <div className="relative z-10 bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 mt-auto">
+            <div className="flex items-start gap-4">
+              <span className="material-symbols-outlined text-3xl text-blue-200">verified_user</span>
+              <div>
+                <h3 className="font-semibold text-lg mb-1">Secure &amp; Transparent</h3>
+                <p className="text-sm text-blue-100">Your financial data is encrypted and every claim is transparently tracked.</p>
+              </div>
+            </div>
+          </div>
+          <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-blue-500 rounded-full blur-3xl opacity-50 mix-blend-screen"></div>
+          <div className="absolute top-1/4 -left-12 w-48 h-48 bg-indigo-400 rounded-full blur-3xl opacity-30 mix-blend-screen"></div>
+        </div>
 
-      {/* Theme Toggle with animation */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-        className="fixed top-4 right-4 z-40"
-      >
-        <ThemeToggle />
-      </motion.div>
+        {/* Right Form Side */}
+        <div className="w-full md:w-7/12 lg:w-1/2 overflow-y-auto bg-white flex flex-col">
+          <div className="flex-1 flex flex-col justify-center items-center p-6 sm:p-12 lg:p-16">
+            <div className="w-full max-w-lg">
 
-      <div className="w-full max-w-md">
-        {/* Error Shake Animation */}
-        <motion.div
-          key={errors.general ? "error" : "normal"}
-          initial={{ x: 0 }}
-          animate={errors.general ? { x: [0, -10, 10, -10, 10, 0] } : {}}
-          transition={{ duration: 0.4 }}
-        >
-          <Card className="border-0 shadow-2xl overflow-hidden bg-card">
-            <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 via-transparent to-blue-500/5 dark:from-green-500/10 dark:via-transparent dark:to-blue-500/10 pointer-events-none" />
-
-            <div className="relative p-8 space-y-6">
-              {/* Header with fade-in animation */}
-              <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="text-center space-y-3"
-              >
-                <div className="flex justify-center mb-4">
-                  <motion.div
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ duration: 0.6, delay: 0.1 }}
-                    className="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-600 to-green-500 flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-                  >
-                    <UserIcon className="w-8 h-8 text-white" />
-                  </motion.div>
+              <div className="mb-6 flex flex-col items-center justify-center text-center">
+                <img alt="PCCOE Logo" className="h-20 w-auto object-contain mb-4" src="/pccoe-logo.png" />
+                <div className="text-base font-bold text-slate-800 leading-tight">
+                  Pimpri Chinchwad College of Engineering
                 </div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-green-500 bg-clip-text text-transparent">
-                  Create Account
-                </h1>
-                <p className="text-sm text-muted-foreground">
-                  Join the billing management system
-                </p>
-              </motion.div>
-
-              {/* Success message with animation */}
-              <AnimatePresence>
-                {successMessage && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="p-3 bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 rounded-lg text-sm font-medium border border-green-200 dark:border-green-800"
-                  >
-                    {successMessage}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* General error with animation */}
-              <AnimatePresence>
-                {errors.general && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="p-3 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 rounded-lg text-sm font-medium border border-red-200 dark:border-red-800"
-                  >
-                    {errors.general}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Google Sign-In Button with animation */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="space-y-3"
-              >
-                <div className="flex justify-center">
-                  <GoogleLogin
-                    onSuccess={handleGoogleSuccess}
-                    onError={handleGoogleError}
-                    text="signup_with"
-                    shape="rectangular"
-                    size="large"
-                    width="100%"
-                    locale="en"
-                  />
+                <div className="text-xs text-slate-500 mt-1 uppercase tracking-wide font-medium">
+                  An Autonomous Institute
                 </div>
+              </div>
 
-                {/* Divider */}
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-border"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-card text-muted-foreground">Or register with email</span>
-                  </div>
-                </div>
-              </motion.div>
+              <div className="mb-8">
+                <h2 className="text-3xl font-bold text-slate-900 mb-2">Faculty Registration</h2>
+                <p className="text-slate-600">Join the exam remuneration system to manage your claims.</p>
+              </div>
 
-              {/* Form with staggered animations */}
-              <motion.form
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-                onSubmit={submit}
-                className="space-y-5"
-              >
-                {/* Full Name field */}
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.4, delay: 0.4 }}
-                  className="space-y-2"
-                >
-                  <label className="text-sm font-medium text-card-foreground">
-                    Full Name
-                  </label>
-                  <div className="relative group">
-                    <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-green-500 transition-colors duration-300" />
-                    <Input
-                      type="text"
-                      name="name"
-                      placeholder="Enter your full name"
-                      value={form.name}
-                      onChange={handleInputChange}
-                      className={`pl-10 ${errors.name ? "border-red-500 focus:ring-red-500" : "focus:border-green-500 focus:ring-green-500"}`}
-                      required
-                      disabled={isGoogleLoading}
-                    />
-                  </div>
-                  <AnimatePresence>
-                    {errors.name && (
-                      <motion.p
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="text-xs text-red-600 font-medium"
-                      >
-                        {errors.name}
-                      </motion.p>
-                    )}
-                  </AnimatePresence>
-                </motion.div>
+              <div className="space-y-6">
 
-                {/* Email field */}
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.4, delay: 0.45 }}
-                  className="space-y-2"
-                >
-                  <label className="text-sm font-medium text-card-foreground">
-                    Email Address
-                  </label>
-                  <div className="relative group">
-                    <MailIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-green-500 transition-colors duration-300" />
-                    <Input
-                      type="email"
-                      name="email"
-                      placeholder="Enter your email"
-                      value={form.email}
-                      onChange={handleInputChange}
-                      className={`pl-10 ${errors.email ? "border-red-500 focus:ring-red-500" : "focus:border-green-500 focus:ring-green-500"}`}
-                      required
-                      disabled={isGoogleLoading}
-                    />
-                  </div>
-                  <AnimatePresence>
-                    {errors.email && (
-                      <motion.p
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="text-xs text-red-600 font-medium"
-                      >
-                        {errors.email}
-                      </motion.p>
-                    )}
-                  </AnimatePresence>
-                </motion.div>
-
-                {/* Role selector */}
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.4, delay: 0.5 }}
-                  className="space-y-2"
-                >
-                  <label className="text-sm font-medium text-card-foreground">
-                    Role
-                  </label>
-                  <select
-                    name="role"
-                    value={form.role}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-500 focus:outline-none transition-all duration-300 text-foreground"
-                    disabled={isGoogleLoading}
-                  >
-                    <option value="FACULTY">Faculty</option>
-                  </select>
-                </motion.div>
-
-                {/* Password field */}
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.4, delay: 0.55 }}
-                  className="space-y-2"
-                >
-                  <label className="text-sm font-medium text-card-foreground">
-                    Password
-                  </label>
-                  <div className="relative group">
-                    <LockIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-green-500 transition-colors duration-300" />
-                    <Input
-                      type="password"
-                      name="password"
-                      placeholder="Create a password (min. 6 characters)"
-                      value={form.password}
-                      onChange={handleInputChange}
-                      className={`pl-10 ${errors.password ? "border-red-500 focus:ring-red-500" : "focus:border-green-500 focus:ring-green-500"}`}
-                      required
-                      disabled={isGoogleLoading}
-                    />
-                  </div>
-                  <AnimatePresence>
-                    {errors.password && (
-                      <motion.p
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="text-xs text-red-600 font-medium"
-                      >
-                        {errors.password}
-                      </motion.p>
-                    )}
-                  </AnimatePresence>
-                </motion.div>
-
-                {/* Department field */}
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.4, delay: 0.6 }}
-                  className="space-y-2"
-                >
-                  <label className="text-sm font-medium text-card-foreground">
-                    Department
-                  </label>
-                  <div className="relative group">
-                    <BuildingOfficeIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 z-10 group-focus-within:text-green-500 transition-colors duration-300" />
-                    <select
-                      name="department"
-                      value={form.department}
-                      onChange={handleInputChange}
-                      className={`w-full pl-10 pr-3 py-2 bg-background border border-border rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-500 focus:outline-none transition-all duration-300 text-foreground appearance-none ${errors.department ? "border-red-500" : ""}`}
-                      required
-                      disabled={isGoogleLoading}
+                {/* Success message with animation */}
+                <AnimatePresence>
+                  {successMessage && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                      animate={{ opacity: 1, height: "auto", marginBottom: "1rem" }}
+                      exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="p-3 bg-green-50 text-green-700 rounded-lg text-sm font-medium border border-green-200"
                     >
-                      <option value="">Select Department</option>
-                      {Object.entries(PROGRAM_DEPARTMENTS).map(([program, depts], groupIndex) => (
-                        <optgroup key={program} label={program} className="font-semibold text-muted-foreground">
-                          {depts.map((dept, idx) => (
-                            <option
-                              key={`${program}-${dept}`}
-                              value={dept}
-                              className="font-normal text-foreground"
-                            >
-                              {dept}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ))}
-                    </select>
+                      {successMessage}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* General error with animation */}
+                <AnimatePresence>
+                  {errors.general && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                      animate={{ opacity: 1, height: "auto", marginBottom: "1rem" }}
+                      exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="p-3 bg-red-50 text-red-700 rounded-lg text-sm font-medium border border-red-200"
+                    >
+                      {errors.general}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Google Sign-In */}
+                <div className="flex justify-center w-full">
+                  <div className="w-full h-12 flex justify-center items-center">
+                    <GoogleLogin
+                      onSuccess={handleGoogleSuccess}
+                      onError={handleGoogleError}
+                      text="signup_with"
+                      shape="rectangular"
+                      size="large"
+                      width="100%"
+                      locale="en"
+                    />
                   </div>
-                  <AnimatePresence>
-                    {errors.department && (
-                      <motion.p
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="text-xs text-red-600 font-medium"
-                      >
-                        {errors.department}
-                      </motion.p>
-                    )}
-                  </AnimatePresence>
-                </motion.div>
+                </div>
 
-                {/* Submit button */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: 0.65 }}
-                >
-                  <Button
-                    type="submit"
-                    className="w-full h-12 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white font-semibold text-base shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
-                    disabled={isLoading || isGoogleLoading}
-                  >
-                    {isLoading ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Creating Account...
-                      </span>
-                    ) : (
-                      "Create Account"
-                    )}
-                  </Button>
-                </motion.div>
-              </motion.form>
+                <div className="relative flex items-center py-2">
+                  <div className="flex-grow border-t border-slate-200"></div>
+                  <span className="flex-shrink mx-4 text-xs font-semibold text-slate-400 uppercase tracking-widest">or</span>
+                  <div className="flex-grow border-t border-slate-200"></div>
+                </div>
 
-              {/* Switch to Sign In */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.7 }}
-                className="pt-4 text-center border-t border-border"
-              >
-                <p className="text-sm text-muted-foreground">
+                <form action="#" className="flex flex-col gap-5" onSubmit={submit}>
+
+                  {/* Full Name field */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="name">Full Name</label>
+                    <div className="relative">
+                      <input
+                        className={`w-full pl-10 pr-4 py-2.5 rounded-lg border ${errors.name ? 'border-red-500 focus:ring-red-500' : 'border-slate-200 focus:border-primary focus:ring-primary'} bg-slate-50 text-slate-900 outline-none transition-colors`}
+                        id="name"
+                        name="name"
+                        placeholder="Dr. Jane Doe"
+                        required
+                        type="text"
+                        value={form.name}
+                        onChange={handleInputChange}
+                        disabled={isGoogleLoading}
+                      />
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <span className="material-symbols-outlined text-slate-400 text-[20px]">person</span>
+                      </div>
+                    </div>
+                    {errors.name && <span className="text-xs text-red-500 mt-1 block">{errors.name}</span>}
+                  </div>
+
+                  {/* Employee ID field */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="prn">Employee ID (PRN)</label>
+                    <div className="relative">
+                      <input
+                        className={`w-full pl-10 pr-4 py-2.5 rounded-lg border ${errors.prn ? 'border-red-500 focus:ring-red-500' : 'border-slate-200 focus:border-primary focus:ring-primary'} bg-slate-50 text-slate-900 outline-none transition-colors`}
+                        id="prn"
+                        name="prn"
+                        placeholder="FAC-12345"
+                        required
+                        type="text"
+                        value={form.prn}
+                        onChange={handleInputChange}
+                        disabled={isGoogleLoading}
+                      />
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <span className="material-symbols-outlined text-slate-400 text-[20px]">badge</span>
+                      </div>
+                    </div>
+                    {errors.prn && <span className="text-xs text-red-500 mt-1 block">{errors.prn}</span>}
+                  </div>
+
+                  {/* Password & Department row */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {/* Role is hardcoded to FACULTY in form state, but we could add a disabled input here if needed.
+                        For now, substituting the HTML template's EmployeeID with Password since it's required for auth. */}
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="password">Password</label>
+                      <div className="relative">
+                        <input
+                          className={`w-full pl-10 pr-4 py-2.5 rounded-lg border ${errors.password ? 'border-red-500 focus:ring-red-500' : 'border-slate-200 focus:border-primary focus:ring-primary'} bg-slate-50 text-slate-900 outline-none transition-colors`}
+                          id="password"
+                          name="password"
+                          placeholder="••••••••"
+                          required
+                          type="password"
+                          value={form.password}
+                          onChange={handleInputChange}
+                          disabled={isGoogleLoading}
+                        />
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <span className="material-symbols-outlined text-slate-400 text-[20px]">lock</span>
+                        </div>
+                      </div>
+                      {errors.password && <span className="text-xs text-red-500 mt-1 block">{errors.password}</span>}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="department">Department</label>
+                      <div className="relative">
+                        <select
+                          className={`w-full pl-10 pr-4 py-2.5 rounded-lg border ${errors.department ? 'border-red-500 focus:ring-red-500' : 'border-slate-200 focus:border-primary focus:ring-primary'} bg-slate-50 text-slate-900 outline-none transition-colors appearance-none`}
+                          id="department"
+                          name="department"
+                          required
+                          value={form.department}
+                          onChange={handleInputChange}
+                          disabled={isGoogleLoading}
+                        >
+                          <option disabled value="">Select Dept</option>
+                          {Object.entries(PROGRAM_DEPARTMENTS).map(([program, depts]) => (
+                            <optgroup key={program} label={program} className="font-semibold text-slate-500">
+                              {depts.map((dept) => (
+                                <option key={`${program}-${dept}`} value={dept} className="font-normal text-slate-900">
+                                  {dept}
+                                </option>
+                              ))}
+                            </optgroup>
+                          ))}
+                        </select>
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <span className="material-symbols-outlined text-slate-400 text-[20px]">domain</span>
+                        </div>
+                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                          <span className="material-symbols-outlined text-slate-400 text-[20px]">expand_more</span>
+                        </div>
+                      </div>
+                      {errors.department && <span className="text-xs text-red-500 mt-1 block">{errors.department}</span>}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="email">Official Email Address</label>
+                    <div className="relative">
+                      <input
+                        className={`w-full pl-10 pr-4 py-2.5 rounded-lg border ${errors.email ? 'border-red-500 focus:ring-red-500' : 'border-slate-200 focus:border-primary focus:ring-primary'} bg-slate-50 text-slate-900 outline-none transition-colors`}
+                        id="email"
+                        name="email"
+                        placeholder="jane.doe@pccoepune.org"
+                        required
+                        type="email"
+                        value={form.email}
+                        onChange={handleInputChange}
+                        disabled={isGoogleLoading}
+                      />
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <span className="material-symbols-outlined text-slate-400 text-[20px]">mail</span>
+                      </div>
+                    </div>
+                    {errors.email && <span className="text-xs text-red-500 mt-1 block">{errors.email}</span>}
+                    <p className="mt-1 text-[11px] text-slate-500">Please use your official @pccoepune.org email address.</p>
+                  </div>
+
+                  <div className="mt-2">
+                    <button
+                      className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-all shadow-lg shadow-primary/30 disabled:opacity-70 disabled:cursor-not-allowed"
+                      type="submit"
+                      disabled={isLoading || isGoogleLoading}
+                    >
+                      {isLoading ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Creating Account...
+                        </span>
+                      ) : (
+                        <>
+                          <span>Create Faculty Account</span>
+                          <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+
+              </div>
+
+              <div className="mt-8 text-center border-t border-slate-100 pt-6">
+                <p className="text-slate-600 text-sm">
                   Already have an account?{" "}
                   <button
                     type="button"
                     onClick={() => navigate("/")}
-                    className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-semibold transition-colors duration-300 hover:underline"
+                    className="font-semibold text-primary hover:text-blue-700 hover:underline transition-colors duration-300"
                   >
                     Sign In
                   </button>
                 </p>
-              </motion.div>
+              </div>
+
             </div>
-          </Card>
-        </motion.div>
-      </div>
+          </div>
+
+          <div className="p-6 text-center md:text-left border-t border-slate-100">
+            <p className="text-xs text-slate-400">© 2026 Pimpri Chinchwad College of Engineering. All rights reserved.</p>
+          </div>
+        </div>
+      </main>
 
       {/* Google Signup Modal */}
       {showSignupModal && googleUserData && (

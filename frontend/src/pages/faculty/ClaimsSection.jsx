@@ -20,7 +20,7 @@ export default function ClaimsSection({ exam }) {
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
       >
-        <Card className="p-6 bg-card border-border">
+        <div className="p-8">
           <div className="text-center py-8">
             <motion.div
               initial={{ scale: 0 }}
@@ -31,7 +31,7 @@ export default function ClaimsSection({ exam }) {
             </motion.div>
             <p className="text-muted-foreground">Please complete exam details first to view claim calculation</p>
           </div>
-        </Card>
+        </div>
       </motion.div>
     );
   }
@@ -172,7 +172,7 @@ export default function ClaimsSection({ exam }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <Card className="p-6 bg-card border-border">
+      <div className="p-8">
         <motion.div
           className="flex items-center gap-3 mb-6"
           initial={{ opacity: 0, x: -20 }}
@@ -375,7 +375,7 @@ export default function ClaimsSection({ exam }) {
             </motion.div>
           )}
         </AnimatePresence>
-      </Card>
+      </div>
     </motion.div>
   );
 }

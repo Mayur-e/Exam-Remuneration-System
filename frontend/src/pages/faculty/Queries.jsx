@@ -85,7 +85,7 @@ export default function Queries() {
             setToastMessage('Query submitted successfully!');
             setToastType('success');
             setTimeout(() => setToastMessage(""), 3000);
-            
+
             setShowCreateModal(false);
             setFormData({
                 subject: '',
@@ -138,7 +138,7 @@ export default function Queries() {
             setToastMessage('Query updated successfully!');
             setToastType('success');
             setTimeout(() => setToastMessage(""), 3000);
-            
+
             setShowCreateModal(false);
             setEditingQueryId(null);
             setFormData({
@@ -169,7 +169,7 @@ export default function Queries() {
             setToastMessage('Query deleted successfully');
             setToastType('success');
             setTimeout(() => setToastMessage(""), 3000);
-            
+
             if (selectedQuery && selectedQuery.query.id === queryId) {
                 setSelectedQuery(null);
             }
@@ -195,7 +195,7 @@ export default function Queries() {
             setToastMessage('Reply sent successfully');
             setToastType('success');
             setTimeout(() => setToastMessage(""), 3000);
-            
+
             setReplyText('');
             viewQueryDetails(selectedQuery.query.id);
             fetchQueries();
@@ -300,7 +300,7 @@ export default function Queries() {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="p-4 sm:p-8 space-y-6 overflow-y-auto w-full max-w-7xl mx-auto font-display bg-background-light min-h-[calc(100vh-4rem)]">
             {/* Custom Toast Animation */}
             <AnimatePresence>
                 {toastMessage && (
@@ -309,13 +309,12 @@ export default function Queries() {
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 50 }}
                         transition={{ duration: 0.3 }}
-                        className={`fixed top-4 right-4 px-4 py-2 rounded shadow-lg z-50 ${
-                            toastType === "success" 
-                                ? "bg-green-600 text-white" 
+                        className={`fixed top-4 right-4 px-6 py-3 rounded-lg shadow-xl z-50 font-medium ${toastType === "success"
+                                ? "bg-green-600 text-white"
                                 : toastType === "error"
-                                ? "bg-red-600 text-white"
-                                : "bg-blue-600 text-white"
-                        }`}
+                                    ? "bg-red-600 text-white"
+                                    : "bg-blue-600 text-white"
+                            }`}
                     >
                         {toastMessage}
                     </motion.div>
@@ -323,44 +322,32 @@ export default function Queries() {
             </AnimatePresence>
 
             {/* Header */}
-            <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="flex items-center justify-between"
-            >
+            <div className="flex justify-between items-end mb-2">
                 <div>
-                    <h1 className="text-2xl font-bold text-foreground">Support & Queries</h1>
-                    <p className="text-sm text-muted-foreground mt-1">
-                        Get help with your claims and payments
-                    </p>
+                    <h3 className="text-2xl font-bold text-slate-800">Support & Queries</h3>
+                    <p className="text-slate-500">Get help with your claims and payments</p>
                 </div>
-                <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                <button
+                    onClick={() => setShowCreateModal(true)}
+                    className="px-6 py-2 border border-slate-200 rounded-xl font-medium bg-primary text-white flex items-center gap-2 hover:opacity-90 transition-opacity"
                 >
-                    <Button
-                        onClick={() => setShowCreateModal(true)}
-                        className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600"
-                    >
-                        + Raise New Query
-                    </Button>
-                </motion.div>
-            </motion.div>
+                    <span className="material-symbols-outlined text-[18px]">add</span> Raise New Query
+                </button>
+            </div>
 
             {/* Main Layout - Sidebar + Detail */}
-            <div className="flex h-[calc(100vh-12rem)] gap-4">
+            <div className="flex h-[calc(100vh-14rem)] gap-4">
                 {/* Query List Sidebar */}
                 <motion.div
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.5, delay: 0.1 }}
-                    className="w-1/3 flex flex-col bg-card rounded-lg border border-border overflow-hidden"
+                    className="w-1/3 flex flex-col bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm"
                 >
-                    <div className="p-4 border-b border-border bg-muted/20">
-                        <h2 className="font-semibold text-foreground mb-3">My Queries</h2>
+                    <div className="p-4 border-b border-slate-100 bg-slate-50">
+                        <h2 className="font-semibold text-slate-800 mb-3">My Queries</h2>
                         <select
-                            className="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+                            className="w-full px-4 py-2 rounded-xl border-none bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200"
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
                         >
@@ -371,7 +358,7 @@ export default function Queries() {
                         </select>
                     </div>
 
-                    <motion.div 
+                    <motion.div
                         variants={containerVariants}
                         initial="hidden"
                         animate="visible"
@@ -380,7 +367,7 @@ export default function Queries() {
                         {loading ? (
                             <p className="text-center py-4 text-muted-foreground">Loading...</p>
                         ) : queries.length === 0 ? (
-                            <motion.p 
+                            <motion.p
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 className="text-center py-8 text-muted-foreground"
@@ -400,7 +387,7 @@ export default function Queries() {
                                         }`}
                                 >
                                     <div className="flex justify-between items-start mb-1">
-                                        <motion.span 
+                                        <motion.span
                                             whileHover={{ scale: 1.1 }}
                                             className={`text-xs px-2 py-0.5 rounded-full ${getStatusColor(query.status)}`}
                                         >
@@ -432,7 +419,7 @@ export default function Queries() {
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.5, delay: 0.2 }}
-                    className="flex-1 bg-card rounded-lg border border-border overflow-hidden"
+                    className="flex-1 bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm"
                 >
                     {!selectedQuery ? (
                         <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -448,14 +435,14 @@ export default function Queries() {
                     ) : (
                         <div className="flex flex-col h-full">
                             {/* Query Header */}
-                            <div className="p-6 border-b border-border bg-muted/20">
+                            <div className="p-6 border-b border-slate-100 bg-slate-50">
                                 <div className="flex items-start justify-between mb-4">
                                     <div className="flex-1">
                                         <h2 className="text-xl font-bold text-foreground mb-2">
                                             {selectedQuery.query.subject}
                                         </h2>
                                         <div className="flex items-center gap-3">
-                                            <motion.span 
+                                            <motion.span
                                                 whileHover={{ scale: 1.1 }}
                                                 className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedQuery.query.status)}`}
                                             >
@@ -466,7 +453,7 @@ export default function Queries() {
                                             </span>
                                         </div>
                                         {selectedQuery.query.claim_id && (
-                                            <motion.div 
+                                            <motion.div
                                                 initial={{ opacity: 0, y: -10 }}
                                                 animate={{ opacity: 1, y: 0 }}
                                                 className="mt-2 text-sm text-blue-600 dark:text-blue-400"

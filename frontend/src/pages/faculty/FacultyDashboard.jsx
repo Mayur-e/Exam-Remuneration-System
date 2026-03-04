@@ -2,19 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../../services/api";
-import { Card } from "../../components/ui/card";
-import { Button } from "../../components/ui/button";
 import { useToast } from "../../hooks/useToast";
-
-// Icons
-import {
-  CheckCircleIcon,
-  ClockIcon,
-  CurrencyRupeeIcon,
-  PlusIcon,
-  FileTextIcon,
-  XCircleIcon
-} from "../../components/icons/logo";
 
 export default function FacultyDashboard() {
   const navigate = useNavigate();
@@ -24,6 +12,7 @@ export default function FacultyDashboard() {
     rejected_count: 0,
     total_amount: 0,
   });
+  const [recentClaims, setRecentClaims] = useState([]);
   const [loading, setLoading] = useState(true);
   const { showToast } = useToast();
   const [toastMessage, setToastMessage] = useState("");
@@ -35,24 +24,24 @@ export default function FacultyDashboard() {
     // Check if we should show bank details notification
     const shouldShowNotification = localStorage.getItem("showBankDetailsNotification");
     if (shouldShowNotification === "true") {
-      // Custom toast animation for bank details
       setToastMessage("Please complete your bank account details in the Settings tab");
       setToastType("warning");
       setTimeout(() => setToastMessage(""), 10000);
-      
-      // Remove the flag so it doesn't show again
       localStorage.removeItem("showBankDetailsNotification");
     }
   }, []);
 
   const fetchStats = async () => {
     try {
-      const res = await api.get("/faculty/dashboard-stats");
-      setStats(res.data);
+      const [statsRes, claimsRes] = await Promise.all([
+        api.get("/faculty/dashboard-stats"),
+        api.get("/faculty/exams")
+      ]);
+      setStats(statsRes.data);
+      setRecentClaims((claimsRes.data || []).slice(0, 5));
     } catch (err) {
-      console.error("Failed to fetch stats", err);
-      // Error toast animation
-      setToastMessage("Failed to fetch dashboard statistics");
+      console.error("Failed to fetch dashboard data", err);
+      setToastMessage("Failed to load dashboard data");
       setToastType("error");
       setTimeout(() => setToastMessage(""), 5000);
     } finally {
@@ -60,352 +49,230 @@ export default function FacultyDashboard() {
     }
   };
 
-  // Custom toast animation
-  const showCustomToast = (message, type = "info", duration = 5000) => {
-    setToastMessage(message);
-    setToastType(type);
-    setTimeout(() => setToastMessage(""), duration);
+  const renderStatusBadge = (status) => {
+    const config = {
+      draft: { label: "Draft", style: "bg-slate-100 text-slate-700" },
+      submitted: { label: "Submitted", style: "bg-amber-100 text-amber-700" },
+      UNDER_COORDINATOR_REVIEW: { label: "Under Review", style: "bg-purple-100 text-purple-700" },
+      COORDINATOR_VERIFIED: { label: "Verified", style: "bg-purple-100 text-purple-700" },
+      SENT_TO_BILLING: { label: "Processing", style: "bg-amber-100 text-amber-700" },
+      approved: { label: "Approved", style: "bg-green-100 text-green-700" },
+      paid: { label: "Credited", style: "bg-green-100 text-green-700" },
+      rejected: { label: "Rejected", style: "bg-red-100 text-red-700" },
+      COORDINATOR_REJECTED: { label: "Rejected", style: "bg-red-100 text-red-700" },
+    };
+    const s = config[status] || { label: status, style: "bg-slate-100 text-slate-700" };
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${s.style}`}>
+        {s.label}
+      </span>
+    );
   };
 
-  // Animation variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        type: "spring",
-        stiffness: 100,
-        damping: 12
-      }
-    }
-  };
-
-  const cardHoverVariants = {
-    hover: {
-      y: -5,
-      scale: 1.02,
-      transition: {
-        type: "spring",
-        stiffness: 400,
-        damping: 25
-      }
-    },
-    tap: {
-      scale: 0.98
-    }
-  };
-
-  const statNumberVariants = {
-    hidden: { scale: 0.8, opacity: 0 },
-    visible: {
-      scale: 1,
-      opacity: 1,
-      transition: {
-        type: "spring",
-        stiffness: 200,
-        damping: 15,
-        delay: 0.2
-      }
+  const handleViewClaim = (claim) => {
+    if (claim.claim_form_type === 'NON_TEACHING') {
+      navigate(`/faculty/claim/non-teaching?examId=${claim.id}`);
+    } else if (claim.claim_form_type === 'TEACHING_EXTERNAL') {
+      navigate(`/faculty/claim/teaching?examId=${claim.id}&claimType=TEACHING_EXTERNAL`);
+    } else {
+      navigate(`/faculty/claim/teaching?examId=${claim.id}`);
     }
   };
 
   if (loading) {
     return (
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="flex items-center justify-center h-64"
-      >
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full"
-        ></motion.div>
-      </motion.div>
+      <div className="flex items-center justify-center h-64">
+        <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Custom Toast Animation */}
+    <div className="p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-8 font-display bg-background-light min-h-[calc(100vh-4rem)]">
       <AnimatePresence>
         {toastMessage && (
           <motion.div
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 50 }}
-            transition={{ duration: 0.3 }}
-            className={`fixed top-4 right-4 px-4 py-2 rounded shadow-lg z-50 ${
-              toastType === "warning" 
-                ? "bg-amber-600 text-white" 
-                : toastType === "error"
-                ? "bg-red-600 text-white"
-                : "bg-blue-600 text-white"
-            }`}
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className={`fixed top-4 right-4 px-6 py-3 rounded-lg shadow-xl z-50 font-medium ${toastType === "warning"
+              ? "bg-amber-500 text-white"
+              : toastType === "error"
+                ? "bg-red-500 text-white"
+                : "bg-primary text-white"
+              }`}
           >
             {toastMessage}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Header with animation */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="flex justify-between items-center"
-      >
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Welcome back! Here's your claims overview</p>
+          <h1 className="text-2xl font-bold text-slate-900">Faculty Analytics Dashboard</h1>
+          <p className="text-slate-500 text-sm mt-1">Overview of your claims and remuneration</p>
         </div>
-      </motion.div>
+      </div>
 
-      {/* Stats Cards with staggered animations */}
-      <motion.div 
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
-      >
-        {/* Approved Claims */}
-        <motion.div variants={itemVariants}>
-          <motion.div
-            variants={cardHoverVariants}
-            whileHover="hover"
-            whileTap="tap"
-          >
-            <Card className="p-6 bg-gradient-to-br from-green-50 to-white dark:from-green-950/30 dark:to-card border-green-100 dark:border-green-800/50 transition-all duration-300">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-green-600 dark:text-green-400 mb-1">Approved Claims</p>
-                  <motion.h2 
-                    key={stats.approved_count}
-                    variants={statNumberVariants}
-                    initial="hidden"
-                    animate="visible"
-                    className="text-3xl font-bold text-green-700 dark:text-green-300"
-                  >
-                    {stats.approved_count}
-                  </motion.h2>
-                </div>
-                <motion.div 
-                  whileHover={{ rotate: 360 }}
-                  transition={{ duration: 0.6 }}
-                  className="p-3 bg-green-100 dark:bg-green-900/30 rounded-full"
-                >
-                  <CheckCircleIcon className="w-8 h-8 text-green-600 dark:text-green-400" />
-                </motion.div>
-              </div>
-            </Card>
-          </motion.div>
-        </motion.div>
-
-        {/* Pending Claims */}
-        <motion.div variants={itemVariants}>
-          <motion.div
-            variants={cardHoverVariants}
-            whileHover="hover"
-            whileTap="tap"
-          >
-            <Card className="p-6 bg-gradient-to-br from-orange-50 to-white dark:from-orange-950/30 dark:to-card border-orange-100 dark:border-orange-800/50 transition-all duration-300">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-orange-600 dark:text-orange-400 mb-1">Pending Claims</p>
-                  <motion.h2 
-                    key={stats.pending_count}
-                    variants={statNumberVariants}
-                    initial="hidden"
-                    animate="visible"
-                    className="text-3xl font-bold text-orange-700 dark:text-orange-300"
-                  >
-                    {stats.pending_count}
-                  </motion.h2>
-                </div>
-                <motion.div 
-                  animate={{ rotate: [0, 10, 0, -10, 0] }}
-                  transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                  className="p-3 bg-orange-100 dark:bg-orange-900/30 rounded-full"
-                >
-                  <ClockIcon className="w-8 h-8 text-orange-600 dark:text-orange-400" />
-                </motion.div>
-              </div>
-            </Card>
-          </motion.div>
-        </motion.div>
-
-        {/* Rejected Claims */}
-        <motion.div variants={itemVariants}>
-          <motion.div
-            variants={cardHoverVariants}
-            whileHover="hover"
-            whileTap="tap"
-          >
-            <Card className="p-6 bg-gradient-to-br from-red-50 to-white dark:from-red-950/30 dark:to-card border-red-100 dark:border-red-800/50 transition-all duration-300">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-1">Rejected Claims</p>
-                  <motion.h2 
-                    key={stats.rejected_count}
-                    variants={statNumberVariants}
-                    initial="hidden"
-                    animate="visible"
-                    className="text-3xl font-bold text-red-700 dark:text-red-300"
-                  >
-                    {stats.rejected_count || 0}
-                  </motion.h2>
-                </div>
-                <motion.div 
-                  whileHover={{ scale: 1.1 }}
-                  className="p-3 bg-red-100 dark:bg-red-900/30 rounded-full"
-                >
-                  <XCircleIcon className="w-8 h-8 text-red-600 dark:text-red-400" />
-                </motion.div>
-              </div>
-            </Card>
-          </motion.div>
-        </motion.div>
-
-        {/* Total Amount */}
-        <motion.div variants={itemVariants}>
-          <motion.div
-            variants={cardHoverVariants}
-            whileHover="hover"
-            whileTap="tap"
-          >
-            <Card className="p-6 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-card border-blue-100 dark:border-blue-800/50 transition-all duration-300">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-1">Total Payable</p>
-                  <motion.h2 
-                    key={stats.total_amount}
-                    variants={statNumberVariants}
-                    initial="hidden"
-                    animate="visible"
-                    className="text-3xl font-bold text-blue-700 dark:text-blue-300"
-                  >
-                    ₹{Number(stats.total_amount || 0).toLocaleString('en-IN')}
-                  </motion.h2>
-                </div>
-                <motion.div 
-                  animate={{ scale: [1, 1.05, 1] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                  className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-full"
-                >
-                  <CurrencyRupeeIcon className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-                </motion.div>
-              </div>
-            </Card>
-          </motion.div>
-        </motion.div>
-      </motion.div>
-
-      {/* Quick Actions with animation */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
-      >
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-foreground mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <Button
-                variant="outline"
-                onClick={() => navigate("/faculty/generateclaim")}
-                className="justify-start h-auto py-4 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-300 dark:hover:border-blue-700 transition-colors w-full"
-              >
-                <div className="flex items-center gap-3">
-                  <motion.div 
-                    whileHover={{ rotate: 15 }}
-                    className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg"
-                  >
-                    <FileTextIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                  </motion.div>
-                  <div className="text-left">
-                    <p className="font-semibold text-foreground">Create Teaching Claim</p>
-                    <p className="text-sm text-muted-foreground">Submit new teaching examination claim</p>
-                  </div>
-                </div>
-              </Button>
-            </motion.div>
-
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <Button
-                variant="outline"
-                onClick={() => navigate("/faculty/myclaims")}
-                className="justify-start h-auto py-4 hover:bg-green-50 dark:hover:bg-green-900/20 hover:border-green-300 dark:hover:border-green-700 transition-colors w-full"
-              >
-                <div className="flex items-center gap-3">
-                  <motion.div 
-                    whileHover={{ rotate: 15 }}
-                    className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg"
-                  >
-                    <FileTextIcon className="w-5 h-5 text-green-600 dark:text-green-400" />
-                  </motion.div>
-                  <div className="text-left">
-                    <p className="font-semibold text-foreground">View My Claims</p>
-                    <p className="text-sm text-muted-foreground">Check status of submitted claims</p>
-                  </div>
-                </div>
-              </Button>
-            </motion.div>
-
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <Button
-                variant="outline"
-                onClick={() => navigate("/faculty/settings")}
-                className="justify-start h-auto py-4 hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:border-purple-300 dark:hover:border-purple-700 transition-colors w-full"
-              >
-                <div className="flex items-center gap-3">
-                  <motion.div 
-                    whileHover={{ rotate: 15 }}
-                    className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg"
-                  >
-                    <FileTextIcon className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                  </motion.div>
-                  <div className="text-left">
-                    <p className="font-semibold text-foreground">Update Profile</p>
-                    <p className="text-sm text-muted-foreground">Manage bank details and settings</p>
-                  </div>
-                </div>
-              </Button>
-            </motion.div>
+      {/* Top Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+          <p className="text-slate-500 text-sm font-medium">Total Payable Earnings</p>
+          <div className="mt-2 flex items-end justify-between">
+            <div>
+              <h3 className="text-3xl font-black text-slate-900">₹{Number(stats.total_amount || 0).toLocaleString('en-IN')}</h3>
+              <p className="text-green-600 text-xs font-bold flex items-center mt-1">
+                <span className="material-symbols-outlined text-[14px] mr-1">check_circle</span> Approved Total
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+              <span className="material-symbols-outlined text-2xl">payments</span>
+            </div>
           </div>
-        </Card>
-      </motion.div>
+        </div>
 
-      {/* Additional Stats or Info (Optional) */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5, delay: 0.6 }}
-        className="text-center py-8"
-      >
-        <p className="text-sm text-muted-foreground">
-          Need help? Contact the billing department at <span className="text-blue-600 dark:text-blue-400">billing@pccoepune.org</span>
-        </p>
-      </motion.div>
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+          <p className="text-slate-500 text-sm font-medium">Approved Claims</p>
+          <div className="mt-2 flex items-end justify-between">
+            <div>
+              <h3 className="text-3xl font-black text-slate-900">{stats.approved_count}</h3>
+              <p className="text-green-600 text-xs font-bold flex items-center mt-1">
+                <span className="material-symbols-outlined text-[14px] mr-1">task_alt</span> Duties Completed
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center text-green-600">
+              <span className="material-symbols-outlined text-2xl">assignment_turned_in</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+          <p className="text-slate-500 text-sm font-medium">Pending Claims</p>
+          <div className="mt-2 flex items-end justify-between">
+            <div>
+              <h3 className="text-3xl font-black text-slate-900">{stats.pending_count}</h3>
+              <p className="text-slate-400 text-xs font-medium flex items-center mt-1">
+                <span className="material-symbols-outlined text-[14px] mr-1">schedule</span> In review
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-600">
+              <span className="material-symbols-outlined text-2xl">pending_actions</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+          <p className="text-slate-500 text-sm font-medium">Rejected Claims</p>
+          <div className="mt-2 flex items-end justify-between">
+            <div>
+              <h3 className="text-3xl font-black text-slate-900">{stats.rejected_count}</h3>
+              <p className="text-red-500 text-xs font-medium flex items-center mt-1">
+                <span className="material-symbols-outlined text-[14px] mr-1">error</span> Needs attention
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-red-500/10 rounded-xl flex items-center justify-center text-red-600">
+              <span className="material-symbols-outlined text-2xl">cancel</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Activities Table */}
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+        <div className="p-6 border-b border-slate-200 flex items-center justify-between">
+          <div>
+            <h4 className="text-lg font-bold text-slate-900">Recent Duty Earnings</h4>
+            <p className="text-sm text-slate-500">Overview of latest remunerations processed</p>
+          </div>
+          <button onClick={() => navigate("/faculty/myclaims")} className="text-sm font-bold text-primary hover:underline">View History</button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50">
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Date</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Duty Category</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Subject Code</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Amount</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {recentClaims.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="px-6 py-8 text-center text-sm text-slate-500">No recent claims found.</td>
+                </tr>
+              ) : (
+                recentClaims.map((claim) => (
+                  <tr key={claim.id} className="hover:bg-slate-50/50 transition-colors cursor-pointer" onClick={() => handleViewClaim(claim)}>
+                    <td className="px-6 py-4 text-sm font-medium text-slate-600">
+                      {claim.created_at ? new Date(claim.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 text-sm font-bold text-slate-900">
+                      {claim.exam_type} {claim.claim_form_type === 'TEACHING_EXTERNAL' && <span className="ml-2 text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full uppercase">External</span>}
+                    </td>
+                    <td className="px-6 py-4 text-sm font-medium text-slate-500 uppercase">
+                      {claim.subject_code || 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 text-sm font-black text-slate-900">
+                      ₹{Number(claim.total_amount || 0).toLocaleString('en-IN')}
+                    </td>
+                    <td className="px-6 py-4">
+                      {renderStatusBadge(claim.status)}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Quick Actions Integration into Dashboard UX */}
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+        <div className="p-6 border-b border-slate-200">
+          <h4 className="text-lg font-bold text-slate-900">Quick Actions</h4>
+          <p className="text-sm text-slate-500">Manage your claims and profile settings</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+
+          <button
+            onClick={() => navigate("/faculty/generateclaim")}
+            className="p-6 flex flex-col items-center text-center hover:bg-slate-50 transition-colors group cursor-pointer border-none outline-none"
+          >
+            <div className="w-14 h-14 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <span className="material-symbols-outlined text-2xl">add_circle</span>
+            </div>
+            <h5 className="font-bold text-slate-900 mb-1">Create Teaching Claim</h5>
+            <p className="text-sm text-slate-500">Submit a new teaching examination remuneration claim</p>
+          </button>
+
+          <button
+            onClick={() => navigate("/faculty/myclaims")}
+            className="p-6 flex flex-col items-center text-center hover:bg-slate-50 transition-colors group cursor-pointer border-none outline-none"
+          >
+            <div className="w-14 h-14 rounded-full bg-green-50 text-green-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <span className="material-symbols-outlined text-2xl">history</span>
+            </div>
+            <h5 className="font-bold text-slate-900 mb-1">View My Claims</h5>
+            <p className="text-sm text-slate-500">Track the status of your submitted claims and history</p>
+          </button>
+
+          <button
+            onClick={() => navigate("/faculty/settings")}
+            className="p-6 flex flex-col items-center text-center hover:bg-slate-50 transition-colors group cursor-pointer border-none outline-none"
+          >
+            <div className="w-14 h-14 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <span className="material-symbols-outlined text-2xl">manage_accounts</span>
+            </div>
+            <h5 className="font-bold text-slate-900 mb-1">Update Profile</h5>
+            <p className="text-sm text-slate-500">Manage your bank details, department, and settings</p>
+          </button>
+
+        </div>
+      </div>
+
     </div>
   );
 }

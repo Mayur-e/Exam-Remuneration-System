@@ -231,19 +231,17 @@ export default function StaffClaimsSection({ examId, disabled, refreshKey }) {
 
     if (!examId) {
         return (
-            <Card className="p-6 bg-card border-border">
-                <div className="text-center py-8">
-                    <UsersIcon className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">
-                        Please complete exam details first to add staff information
-                    </p>
-                </div>
-            </Card>
+            <div className="p-6 text-center py-8">
+                <UsersIcon className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">
+                    Please complete exam details first to add staff information
+                </p>
+            </div>
         );
     }
 
     return (
-        <Card className="p-6 bg-card border-border">
+        <div className="p-6">
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
@@ -567,6 +565,6 @@ export default function StaffClaimsSection({ examId, disabled, refreshKey }) {
                     </div>
                 </div>
             </div>
-        </Card>
+        </div>
     );
 }

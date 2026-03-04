@@ -208,19 +208,17 @@ export default function NonTeachingInfo({ examId, disabled, onUpdated, refreshKe
 
     if (!examId) {
         return (
-            <Card className="p-6 bg-card border-border">
-                <div className="text-center py-8">
-                    <CalendarIcon className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">
-                        Please complete exam details first
-                    </p>
-                </div>
-            </Card>
+            <div className="p-6 bg-transparent border-0 text-center py-8">
+                <CalendarIcon className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">
+                    Please complete exam details first
+                </p>
+            </div>
         );
     }
 
     return (
-        <Card className="p-6 bg-card border-border">
+        <div className="p-6 bg-transparent">
             <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
                     <CalendarIcon className="w-5 h-5 text-green-600" />
@@ -322,6 +320,6 @@ export default function NonTeachingInfo({ examId, disabled, onUpdated, refreshKe
                     </div>
                 )}
             </div>
-        </Card>
+        </div>
     );
 }

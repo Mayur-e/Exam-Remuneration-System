@@ -229,7 +229,7 @@ export default function Settings() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="p-4 sm:p-8 space-y-8 overflow-y-auto w-full max-w-7xl mx-auto font-display bg-background-light min-h-[calc(100vh-4rem)]">
       {/* Custom Toast Animation */}
       <AnimatePresence>
         {toastMessage && (
@@ -238,9 +238,11 @@ export default function Settings() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 50 }}
             transition={{ duration: 0.3 }}
-            className={`fixed top-4 right-4 px-4 py-2 rounded shadow-lg z-50 ${toastType === "success"
+            className={`fixed top-4 right-4 px-6 py-3 rounded-lg shadow-xl z-50 font-medium ${toastType === "success"
               ? "bg-green-600 text-white"
-              : "bg-red-600 text-white"
+              : toastType === "error"
+                ? "bg-red-600 text-white"
+                : "bg-blue-600 text-white"
               }`}
           >
             {toastMessage}
@@ -248,61 +250,45 @@ export default function Settings() {
         )}
       </AnimatePresence>
 
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <h1 className="text-3xl font-bold text-foreground">Settings</h1>
-      </motion.div>
+      <div className="mb-2">
+        <h3 className="text-2xl font-bold text-slate-800">Settings</h3>
+        <p className="text-slate-500">Manage your profile, security, bank details and preferences</p>
+      </div>
 
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="grid grid-cols-1 lg:grid-cols-2 gap-6"
-      >
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Profile Settings */}
-        <motion.div variants={itemVariants}>
+        <div>
           <ProfileSettings
             initialData={profileData}
             onSave={handleSaveProfile}
             readOnlyFields={['email']}
             fields={profileFields}
           />
-        </motion.div>
+        </div>
 
         {/* Security Settings */}
-        <motion.div variants={itemVariants}>
+        <div>
           <SecuritySettings
             onSave={handleChangePassword}
             onSetPassword={handleSetPassword}
             isGoogleUser={profileData?.google_id && !profileData?.has_set_password}
-            primaryColor="blue-600"
+            primaryColor="primary"
           />
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
 
       {/* Course Coordination - Full Width */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-      >
+      <div className="pt-2">
         <CourseCoordinationSettings />
-      </motion.div>
+      </div>
 
       {/* Bank Details - Full Width */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-      >
+      <div className="pt-2">
         <BankSettings
           initialData={bankData}
           onSave={handleSaveBankDetails}
         />
-      </motion.div>
+      </div>
     </div>
   );
 }
