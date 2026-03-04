@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
-export default function Toast({ message, type = 'info', duration = 10000, onClose, isStacked = true }) {
+export default function Toast({ message, type = 'info', duration = 3000, onClose, isStacked = true }) {
     useEffect(() => {
         if (duration > 0) {
             const timer = setTimeout(() => {
@@ -12,95 +12,73 @@ export default function Toast({ message, type = 'info', duration = 10000, onClos
         }
     }, [duration, onClose]);
 
-    const bgColor = {
-        success: 'bg-green-500',
-        error: 'bg-red-500',
-        warning: 'bg-yellow-500',
-        info: 'bg-blue-500'
-    }[type] || 'bg-blue-500';
+    const colors = {
+        success: 'bg-emerald-50/90 border-emerald-200 text-emerald-800',
+        error: 'bg-red-50/90 border-red-200 text-red-800',
+        warning: 'bg-amber-50/90 border-amber-200 text-amber-800',
+        info: 'bg-blue-50/90 border-blue-200 text-blue-800'
+    }[type] || 'bg-slate-50/90 border-slate-200 text-slate-800';
 
-    const icon = {
-        success: (
-            <motion.svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                initial={{ scale: 0, rotate: -180 }}
-                animate={{ scale: 1, rotate: 0 }}
-                transition={{ type: "spring", stiffness: 200, damping: 15 }}
-            >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </motion.svg>
-        ),
-        error: (
-            <motion.svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                initial={{ scale: 0, rotate: -180 }}
-                animate={{ scale: 1, rotate: 0 }}
-                transition={{ type: "spring", stiffness: 200, damping: 15 }}
-            >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </motion.svg>
-        ),
-        warning: (
-            <motion.svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                initial={{ scale: 0, rotate: -180 }}
-                animate={{ scale: 1, rotate: 0 }}
-                transition={{ type: "spring", stiffness: 200, damping: 15 }}
-            >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </motion.svg>
-        ),
-        info: (
-            <motion.svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                initial={{ scale: 0, rotate: -180 }}
-                animate={{ scale: 1, rotate: 0 }}
-                transition={{ type: "spring", stiffness: 200, damping: 15 }}
-            >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </motion.svg>
-        )
-    }[type];
+    const iconColors = {
+        success: 'text-emerald-500 bg-emerald-100 shadow-emerald-200',
+        error: 'text-red-500 bg-red-100 shadow-red-200',
+        warning: 'text-amber-500 bg-amber-100 shadow-amber-200',
+        info: 'text-blue-500 bg-blue-100 shadow-blue-200'
+    }[type] || 'text-slate-500 bg-slate-100 shadow-slate-200';
+
+    const progressColors = {
+        success: 'bg-emerald-500',
+        error: 'bg-red-500',
+        warning: 'bg-amber-500',
+        info: 'bg-blue-500'
+    }[type] || 'bg-slate-500';
+
+    const iconNames = {
+        success: 'check_circle',
+        error: 'error',
+        warning: 'warning',
+        info: 'info'
+    }[type] || 'info';
 
     return (
         <motion.div
-            className={`${!isStacked ? 'fixed top-4 right-4' : ''} z-50`}
-            initial={{ opacity: 0, x: 100, scale: 0.8 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 100, scale: 0.8 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
+            layout
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className={`relative flex items-center gap-4 w-96 p-4 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border backdrop-blur-xl overflow-hidden ${colors} cursor-default`}
         >
-            <motion.div
-                className={`${bgColor} text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 max-w-md`}
-                whileHover={{ scale: 1.02 }}
+            {/* Icon Container */}
+            <div className={`w-10 h-10 flex-shrink-0 rounded-full flex items-center justify-center shadow-inner ${iconColors}`}>
+                <span className="material-symbols-outlined text-[22px]">{iconNames}</span>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 pr-4">
+                <p className="text-[13px] font-bold tracking-tight leading-relaxed">
+                    {message}
+                </p>
+            </div>
+
+            {/* Close Button */}
+            <button
+                onClick={onClose}
+                className="absolute top-2.5 right-2.5 w-6 h-6 flex items-center justify-center rounded-full hover:bg-black/5 transition-colors cursor-pointer"
+                aria-label="Close"
             >
-                <div className="flex-shrink-0">
-                    {icon}
-                </div>
-                <p className="flex-1 font-medium">{message}</p>
-                <motion.button
-                    onClick={onClose}
-                    className="flex-shrink-0 hover:bg-white/20 rounded-full p-1 transition-colors"
-                    whileHover={{ scale: 1.2, rotate: 90 }}
-                    whileTap={{ scale: 0.9 }}
-                >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </motion.button>
-            </motion.div>
+                <span className="material-symbols-outlined text-[16px] opacity-50 hover:opacity-100 transition-opacity">close</span>
+            </button>
+
+            {/* Progress Bar Loader */}
+            {duration > 0 && (
+                <motion.div
+                    className={`absolute bottom-0 left-0 h-[3px] opacity-80 ${progressColors}`}
+                    initial={{ width: "100%" }}
+                    animate={{ width: "0%" }}
+                    transition={{ duration: duration / 1000, ease: "linear" }}
+                />
+            )}
         </motion.div>
     );
 }

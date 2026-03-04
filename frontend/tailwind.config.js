@@ -18,6 +18,12 @@ module.exports = {
     },
     extend: {
       colors: {
+        "primary": "#1337ec",
+        "primary-hover": "#0e2ab8",
+        "background-light": "#f6f6f8",
+        "background-dark": "#101322",
+        "surface-light": "#ffffff",
+        "surface-dark": "#1a1d2d",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -52,10 +58,17 @@ module.exports = {
           foreground: "hsl(var(--card-foreground))",
         },
       },
+      fontFamily: {
+        "display": ["Inter", "sans-serif"]
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      boxShadow: {
+        "soft": "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)",
+        "card": "0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025)",
       },
       keyframes: {
         "accordion-down": {
@@ -103,5 +116,9 @@ module.exports = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require("tailwindcss-animate"),
+    require("@tailwindcss/forms"),
+    require("@tailwindcss/container-queries")
+  ],
 }
