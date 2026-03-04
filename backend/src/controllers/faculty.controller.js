@@ -740,6 +740,8 @@ exports.listMyExams = async (req, res) => {
       e.claim_form_type,
       e.program,
       e.level,
+      e.created_at,
+      e.exam_date,
       eel.token as external_link_token,
       r.total_amount
     FROM exams e

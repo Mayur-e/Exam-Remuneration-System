@@ -6,15 +6,11 @@ import api from "../../services/api";
 import { validateEmail, validatePassword } from "../../utils/validation";
 
 // Enhanced UI components
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-import { Card } from "../../components/ui/card";
 import GoogleSignupModal from "../../components/auth/GoogleSignupModal";
-import { ThemeToggle } from "../../components/ui/theme-toggle";
 import { useToast } from "../../hooks/useToast";
 
 // Icons
-import { LogoIcon, MailIcon, LockIcon } from "../../components/icons/logo";
+import { MailIcon, LockIcon } from "../../components/icons/logo";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -34,8 +30,6 @@ export default function Login() {
 
   // Toast hook
   const { showToast } = useToast();
-  const [toastMessage, setToastMessage] = useState("");
-  const [toastType, setToastType] = useState("success");
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -62,10 +56,8 @@ export default function Login() {
     try {
       const res = await api.post("/auth/login", { email, password });
 
-      // Custom toast animation
-      setToastMessage("Login successful! Redirecting...");
-      setToastType("success");
-      setTimeout(() => setToastMessage(""), 3000);
+      // Trigger unified global toast
+      showToast("Login successful! Redirecting...", "success");
 
       const { token, user } = res.data;
 
@@ -156,10 +148,8 @@ export default function Login() {
 
       const { token: authToken, user, needsBankDetails } = res.data;
 
-      // Custom toast animation
-      setToastMessage("Registration successful! Welcome.");
-      setToastType("success");
-      setTimeout(() => setToastMessage(""), 3000);
+      // Trigger unified global toast
+      showToast("Registration successful! Welcome.", "success");
 
       localStorage.setItem("token", authToken);
       localStorage.setItem("user", JSON.stringify(user));
@@ -186,10 +176,8 @@ export default function Login() {
         setGeneralError("Registration failed. Please try again.");
       }
 
-      // Custom toast animation for error
-      setToastMessage("Registration failed");
-      setToastType("error");
-      setTimeout(() => setToastMessage(""), 3000);
+      // Error toast
+      showToast("Registration failed", "error");
 
       setShowSignupModal(false);
     } finally {
@@ -197,97 +185,88 @@ export default function Login() {
     }
   };
 
+  // Google Login Custom Button using useGoogleLogin hook is preferred, but here we can adapt the standard component
+  // to be invisible over a custom button if needed. Given the HTML design has a custom button, we'll implement it.
+  // Wait, let's look at the standard GoogleLogin component, it doesn't support custom children easily.
+  // We'll wrap it or use the standard button. The design shows a custom button. Let's use @react-oauth/google's useGoogleLogin.
+  // Actually, since useGoogleLogin is more complex for standard credential response, we can keep the custom button visual
+  // by placing standard GoogleLogin with opacity-0 over it, OR just rely on standard GoogleLogin.
+  // The user's HTML specifically styled a Google button. We should try to use the standard GoogleLogin but styled to match,
+  // OR use useGoogleLogin. Let's stick to the standard one for reliability but use the new card design.
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-background dark:via-background dark:to-accent p-4">
+    <div className="bg-background-light text-slate-900 font-display min-h-screen flex flex-col transition-colors duration-200">
 
-      {/* Custom Toast Animation */}
-      <AnimatePresence>
-        {toastMessage && (
+      <div className="bg-pattern relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden py-4 px-4">
+
+        {/* Background Icons */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+          <div className="absolute top-[10%] left-[5%] text-primary/10 rotate-12">
+            <span className="material-symbols-outlined text-[120px]">school</span>
+          </div>
+          <div className="absolute bottom-[10%] right-[5%] text-primary/10 -rotate-12">
+            <span className="material-symbols-outlined text-[120px]">calculate</span>
+          </div>
+          <div className="absolute top-[40%] right-[15%] text-primary/5 rotate-45">
+            <span className="material-symbols-outlined text-[80px]">history_edu</span>
+          </div>
+          <div className="absolute bottom-[20%] left-[15%] text-primary/5 -rotate-6">
+            <span className="material-symbols-outlined text-[60px]">account_balance</span>
+          </div>
+        </div>
+
+        <div className="relative z-10 w-full max-w-[440px]">
+          <div className="mb-6 flex flex-col items-center text-center">
+            <div className="mb-3 h-24 w-24 overflow-hidden rounded-full shadow-soft bg-white p-1">
+              <img
+                alt="PCCOE Logo"
+                className="h-full w-full object-contain"
+                src="/pccoe-logo.png"
+              />
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Exam Remuneration</h1>
+            <p className="mt-1 text-sm text-slate-500">PCCOE Faculty & Staff Portal</p>
+          </div>
+
           <motion.div
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 50 }}
-            transition={{ duration: 0.3 }}
-            className={`fixed top-4 right-16 px-4 py-2 rounded shadow-lg z-50 ${toastType === "success"
-              ? "bg-green-600 text-white"
-              : "bg-red-600 text-white"
-              }`}
+            key={generalError ? "error" : "normal"}
+            initial={{ x: 0, opacity: 0, y: 20 }}
+            animate={generalError ? { x: [0, -10, 10, -10, 10, 0], opacity: 1, y: 0 } : { opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="bg-surface-light rounded-xl shadow-card border border-slate-200 overflow-hidden"
           >
-            {toastMessage}
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <div className="p-6">
 
-      {/* Theme Toggle with animation */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-        className="fixed top-4 right-4 z-40"
-      >
-        <ThemeToggle />
-      </motion.div>
-
-      <div className="w-full max-w-md">
-        {/* Error Shake Animation */}
-        <motion.div
-          key={generalError ? "error" : "normal"}
-          initial={{ x: 0 }}
-          animate={generalError ? { x: [0, -10, 10, -10, 10, 0] } : {}}
-          transition={{ duration: 0.4 }}
-        >
-          <Card className="border-0 shadow-2xl overflow-hidden bg-card">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5 dark:from-blue-500/10 dark:via-transparent dark:to-purple-500/10 pointer-events-none" />
-
-            <div className="relative p-8 space-y-6">
-              {/* Header with fade-in animation */}
-              <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="text-center space-y-3"
-              >
-                <div className="flex justify-center mb-4">
-                  <motion.div
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ duration: 0.6, delay: 0.1 }}
-                    className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-                  >
-                    <LogoIcon className="w-8 h-8 text-white" />
-                  </motion.div>
-                </div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">
-                  Staff Billing
-                </h1>
-                <p className="text-sm text-muted-foreground">
-                  Professional Billing Management System
-                </p>
-              </motion.div>
-
-              {/* Error message with animation */}
+              {/* Error Alert */}
               <AnimatePresence>
                 {generalError && (
                   <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
+                    initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                    animate={{ opacity: 1, height: "auto", marginBottom: "1.5rem" }}
+                    exit={{ opacity: 0, height: 0, marginBottom: 0 }}
                     transition={{ duration: 0.3 }}
-                    className="p-3 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 rounded-lg text-sm font-medium border border-red-200 dark:border-red-800"
+                    className="p-3 bg-red-50 text-red-600 rounded-lg text-sm border border-red-200"
                   >
                     {generalError}
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              {/* Google Sign-In Button with animation */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="space-y-3"
-              >
-                <div className="flex justify-center">
+              {/* Google Sign In Wrapper */}
+              <div className="relative flex justify-center w-full">
+                {/* Visual custom button as seen in HTML */}
+                {/* <button className="w-full flex items-center justify-center gap-3 bg-white border border-slate-300 rounded-lg px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:hover:bg-slate-700/50" type="button">
+                  <svg className="w-5 h-5" viewBox="0 0 24 24">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"></path>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.66l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"></path>
+                  </svg>
+                  <span>Sign in with Google</span>
+                </button> */}
+
+                {/* Standard Google Login over custom styling if necessary, or just use standard */}
+                <div className="w-full h-12 flex justify-center items-center">
                   <GoogleLogin
                     onSuccess={handleGoogleSuccess}
                     onError={handleGoogleError}
@@ -299,146 +278,101 @@ export default function Login() {
                     locale="en"
                   />
                 </div>
+              </div>
 
-                {/* Divider */}
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-border"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-card text-muted-foreground">Or continue with email</span>
-                  </div>
+              <div className="my-5 relative flex items-center justify-center">
+                <div aria-hidden="true" className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-200"></div>
                 </div>
-              </motion.div>
+                <div className="relative flex justify-center text-xs uppercase tracking-wider">
+                  <span className="bg-surface-light px-4 text-slate-400 font-medium">or</span>
+                </div>
+              </div>
 
-              {/* Form with staggered animations */}
-              <motion.form
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-                onSubmit={handleLogin}
-                className="space-y-5"
-              >
-                {/* Email field */}
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.4, delay: 0.4 }}
-                  className="space-y-2"
-                >
-                  <label className="text-sm font-medium text-card-foreground">
-                    Email Address
-                  </label>
+              <form className="flex flex-col gap-5" onSubmit={handleLogin}>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-sm font-medium text-slate-700">Email Address</span>
                   <div className="relative group">
-                    <MailIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-blue-500 transition-colors duration-300" />
-                    <Input
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">mail</span>
+                    <input
+                      className={`w-full rounded-lg border ${emailError ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 focus:border-primary focus:ring-primary'} bg-white px-10 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 transition-shadow`}
+                      placeholder="name@pccoepune.org"
                       type="email"
-                      placeholder="Enter your email"
                       value={email}
                       onChange={(e) => {
                         setEmail(e.target.value);
                         setEmailError("");
                       }}
-                      className={`pl-10 ${emailError ? "border-red-500 focus:ring-red-500" : "focus:border-blue-500 focus:ring-blue-500"}`}
                       required
                     />
                   </div>
-                  <AnimatePresence>
-                    {emailError && (
-                      <motion.p
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="text-xs text-red-600 font-medium"
-                      >
-                        {emailError}
-                      </motion.p>
-                    )}
-                  </AnimatePresence>
-                </motion.div>
+                  {emailError && <span className="text-xs text-red-500 mt-1">{emailError}</span>}
+                </label>
 
-                {/* Password field */}
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.4, delay: 0.5 }}
-                  className="space-y-2"
-                >
-                  <label className="text-sm font-medium text-card-foreground">
-                    Password
-                  </label>
+                <label className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Password</span>
+                  </div>
                   <div className="relative group">
-                    <LockIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-blue-500 transition-colors duration-300" />
-                    <Input
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">lock</span>
+                    <input
+                      className={`w-full rounded-lg border ${passwordError ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 focus:border-primary focus:ring-primary'} bg-white px-10 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 transition-shadow`}
+                      placeholder="••••••••"
                       type="password"
-                      placeholder="Enter your password"
                       value={password}
                       onChange={(e) => {
                         setPassword(e.target.value);
                         setPasswordError("");
                       }}
-                      className={`pl-10 ${passwordError ? "border-red-500 focus:ring-red-500" : "focus:border-blue-500 focus:ring-blue-500"}`}
                       required
                     />
+                    {/* <button className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" type="button">
+                      <span className="material-symbols-outlined text-[20px]">visibility_off</span>
+                    </button> */}
                   </div>
-                  <AnimatePresence>
-                    {passwordError && (
-                      <motion.p
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="text-xs text-red-600 font-medium"
-                      >
-                        {passwordError}
-                      </motion.p>
-                    )}
-                  </AnimatePresence>
-                </motion.div>
+                  {passwordError && <span className="text-xs text-red-500 mt-1">{passwordError}</span>}
 
-                {/* Submit button */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: 0.6 }}
+                  <div className="flex justify-end mt-1">
+                    <button type="button" onClick={() => showToast("Please contact Administrator to reset your password.", "info")} className="text-xs font-medium text-primary hover:text-primary-hover hover:underline transition-colors">Forgot Password?</button>
+                  </div>
+                </label>
+
+                <button
+                  className="hover-pulse mt-2 flex w-full items-center justify-center rounded-lg bg-primary py-3.5 text-sm font-bold text-white shadow-lg shadow-primary/30 transition-all hover:bg-primary-hover active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+                  type="submit"
+                  disabled={isLoading || isGoogleLoading}
                 >
-                  <Button
-                    type="submit"
-                    className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-semibold text-base shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
-                    disabled={isLoading || isGoogleLoading}
-                  >
-                    {isLoading ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Signing in...
-                      </span>
-                    ) : (
-                      "Sign In"
-                    )}
-                  </Button>
-                </motion.div>
-              </motion.form>
+                  {isLoading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Signing in...
+                    </span>
+                  ) : (
+                    "Sign In to Dashboard"
+                  )}
+                </button>
+              </form>
 
-              {/* Switch to Sign Up */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.7 }}
-                className="pt-4 text-center border-t border-border"
-              >
-                <p className="text-sm text-muted-foreground">
+              {/* Optional switch to signup if you want to keep it */}
+              <div className="mt-6 text-center">
+                <p className="text-sm text-slate-500">
                   Don't have an account?{" "}
                   <button
                     type="button"
                     onClick={() => navigate("/signup")}
-                    className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-semibold transition-colors duration-300 hover:underline"
+                    className="text-primary hover:text-primary-hover font-semibold transition-colors hover:underline"
                   >
                     Sign Up
                   </button>
                 </p>
-              </motion.div>
+              </div>
+
             </div>
-          </Card>
-        </motion.div>
+          </motion.div>
+          <p className="mt-4 text-center text-xs text-slate-400">
+            © 2026 PCCOE Exam Cell. All rights reserved.
+          </p>
+        </div>
       </div>
 
       {/* Google Signup Modal */}

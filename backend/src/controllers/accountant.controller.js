@@ -6,30 +6,90 @@ const pool = require("../config/db");
 exports.dashboardStats = async (req, res) => {
   const userDepartment = req.user.department;
 
-  const { rows } = await pool.query(`
-    SELECT
-      COUNT(*) FILTER (WHERE status IN ('submitted', 'SENT_TO_BILLING', 'approved')) AS pending_count,
-      COUNT(*) FILTER (WHERE status = 'paid') AS paid_count,
-      COALESCE(
-        SUM(rc.net_amount) FILTER (WHERE e.status IN ('submitted', 'SENT_TO_BILLING', 'approved')),
-        0
-      ) AS pending_amount,
-      COALESCE(
-        SUM(rc.net_amount) FILTER (WHERE e.status = 'paid'),
-        0
-      ) AS paid_amount,
-      COALESCE(
-        SUM(rc.net_amount),
-        0
-      ) AS total_amount
-    FROM exams e
-    JOIN users u ON u.id = e.faculty_id
-    LEFT JOIN remuneration_calculations rc ON rc.exam_id = e.id
-    WHERE e.status IN ('submitted', 'SENT_TO_BILLING', 'approved', 'paid')
-      AND u.department = $1
-  `, [userDepartment]);
+  try {
+    const { rows } = await pool.query(`
+      SELECT
+        COUNT(*) FILTER (WHERE e.status != 'draft') AS total_claims,
+        COALESCE(SUM(rc.net_amount) FILTER (WHERE e.status != 'draft'), 0) AS total_amount,
+        
+        COUNT(*) FILTER (WHERE e.status IN ('submitted', 'SENT_TO_BILLING')) AS submitted_claims,
+        COALESCE(SUM(rc.net_amount) FILTER (WHERE e.status IN ('submitted', 'SENT_TO_BILLING')), 0) AS submitted_amount,
+        
+        COUNT(*) FILTER (WHERE e.status = 'approved') AS approved_claims,
+        COALESCE(SUM(rc.net_amount) FILTER (WHERE e.status = 'approved'), 0) AS approved_amount,
+        
+        COUNT(*) FILTER (WHERE e.status = 'paid') AS paid_claims,
+        COALESCE(SUM(rc.net_amount) FILTER (WHERE e.status = 'paid'), 0) AS paid_amount,
+        
+        COUNT(*) FILTER (WHERE e.status = 'rejected') AS rejected_claims,
+        COALESCE(SUM(rc.net_amount) FILTER (WHERE e.status = 'rejected'), 0) AS rejected_amount
+      FROM exams e
+      JOIN users u ON u.id = e.faculty_id
+      LEFT JOIN remuneration_calculations rc ON rc.exam_id = e.id
+      WHERE u.department = $1
+    `, [userDepartment]);
 
-  res.json(rows[0]);
+    const recentClaims = await pool.query(`
+      SELECT
+        e.id,
+        e.subject_name,
+        e.exam_type,
+        e.status,
+        e.created_at,
+        CASE 
+          WHEN e.claim_form_type = 'TEACHING_EXTERNAL' THEN ex.full_name 
+          ELSE u.name 
+        END AS claimant_name,
+        u.department,
+        rc.net_amount
+      FROM exams e
+      JOIN users u ON e.faculty_id = u.id
+      LEFT JOIN external_examiners ex ON ex.id = e.external_examiner_id
+      LEFT JOIN remuneration_calculations rc ON rc.exam_id = e.id
+      WHERE e.status != 'draft' AND u.department = $1
+      ORDER BY e.created_at DESC
+      LIMIT 4
+    `, [userDepartment]);
+
+    const alerts = await pool.query(`
+      SELECT
+        COUNT(*) FILTER (
+          WHERE e.status IN ('submitted', 'SENT_TO_BILLING') 
+          AND e.created_at < NOW() - INTERVAL '7 days'
+        ) AS pending_beyond_limit,
+        COUNT(DISTINCT ca.exam_id) FILTER (
+          WHERE ca.action_type = 'REJECTED' AND e.status IN ('submitted', 'SENT_TO_BILLING')
+        ) AS repeated_rejections,
+        COUNT(*) FILTER (
+          WHERE e.claim_form_type = 'TEACHING_EXTERNAL'
+          AND e.external_examiner_id IS NULL
+        ) AS external_without_docs,
+        COUNT(*) FILTER (
+          WHERE EXISTS (
+            SELECT 1 FROM remuneration_calculations rc 
+            WHERE rc.exam_id = e.id AND rc.min_applied = true
+          )
+        ) AS rate_mismatch_flags
+      FROM exams e
+      JOIN users u ON u.id = e.faculty_id
+      LEFT JOIN claim_actions ca ON ca.exam_id = e.id
+      WHERE u.department = $1
+    `, [userDepartment]);
+
+    res.json({
+      stats: rows[0],
+      alerts: {
+        pending_beyond_limit: parseInt(alerts.rows[0].pending_beyond_limit || 0),
+        repeated_rejections: parseInt(alerts.rows[0].repeated_rejections || 0),
+        external_without_docs: parseInt(alerts.rows[0].external_without_docs || 0),
+        rate_mismatch_flags: parseInt(alerts.rows[0].rate_mismatch_flags || 0)
+      },
+      recent_claims: recentClaims.rows
+    });
+  } catch (error) {
+    console.error("Dashboard error:", error);
+    res.status(500).json({ message: "Failed to load dashboard statistics" });
+  }
 };
 
 

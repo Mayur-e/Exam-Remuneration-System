@@ -7,24 +7,36 @@ exports.getDashboardStats = async (req, res) => {
     try {
         const { rows } = await pool.query(`
       SELECT
-        COUNT(*) FILTER (WHERE status != 'draft') AS total_claims,
-        COUNT(*) FILTER (WHERE status = 'submitted') AS submitted_claims,
-        COUNT(*) FILTER (WHERE status = 'approved') AS approved_claims,
-        COUNT(*) FILTER (WHERE status = 'paid') AS paid_claims,
-        COUNT(*) FILTER (WHERE status = 'rejected') AS rejected_claims,
-        COUNT(*) FILTER (WHERE claim_form_type = 'TEACHING_EXTERNAL' AND status != 'draft') AS external_claims
-      FROM exams
+        COUNT(*) FILTER (WHERE e.status != 'draft') AS total_claims,
+        COALESCE(SUM(rc.net_amount) FILTER (WHERE e.status != 'draft'), 0) AS total_amount,
+        
+        COUNT(*) FILTER (WHERE e.status = 'submitted') AS submitted_claims,
+        COALESCE(SUM(rc.net_amount) FILTER (WHERE e.status = 'submitted'), 0) AS submitted_amount,
+        
+        COUNT(*) FILTER (WHERE e.status = 'approved') AS approved_claims,
+        COALESCE(SUM(rc.net_amount) FILTER (WHERE e.status = 'approved'), 0) AS approved_amount,
+        
+        COUNT(*) FILTER (WHERE e.status = 'paid') AS paid_claims,
+        COALESCE(SUM(rc.net_amount) FILTER (WHERE e.status = 'paid'), 0) AS paid_amount,
+        
+        COUNT(*) FILTER (WHERE e.status = 'rejected') AS rejected_claims,
+        COALESCE(SUM(rc.net_amount) FILTER (WHERE e.status = 'rejected'), 0) AS rejected_amount,
+        
+        COUNT(*) FILTER (WHERE e.claim_form_type = 'TEACHING_EXTERNAL' AND e.status != 'draft') AS external_claims,
+        COALESCE(SUM(rc.net_amount) FILTER (WHERE e.claim_form_type = 'TEACHING_EXTERNAL' AND e.status != 'draft'), 0) AS external_amount
+      FROM exams e
+      LEFT JOIN remuneration_calculations rc ON e.id = rc.exam_id
     `);
 
         // Get alerts
         const alerts = await pool.query(`
       SELECT
         COUNT(*) FILTER (
-          WHERE status = 'submitted' 
-          AND created_at < NOW() - INTERVAL '7 days'
+          WHERE e.status IN ('submitted', 'SENT_TO_BILLING') 
+          AND e.created_at < NOW() - INTERVAL '7 days'
         ) AS pending_beyond_limit,
-        COUNT(DISTINCT exam_id) FILTER (
-          WHERE action_type = 'REJECTED' AND e.status = 'submitted'
+        COUNT(DISTINCT ca.exam_id) FILTER (
+          WHERE ca.action_type = 'REJECTED' AND e.status IN ('submitted', 'SENT_TO_BILLING')
         ) AS repeated_rejections,
         COUNT(*) FILTER (
           WHERE claim_form_type = 'TEACHING_EXTERNAL'
@@ -40,9 +52,52 @@ exports.getDashboardStats = async (req, res) => {
       LEFT JOIN claim_actions ca ON ca.exam_id = e.id
     `);
 
+        // Get department-wise expenditures
+        const deptExpenditures = await pool.query(`
+      SELECT
+        COALESCE(u.department, 'External') AS department,
+        COALESCE(SUM(rc.net_amount), 0) AS total_expenditure
+      FROM exams e
+      JOIN users u ON e.faculty_id = u.id
+      LEFT JOIN remuneration_calculations rc ON rc.exam_id = e.id
+      WHERE e.status IN ('approved', 'paid')
+      GROUP BY u.department
+      ORDER BY total_expenditure DESC
+    `);
+
+        // Get recent claims
+        const recentClaims = await pool.query(`
+      SELECT
+        e.id,
+        e.subject_name,
+        e.exam_type,
+        e.status,
+        e.created_at,
+        CASE 
+          WHEN e.claim_form_type = 'TEACHING_EXTERNAL' THEN ex.full_name 
+          ELSE u.name 
+        END AS claimant_name,
+        u.department,
+        rc.net_amount
+      FROM exams e
+      JOIN users u ON e.faculty_id = u.id
+      LEFT JOIN external_examiners ex ON ex.id = e.external_examiner_id
+      LEFT JOIN remuneration_calculations rc ON rc.exam_id = e.id
+      WHERE e.status != 'draft'
+      ORDER BY e.created_at DESC
+      LIMIT 4
+    `);
+
         res.json({
             stats: rows[0],
-            alerts: alerts.rows[0]
+            alerts: {
+                pending_beyond_limit: parseInt(alerts.rows[0].pending_beyond_limit || 0),
+                repeated_rejections: parseInt(alerts.rows[0].repeated_rejections || 0),
+                external_without_docs: parseInt(alerts.rows[0].external_without_docs || 0),
+                rate_mismatch_flags: parseInt(alerts.rows[0].rate_mismatch_flags || 0)
+            },
+            department_expenditures: deptExpenditures.rows,
+            recent_claims: recentClaims.rows
         });
     } catch (error) {
         console.error("getDashboardStats error:", error);
@@ -1021,5 +1076,33 @@ exports.toggleUserStatus = async (req, res) => {
     } catch (error) {
         console.error("Toggle user status error:", error);
         res.status(500).json({ message: "Failed to update user status" });
+    }
+};
+
+exports.resetUserPassword = async (req, res) => {
+    const { userId } = req.params;
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters long" });
+    }
+
+    try {
+        const bcrypt = require('bcrypt');
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        const result = await pool.query(
+            `UPDATE users SET password = $1 WHERE id = $2 AND role IN ('FACULTY', 'BILLING_INCHARGE') RETURNING id`,
+            [hashedPassword, userId]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: "User not found or cannot be modified" });
+        }
+
+        res.json({ message: "User password reset successfully" });
+    } catch (error) {
+        console.error("Reset user password error:", error);
+        res.status(500).json({ message: "Failed to reset password" });
     }
 };

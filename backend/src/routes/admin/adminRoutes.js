@@ -50,6 +50,7 @@ router.get("/export/billing-sheet", auth, role(["ADMIN", "BILLING_INCHARGE"]), e
 router.post("/users", auth, role(["ADMIN"]), adminController.createUser);
 router.get("/users", auth, role(["ADMIN"]), adminController.getUsersByRole);
 router.patch("/users/:userId/status", auth, role(["ADMIN"]), adminController.toggleUserStatus);
+router.patch("/users/:userId/password", auth, role(["ADMIN"]), adminController.resetUserPassword);
 
 module.exports = router;
 

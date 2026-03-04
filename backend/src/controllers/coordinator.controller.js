@@ -170,11 +170,21 @@ exports.getCoordinatorClaimDetails = async (req, res) => {
             [examId]
         );
 
+        // Get total registered students
+        const registeredStudents = await pool.query(
+            `SELECT COALESCE(SUM(registered_count), 0) AS total_registered 
+             FROM subject_semester_counts 
+             WHERE subject_code = $1 AND academic_year = $2`,
+            [examData.subject_code, examData.academic_year]
+        );
+        const totalRegisteredStudents = parseInt(registeredStudents.rows[0].total_registered, 10);
+
         res.json({
             exam: examData,
             staff: staff.rows,
             calculation: calc.rows[0] || null,
-            actions: actions.rows
+            actions: actions.rows,
+            total_registered_students: totalRegisteredStudents
         });
 
     } catch (error) {

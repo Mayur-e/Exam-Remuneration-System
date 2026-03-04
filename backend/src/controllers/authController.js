@@ -60,7 +60,7 @@ exports.login = async (req, res) => {
 
 // FACULTY REGISTER
 exports.registerFaculty = async (req, res) => {
-  const { name, email, password, department } = req.body;
+  const { name, email, password, department, prn } = req.body;
 
   if (!email.endsWith(EMAIL_DOMAIN)) {
     return res.status(403).json({ message: "Only college email allowed" });
@@ -75,12 +75,23 @@ exports.registerFaculty = async (req, res) => {
     return res.status(409).json({ message: "User already exists" });
   }
 
+  // Check if PRN is already taken
+  if (prn) {
+    const existingPRN = await pool.query(
+      'SELECT id FROM users WHERE prn = $1',
+      [prn]
+    );
+    if (existingPRN.rows.length > 0) {
+      return res.status(409).json({ message: 'PRN already registered' });
+    }
+  }
+
   const hashedPassword = await bcrypt.hash(password, 10);
 
   await pool.query(
-    `INSERT INTO users (name, email, password, role, department, has_set_password)
-     VALUES ($1, $2, $3, 'FACULTY', $4, true)`,
-    [name, email, hashedPassword, department]
+    `INSERT INTO users (name, email, password, role, department, prn, has_set_password)
+     VALUES ($1, $2, $3, 'FACULTY', $4, $5, true)`,
+    [name, email, hashedPassword, department, prn]
   );
 
   res.status(201).json({ message: "Faculty registered successfully" });
