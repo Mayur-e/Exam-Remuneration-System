@@ -10,7 +10,7 @@ export default function ExportFilterModal({ isOpen, onClose, onExport, isAdmin }
         department: "",
         program: "",
         level: "",
-        exam_type: ""
+        exam_type: []
     });
 
     const PROGRAM_MAPPING = {
@@ -75,11 +75,20 @@ export default function ExportFilterModal({ isOpen, onClose, onExport, isAdmin }
                     ? EXAM_TYPES.filter(t => t.programs.includes(value)).map(t => t.value)
                     : EXAM_TYPES.map(t => t.value);
 
-                if (newFilters.exam_type && !validExamTypes.includes(newFilters.exam_type)) {
-                    newFilters.exam_type = "";
-                }
+                newFilters.exam_type = newFilters.exam_type.filter(et => validExamTypes.includes(et));
             }
             return newFilters;
+        });
+    };
+
+    const toggleExamType = (typeValue) => {
+        setFilters(prev => {
+            const current = [...prev.exam_type];
+            if (current.includes(typeValue)) {
+                return { ...prev, exam_type: current.filter(t => t !== typeValue) };
+            } else {
+                return { ...prev, exam_type: [...current, typeValue] };
+            }
         });
     };
 
@@ -189,20 +198,23 @@ export default function ExportFilterModal({ isOpen, onClose, onExport, isAdmin }
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium mb-1">Exam Type</label>
-                            <select
-                                name="exam_type"
-                                value={filters.exam_type}
-                                onChange={handleChange}
-                                className="w-full px-3 py-2 border rounded-md bg-background focus:ring-2 focus:ring-purple-500"
-                            >
-                                <option value="">All Exam Types</option>
+                            <label className="block text-sm font-medium mb-2">Exam Types</label>
+                            <div className="max-h-48 overflow-y-auto border rounded-md p-3 bg-background space-y-2">
                                 {getAvailableExamTypes().map((type) => (
-                                    <option key={type.value} value={type.value}>
-                                        {type.label}
-                                    </option>
+                                    <label key={type.value} className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={filters.exam_type.includes(type.value)}
+                                            onChange={() => toggleExamType(type.value)}
+                                            className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                        />
+                                        <span className="text-sm">{type.label}</span>
+                                    </label>
                                 ))}
-                            </select>
+                                {getAvailableExamTypes().length === 0 && (
+                                    <p className="text-sm text-gray-500 italic">No exam types available for selected program</p>
+                                )}
+                            </div>
                         </div>
 
                         <div className="pt-4 flex justify-end gap-3">

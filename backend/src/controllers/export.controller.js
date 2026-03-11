@@ -73,8 +73,9 @@ exports.exportBillingSheet = async (req, res) => {
                 queryParams.push(queryLevel);
             }
             if (queryExamType) {
-                externalClaimsQuery += ` AND e.exam_type = $${paramIdx++}`;
-                queryParams.push(queryExamType);
+                const examTypes = queryExamType.split(',');
+                externalClaimsQuery += ` AND e.exam_type = ANY($${paramIdx++})`;
+                queryParams.push(examTypes);
             }
 
             const { rows: extClaims } = await db.query(externalClaimsQuery, queryParams);
@@ -198,8 +199,9 @@ exports.exportBillingSheet = async (req, res) => {
                 intParams.push(queryLevel);
             }
             if (queryExamType) {
-                internalClaimsQuery += ` AND e.exam_type = $${intParamIdx++}`;
-                intParams.push(queryExamType);
+                const examTypes = queryExamType.split(',');
+                internalClaimsQuery += ` AND e.exam_type = ANY($${intParamIdx++})`;
+                intParams.push(examTypes);
             }
             internalClaimsQuery += ` ORDER BY e.exam_date, e.subject_code`;
 
@@ -237,8 +239,9 @@ exports.exportBillingSheet = async (req, res) => {
                 staffParams.push(queryLevel);
             }
             if (queryExamType) {
-                staffClaimsQuery += ` AND e.exam_type = $${staffParamIdx++}`;
-                staffParams.push(queryExamType);
+                const examTypes = queryExamType.split(',');
+                staffClaimsQuery += ` AND e.exam_type = ANY($${staffParamIdx++})`;
+                staffParams.push(examTypes);
             }
             staffClaimsQuery += ` ORDER BY e.exam_date, e.subject_code`;
 

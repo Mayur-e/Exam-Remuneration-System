@@ -47,7 +47,11 @@ export default function AdminDashboard() {
       const queryParams = new URLSearchParams();
       if (filters) {
         Object.entries(filters).forEach(([key, value]) => {
-          if (value) queryParams.append(key, value);
+          if (Array.isArray(value) && value.length > 0) {
+            queryParams.append(key, value.join(','));
+          } else if (value && !Array.isArray(value)) {
+            queryParams.append(key, value);
+          }
         });
       }
       const queryString = queryParams.toString();
