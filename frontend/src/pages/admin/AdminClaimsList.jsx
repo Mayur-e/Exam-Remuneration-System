@@ -9,11 +9,20 @@ export default function AdminClaimsList() {
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
 
+    const [globalStats, setGlobalStats] = useState(null);
+
     const status = searchParams.get("status") || "";
     // Note: department filter is handled frontend-only now to maintain the full dropdown list.
     const [selectedDepartment, setSelectedDepartment] = useState("");
     const examType = searchParams.get("exam_type") || "";
     const claimFormType = searchParams.get("claim_form_type") || "";
+
+    useEffect(() => {
+        // Fetch global stats once so the cards don't change based on filters
+        api.get("/admin/dashboard/stats")
+            .then(res => setGlobalStats(res.data.stats))
+            .catch(console.error);
+    }, []);
 
     useEffect(() => {
         fetchClaims();
@@ -91,48 +100,48 @@ export default function AdminClaimsList() {
                 </div>
             </div>
 
-            {/* Stats row */}
-            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center transition-shadow hover:shadow-md border-l-4 border-l-amber-500">
-                    <div className="flex justify-between items-center mb-2">
-                        <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Pending</p>
-                        <span className="material-symbols-outlined text-amber-500 text-[18px]">pending_actions</span>
-                    </div>
-                    <h3 className="text-2xl font-black text-slate-900">
-                        {claims.filter(c => c.status === 'submitted').length}
-                    </h3>
+        {/* Stats row */}
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center transition-shadow hover:shadow-md border-l-4 border-l-amber-500">
+                <div className="flex justify-between items-center mb-2">
+                    <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Pending</p>
+                    <span className="material-symbols-outlined text-amber-500 text-[18px]">pending_actions</span>
                 </div>
-
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center transition-shadow hover:shadow-md border-l-4 border-l-blue-500">
-                    <div className="flex justify-between items-center mb-2">
-                        <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Review</p>
-                        <span className="material-symbols-outlined text-blue-500 text-[18px]">rate_review</span>
-                    </div>
-                    <h3 className="text-2xl font-black text-slate-900">
-                        {claims.filter(c => ['review', 'under_review', 'verified', 'coordinator_submitted', 'under_coordinator_review'].includes(c.status?.toLowerCase())).length}
-                    </h3>
-                </div>
-
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center transition-shadow hover:shadow-md border-l-4 border-l-emerald-500">
-                    <div className="flex justify-between items-center mb-2">
-                        <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Approved</p>
-                        <span className="material-symbols-outlined text-emerald-500 text-[18px]">check_circle</span>
-                    </div>
-                    <h3 className="text-2xl font-black text-slate-900">
-                        {claims.filter(c => ['approved', 'paid'].includes(c.status?.toLowerCase())).length}
-                    </h3>
-                </div>
-
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center transition-shadow hover:shadow-md border-l-4 border-l-red-500">
-                    <div className="flex justify-between items-center mb-2">
-                        <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Rejected</p>
-                        <span className="material-symbols-outlined text-red-500 text-[18px]">cancel</span>
-                    </div>
-                    <h3 className="text-2xl font-black text-slate-900">
-                        {claims.filter(c => ['rejected', 'coordinator_rejected'].includes(c.status?.toLowerCase())).length}
-                    </h3>
-                </div>
+                <h3 className="text-2xl font-black text-slate-900">
+                    {globalStats ? globalStats.submitted_claims : '—'}
+                </h3>
             </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center transition-shadow hover:shadow-md border-l-4 border-l-blue-500">
+                <div className="flex justify-between items-center mb-2">
+                    <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Review</p>
+                    <span className="material-symbols-outlined text-blue-500 text-[18px]">rate_review</span>
+                </div>
+                <h3 className="text-2xl font-black text-slate-900">
+                    {globalStats ? globalStats.review_claims : '—'}
+                </h3>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center transition-shadow hover:shadow-md border-l-4 border-l-emerald-500">
+                <div className="flex justify-between items-center mb-2">
+                    <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Approved</p>
+                    <span className="material-symbols-outlined text-emerald-500 text-[18px]">check_circle</span>
+                </div>
+                <h3 className="text-2xl font-black text-slate-900">
+                    {globalStats ? (Number(globalStats.approved_claims) + Number(globalStats.paid_claims)) : '—'}
+                </h3>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center transition-shadow hover:shadow-md border-l-4 border-l-red-500">
+                <div className="flex justify-between items-center mb-2">
+                    <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Rejected</p>
+                    <span className="material-symbols-outlined text-red-500 text-[18px]">cancel</span>
+                </div>
+                <h3 className="text-2xl font-black text-slate-900">
+                    {globalStats ? globalStats.rejected_claims : '—'}
+                </h3>
+            </div>
+        </div>
 
             {/* Filter / Search Bar */}
             <div className="flex flex-col xl:flex-row gap-4 justify-between items-center bg-white p-2 rounded-xl border border-slate-200 shadow-sm">

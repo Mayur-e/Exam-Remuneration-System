@@ -9,9 +9,18 @@ export default function Bills() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
+  const [globalStats, setGlobalStats] = useState(null);
+
   const status = searchParams.get("status") || "";
   const examType = searchParams.get("exam_type") || "";
   const claimFormType = searchParams.get("claim_form_type") || "";
+
+  useEffect(() => {
+    // Fetch global stats once so the cards don't change based on filters
+    api.get("/accountant/dashboard")
+      .then(res => setGlobalStats(res.data.stats))
+      .catch(console.error);
+  }, []);
 
   useEffect(() => {
     fetchClaims();
@@ -90,7 +99,7 @@ export default function Bills() {
             <span className="material-symbols-outlined text-amber-500 text-[18px]">pending_actions</span>
           </div>
           <h3 className="text-2xl font-black text-slate-900">
-            {claims.filter(c => ['submitted', 'SENT_TO_BILLING'].includes(c.status)).length}
+            {globalStats ? globalStats.submitted_claims : '—'}
           </h3>
         </div>
 
@@ -100,7 +109,7 @@ export default function Bills() {
             <span className="material-symbols-outlined text-blue-500 text-[18px]">payments</span>
           </div>
           <h3 className="text-2xl font-black text-slate-900">
-            {claims.filter(c => ['paid'].includes(c.status?.toLowerCase())).length}
+            {globalStats ? globalStats.paid_claims : '—'}
           </h3>
         </div>
 
@@ -110,7 +119,7 @@ export default function Bills() {
             <span className="material-symbols-outlined text-emerald-500 text-[18px]">check_circle</span>
           </div>
           <h3 className="text-2xl font-black text-slate-900">
-            {claims.filter(c => ['approved'].includes(c.status?.toLowerCase())).length}
+            {globalStats ? globalStats.approved_claims : '—'}
           </h3>
         </div>
 
@@ -120,7 +129,7 @@ export default function Bills() {
             <span className="material-symbols-outlined text-red-500 text-[18px]">cancel</span>
           </div>
           <h3 className="text-2xl font-black text-slate-900">
-            {claims.filter(c => ['rejected', 'coordinator_rejected'].includes(c.status?.toLowerCase())).length}
+            {globalStats ? globalStats.rejected_claims : '—'}
           </h3>
         </div>
       </div>

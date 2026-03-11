@@ -19,8 +19,10 @@ exports.getDashboardStats = async (req, res) => {
         COUNT(*) FILTER (WHERE e.status = 'paid') AS paid_claims,
         COALESCE(SUM(rc.net_amount) FILTER (WHERE e.status = 'paid'), 0) AS paid_amount,
         
-        COUNT(*) FILTER (WHERE e.status = 'rejected') AS rejected_claims,
-        COALESCE(SUM(rc.net_amount) FILTER (WHERE e.status = 'rejected'), 0) AS rejected_amount,
+        COUNT(*) FILTER (WHERE e.status IN ('rejected', 'coordinator_rejected')) AS rejected_claims,
+        COALESCE(SUM(rc.net_amount) FILTER (WHERE e.status IN ('rejected', 'coordinator_rejected')), 0) AS rejected_amount,
+
+        COUNT(*) FILTER (WHERE e.status IN ('review', 'under_review', 'verified', 'coordinator_submitted', 'under_coordinator_review')) AS review_claims,
         
         COUNT(*) FILTER (WHERE e.claim_form_type = 'TEACHING_EXTERNAL' AND e.status != 'draft') AS external_claims,
         COALESCE(SUM(rc.net_amount) FILTER (WHERE e.claim_form_type = 'TEACHING_EXTERNAL' AND e.status != 'draft'), 0) AS external_amount
