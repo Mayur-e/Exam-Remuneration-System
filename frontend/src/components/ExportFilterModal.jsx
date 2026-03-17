@@ -12,6 +12,7 @@ export default function ExportFilterModal({ isOpen, onClose, onExport, isAdmin }
         level: "",
         exam_type: []
     });
+    const [isExamDropdownOpen, setIsExamDropdownOpen] = useState(false);
 
     const PROGRAM_MAPPING = {
         "BTECH": "B.Tech.",
@@ -128,7 +129,7 @@ export default function ExportFilterModal({ isOpen, onClose, onExport, isAdmin }
                                 name="academic_year"
                                 value={filters.academic_year}
                                 onChange={handleChange}
-                                className="w-full px-3 py-2 border rounded-md bg-background focus:ring-2 focus:ring-purple-500"
+                                className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-background focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm font-medium text-slate-700"
                             >
                                 <option value="">All Years</option>
                                 <option value="2023-24">2023-24</option>
@@ -143,7 +144,7 @@ export default function ExportFilterModal({ isOpen, onClose, onExport, isAdmin }
                                 name="program"
                                 value={filters.program}
                                 onChange={handleChange}
-                                className="w-full px-3 py-2 border rounded-md bg-background focus:ring-2 focus:ring-purple-500"
+                                className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-background focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm font-medium text-slate-700"
                             >
                                 <option value="">All Programmes</option>
                                 {Object.entries(PROGRAM_MAPPING).map(([dbProg, displayProg]) => (
@@ -159,7 +160,7 @@ export default function ExportFilterModal({ isOpen, onClose, onExport, isAdmin }
                                     name="department"
                                     value={filters.department}
                                     onChange={handleChange}
-                                    className="w-full px-3 py-2 border rounded-md bg-background focus:ring-2 focus:ring-purple-500"
+                                    className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-background focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm font-medium text-slate-700 disabled:bg-slate-50 disabled:text-slate-400"
                                     disabled={!filters.program}
                                 >
                                     <option value="">All Departments</option>
@@ -187,7 +188,7 @@ export default function ExportFilterModal({ isOpen, onClose, onExport, isAdmin }
                                 name="level"
                                 value={filters.level}
                                 onChange={handleChange}
-                                className="w-full px-3 py-2 border rounded-md bg-background focus:ring-2 focus:ring-purple-500"
+                                className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-background focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm font-medium text-slate-700 disabled:bg-slate-50 disabled:text-slate-400"
                                 disabled={!filters.program} // Disable if no program selected
                             >
                                 <option value="">All Classes</option>
@@ -197,24 +198,80 @@ export default function ExportFilterModal({ isOpen, onClose, onExport, isAdmin }
                             </select>
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium mb-2">Exam Types</label>
-                            <div className="max-h-48 overflow-y-auto border rounded-md p-3 bg-background space-y-2">
-                                {getAvailableExamTypes().map((type) => (
-                                    <label key={type.value} className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={filters.exam_type.includes(type.value)}
-                                            onChange={() => toggleExamType(type.value)}
-                                            className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                                        />
-                                        <span className="text-sm">{type.label}</span>
-                                    </label>
-                                ))}
-                                {getAvailableExamTypes().length === 0 && (
-                                    <p className="text-sm text-gray-500 italic">No exam types available for selected program</p>
+                        {/* Exam Types Multi-select Dropdown */}
+                        <div className="relative">
+                            <label className="block text-sm font-medium mb-1.5 text-slate-700">Exam Types</label>
+                            
+                            {/* Click outside overlay */}
+                            {isExamDropdownOpen && (
+                                <div 
+                                    className="fixed inset-0 z-40 cursor-default" 
+                                    onClick={() => setIsExamDropdownOpen(false)}
+                                />
+                            )}
+                            
+                            <button
+                                type="button"
+                                onClick={() => setIsExamDropdownOpen(!isExamDropdownOpen)}
+                                className={`w-full px-4 py-3 border rounded-xl bg-background flex justify-between items-center text-sm transition-all duration-200 relative z-50 ${
+                                    isExamDropdownOpen 
+                                    ? 'ring-2 ring-emerald-500/20 border-emerald-500 shadow-sm' 
+                                    : 'border-slate-200 hover:border-slate-300 shadow-none'
+                                }`}
+                            >
+                                <span className={`font-semibold truncate max-w-[280px] ${filters.exam_type.length === 0 ? 'text-slate-500' : 'text-slate-700'}`}>
+                                    {filters.exam_type.length === 0 
+                                        ? "All Exams Selected" 
+                                        : filters.exam_type.length === getAvailableExamTypes().length
+                                            ? "All Exams Selected"
+                                            : `${filters.exam_type.length} Types Selected`}
+                                </span>
+                                <span className={`material-symbols-outlined text-slate-400 transition-transform duration-300 ${isExamDropdownOpen ? 'rotate-180' : ''}`}>
+                                    expand_more
+                                </span>
+                            </button>
+                            
+                            <AnimatePresence>
+                                {isExamDropdownOpen && (
+                                    <motion.div 
+                                        initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                        className="absolute z-50 w-full mt-2 max-h-60 overflow-y-auto border border-slate-200 rounded-xl bg-white shadow-2xl p-2 space-y-0.5"
+                                    >
+                                        <label className="flex items-center gap-3 p-2.5 hover:bg-emerald-50 rounded-lg cursor-pointer transition-colors group">
+                                            <div className="relative flex items-center">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={filters.exam_type.length === 0 || filters.exam_type.length === getAvailableExamTypes().length}
+                                                    onChange={() => {
+                                                        setFilters(prev => ({ ...prev, exam_type: [] }));
+                                                        // Keep open to let user see the change, or close? 
+                                                        // Usually keep open for multi-select.
+                                                    }}
+                                                    className="rounded-md border-slate-300 text-emerald-600 focus:ring-emerald-500 h-4.5 w-4.5 transition-all cursor-pointer"
+                                                />
+                                            </div>
+                                            <span className="text-sm font-bold text-slate-800 group-hover:text-emerald-700 transition-colors">All Exams</span>
+                                        </label>
+                                        <div className="border-t border-slate-100 my-1 mx-2"></div>
+                                        {getAvailableExamTypes().map((type) => (
+                                            <label key={type.value} className="flex items-center gap-3 p-2.5 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors group">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={filters.exam_type.includes(type.value)}
+                                                    onChange={() => toggleExamType(type.value)}
+                                                    className="rounded-md border-slate-300 text-emerald-600 focus:ring-emerald-500 h-4.5 w-4.5 cursor-pointer"
+                                                />
+                                                <span className="text-sm text-slate-600 font-medium group-hover:text-slate-900 transition-colors truncate">{type.label}</span>
+                                            </label>
+                                        ))}
+                                        {getAvailableExamTypes().length === 0 && (
+                                            <p className="text-sm text-slate-400 italic p-4 text-center">No types for selected program</p>
+                                        )}
+                                    </motion.div>
                                 )}
-                            </div>
+                            </AnimatePresence>
                         </div>
 
                         <div className="pt-4 flex justify-end gap-3">
