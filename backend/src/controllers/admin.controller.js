@@ -979,7 +979,7 @@ exports.cloneRatesToNewYear = async (req, res) => {
    USER MANAGEMENT (ADMIN)
 ================================ */
 exports.createUser = async (req, res) => {
-    const { name, email, password, role, department } = req.body;
+    const { name, email, password, role, department, prn } = req.body;
 
     // Validation
     if (!name || !email || !password || !role || !department) {
@@ -1005,15 +1005,26 @@ exports.createUser = async (req, res) => {
             return res.status(409).json({ message: "User with this email already exists" });
         }
 
+        // Check if PRN is already taken (optional field)
+        if (prn) {
+            const existingPRN = await pool.query(
+                'SELECT id FROM users WHERE prn = $1',
+                [prn]
+            );
+            if (existingPRN.rows.length > 0) {
+                return res.status(409).json({ message: "PRN already registered" });
+            }
+        }
+
         // Hash password
         const bcrypt = require('bcrypt');
         const hashedPassword = await bcrypt.hash(password, 10);
 
         // Create user
         await pool.query(
-            `INSERT INTO users (name, email, password, role, department, is_active, has_set_password)
-             VALUES ($1, $2, $3, $4, $5, true, true)`,
-            [name, email, hashedPassword, role, department]
+            `INSERT INTO users (name, email, password, role, department, prn, is_active, has_set_password)
+             VALUES ($1, $2, $3, $4, $5, $6, true, true)`,
+            [name, email, hashedPassword, role, department, prn || null]
         );
 
         res.status(201).json({ message: `${role} user created successfully` });
