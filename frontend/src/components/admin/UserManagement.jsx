@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useToast } from "../../hooks/useToast";
 import api from "../../services/api";
+import { PROGRAM_DEPARTMENTS } from "../../constants/departments";
 
 export default function UserManagement() {
     const [users, setUsers] = useState([]);
@@ -15,6 +16,7 @@ export default function UserManagement() {
     const [formData, setFormData] = useState({
         name: "",
         email: "",
+        prn: "",
         password: "",
         role: "FACULTY",
         department: ""
@@ -53,6 +55,7 @@ export default function UserManagement() {
             setFormData({
                 name: "",
                 email: "",
+                prn: "",
                 password: "",
                 role: "FACULTY",
                 department: ""
@@ -269,6 +272,19 @@ export default function UserManagement() {
                                 </div>
                             </div>
                             <div>
+                                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">PRN</label>
+                                <div className="relative">
+                                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">tag</span>
+                                    <input
+                                        type="text"
+                                        value={formData.prn}
+                                        onChange={(e) => setFormData({ ...formData, prn: e.target.value })}
+                                        placeholder="e.g. 12345678"
+                                        className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                                    />
+                                </div>
+                            </div>
+                            <div>
                                 <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Email Address</label>
                                 <div className="relative">
                                     <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">mail</span>
@@ -323,11 +339,13 @@ export default function UserManagement() {
                                             required
                                         >
                                             <option value="">Select</option>
-                                            <option value="Computer Engineering">Computer Eng.</option>
-                                            <option value="Information Technology">IT</option>
-                                            <option value="Mechanical">Mechanical</option>
-                                            <option value="Civil">Civil</option>
-                                            <option value="Electronics">Electronics</option>
+                                            {Object.entries(PROGRAM_DEPARTMENTS).map(([program, depts]) => (
+                                                <optgroup key={program} label={program}>
+                                                    {depts.map((dept) => (
+                                                        <option key={dept} value={dept}>{dept}</option>
+                                                    ))}
+                                                </optgroup>
+                                            ))}
                                         </select>
                                         <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[20px]">expand_more</span>
                                     </div>
