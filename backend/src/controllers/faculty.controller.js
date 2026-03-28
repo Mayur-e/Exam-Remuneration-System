@@ -1,4 +1,4 @@
-﻿const pool = require("../config/db");
+const pool = require("../config/db");
 const crypto = require("crypto");
 
 /**
@@ -246,7 +246,7 @@ exports.updateExam = async (req, res) => {
     }
 
     const currentExam = examCheck.rows[0];
-    if (currentExam.status !== "draft" && currentExam.status !== "rejected") {
+    if (currentExam.status !== "draft" && currentExam.status !== "rejected" && currentExam.status !== "COORDINATOR_REJECTED") {
       return res.status(400).json({ message: "Cannot modify submitted claim" });
     }
 
@@ -419,7 +419,7 @@ exports.addExamStaff = async (req, res) => {
     return res.status(404).json({ message: "Exam not found" });
   }
 
-  if (exam.rows[0].status !== "draft") {
+  if (exam.rows[0].status !== "draft" && exam.rows[0].status !== "rejected" && exam.rows[0].status !== "COORDINATOR_REJECTED") {
     return res.status(400).json({ message: "Cannot modify submitted claim" });
   }
 
@@ -693,10 +693,8 @@ exports.submitExam = async (req, res) => {
     }
 
     // 7. Lock exam as submitted
-    // NON_TEACHING claims bypass course coordinator review
-    const newStatus = exam.claim_form_type === 'NON_TEACHING'
-      ? 'SENT_TO_BILLING'
-      : 'UNDER_COORDINATOR_REVIEW';
+    // ALL claims now go to coordinator review
+    const newStatus = 'UNDER_COORDINATOR_REVIEW';
 
     await pool.query(
       `UPDATE exams SET status=$1, updated_at=NOW() WHERE id=$2`,
@@ -1311,10 +1309,8 @@ exports.resubmitClaim = async (req, res) => {
       return res.status(400).json({ message: "Only rejected claims can be resubmitted" });
     }
 
-    // Workflow logic: Re-route to coordinator unless it's a non-teaching claim that bypasses it
-    const newStatus = exam.claim_form_type === 'NON_TEACHING'
-      ? 'SENT_TO_BILLING'
-      : 'UNDER_COORDINATOR_REVIEW';
+    // Workflow logic: Re-route to coordinator
+    const newStatus = 'UNDER_COORDINATOR_REVIEW';
 
     await pool.query('BEGIN');
 
@@ -1382,7 +1378,7 @@ exports.updateExamStaff = async (req, res) => {
     return res.status(404).json({ message: "Exam not found" });
   }
 
-  if (exam.rows[0].status !== "draft" && exam.rows[0].status !== "rejected") {
+  if (exam.rows[0].status !== "draft" && exam.rows[0].status !== "rejected" && exam.rows[0].status !== "COORDINATOR_REJECTED") {
     return res.status(400).json({ message: "Cannot modify submitted claim" });
   }
 
@@ -1427,7 +1423,7 @@ exports.deleteExamStaff = async (req, res) => {
     return res.status(404).json({ message: "Exam not found" });
   }
 
-  if (exam.rows[0].status !== "draft" && exam.rows[0].status !== "rejected") {
+  if (exam.rows[0].status !== "draft" && exam.rows[0].status !== "rejected" && exam.rows[0].status !== "COORDINATOR_REJECTED") {
     return res.status(400).json({ message: "Cannot modify submitted claim" });
   }
 
