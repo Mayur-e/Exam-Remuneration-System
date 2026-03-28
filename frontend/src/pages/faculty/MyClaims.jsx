@@ -209,30 +209,31 @@ export default function MyClaims() {
 
     if (claim.status === 'draft') return timeline;
 
-    // Step 2: Review
-    const isApproved = claim.status === 'approved' || claim.status === 'paid';
-    const isUnderReview = ['submitted', 'UNDER_COORDINATOR_REVIEW', 'COORDINATOR_VERIFIED'].includes(claim.status);
+    // Step 2: Coordinator Review
+    const isCoordinatorVerified = ['COORDINATOR_VERIFIED', 'SENT_TO_BILLING', 'approved', 'paid'].includes(claim.status);
+    const isUnderCoordinatorReview = ['submitted', 'UNDER_COORDINATOR_REVIEW'].includes(claim.status);
 
     timeline.push({
-      status: "Department Review",
-      desc: isApproved ? "Approved by Coordinator" : "In Progress - Document Verification",
-      icon: isApproved ? "check" : "sync",
-      iconBg: isApproved ? "bg-green-500" : "bg-blue-500",
-      fade: false,
-      pulse: isUnderReview
+      status: "Coordinator Verified",
+      desc: isCoordinatorVerified ? "Verified by Course Coordinator" : "Review in progress by Coordinator",
+      icon: isCoordinatorVerified ? "check" : "sync",
+      iconBg: isCoordinatorVerified ? "bg-green-500" : (isUnderCoordinatorReview ? "bg-blue-500" : "bg-slate-300"),
+      fade: !isCoordinatorVerified && !isUnderCoordinatorReview,
+      pulse: isUnderCoordinatorReview
     });
 
-    // Step 3: Billing / Paid
+    // Step 3: Billing Approval
     const isPaid = claim.status === 'paid';
-    const isSentToBilling = claim.status === 'SENT_TO_BILLING' || claim.status === 'approved';
+    const isBillingApproved = ['approved', 'paid'].includes(claim.status);
+    const isUnderBillingReview = claim.status === 'SENT_TO_BILLING';
 
     timeline.push({
-      status: "Account Verification",
-      desc: isPaid ? "Payment Processed" : (isSentToBilling ? "Processing Payment" : "Pending department approval"),
-      icon: isPaid ? "check" : (isSentToBilling ? "sync" : "account_balance"),
-      iconBg: isPaid ? "bg-green-500" : (isSentToBilling ? "bg-blue-500" : "bg-slate-300"),
-      fade: !isSentToBilling && !isPaid,
-      pulse: isSentToBilling && !isPaid
+      status: "Billing Approved",
+      desc: isPaid ? "Payment Processed" : (isBillingApproved ? "Approved - Processing Payment" : (isUnderBillingReview ? "Review in progress by Billing" : "Waiting for coordinator verification")),
+      icon: isBillingApproved ? "check" : (isUnderBillingReview ? "sync" : "account_balance"),
+      iconBg: isBillingApproved ? "bg-green-500" : (isUnderBillingReview ? "bg-blue-500" : "bg-slate-300"),
+      fade: !isBillingApproved && !isUnderBillingReview,
+      pulse: isUnderBillingReview
     });
 
     return timeline;
