@@ -443,8 +443,24 @@ export default function CoordinatorDashboard() {
                                         {processing ? "Confirming..." : "Confirm Action"}
                                     </button>
                                 ) : (
-                                    <div className="bg-slate-100 p-3 rounded-xl text-center text-slate-500 text-sm font-semibold">
-                                        No pending actions for this claim.
+                                    <div className={`p-4 rounded-xl text-center text-sm font-bold border flex items-center justify-center gap-2 shadow-sm ${
+                                        ["COORDINATOR_VERIFIED", "SENT_TO_BILLING", "approved", "paid"].includes(exam?.status) 
+                                        ? "bg-emerald-50 text-emerald-600 border-emerald-100" 
+                                        : ["rejected", "COORDINATOR_REJECTED"].includes(exam?.status)
+                                        ? "bg-red-50 text-red-600 border-red-100"
+                                        : "bg-slate-100 text-slate-500 border-slate-200"
+                                    }`}>
+                                        <span className="material-symbols-outlined text-[20px]">
+                                            {["COORDINATOR_VERIFIED", "SENT_TO_BILLING", "approved", "paid"].includes(exam?.status) ? "verified" : 
+                                             ["rejected", "COORDINATOR_REJECTED"].includes(exam?.status) ? "cancel" : "info"}
+                                        </span>
+                                        {exam?.status === "COORDINATOR_VERIFIED" ? "Claim is verified" : 
+                                         exam?.status === "SENT_TO_BILLING" ? "Claim sent to billing" :
+                                         exam?.status === "approved" ? "Claim is approved" :
+                                         exam?.status === "paid" ? "Claim is paid" :
+                                         exam?.status === "COORDINATOR_REJECTED" ? "Claim rejected by you" :
+                                         exam?.status === "rejected" ? "Claim has been rejected" :
+                                         "No pending actions for this claim."}
                                     </div>
                                 )}
                             </div>
