@@ -10,19 +10,19 @@ exports.getDashboardStats = async (req, res) => {
         COUNT(*) FILTER (WHERE e.status != 'draft') AS total_claims,
         COALESCE(SUM(rc.net_amount) FILTER (WHERE e.status != 'draft'), 0) AS total_amount,
         
-        COUNT(*) FILTER (WHERE e.status = 'submitted') AS submitted_claims,
-        COALESCE(SUM(rc.net_amount) FILTER (WHERE e.status = 'submitted'), 0) AS submitted_amount,
+        COUNT(*) FILTER (WHERE e.status IN ('submitted', 'SENT_TO_BILLING')) AS submitted_claims,
+        COALESCE(SUM(rc.net_amount) FILTER (WHERE e.status IN ('submitted', 'SENT_TO_BILLING')), 0) AS submitted_amount,
         
         COUNT(*) FILTER (WHERE e.status = 'approved') AS approved_claims,
-        COALESCE(SUM(rc.net_amount) FILTER (WHERE e.status = 'approved'), 0) AS approved_amount,
+        COALESCE(SUM(rc.net_amount) FILTER (WHERE e.status = 'approved'),0) AS approved_amount,
         
         COUNT(*) FILTER (WHERE e.status = 'paid') AS paid_claims,
         COALESCE(SUM(rc.net_amount) FILTER (WHERE e.status = 'paid'), 0) AS paid_amount,
         
-        COUNT(*) FILTER (WHERE e.status IN ('rejected', 'coordinator_rejected')) AS rejected_claims,
-        COALESCE(SUM(rc.net_amount) FILTER (WHERE e.status IN ('rejected', 'coordinator_rejected')), 0) AS rejected_amount,
+        COUNT(*) FILTER (WHERE e.status IN ('rejected', 'COORDINATOR_REJECTED')) AS rejected_claims,
+        COALESCE(SUM(rc.net_amount) FILTER (WHERE e.status IN ('rejected', 'COORDINATOR_REJECTED')), 0) AS rejected_amount,
 
-        COUNT(*) FILTER (WHERE e.status IN ('review', 'under_review', 'verified', 'coordinator_submitted', 'under_coordinator_review')) AS review_claims,
+        COUNT(*) FILTER (WHERE e.status IN ('UNDER_COORDINATOR_REVIEW', 'COORDINATOR_VERIFIED')) AS review_claims,
         
         COUNT(*) FILTER (WHERE e.claim_form_type = 'TEACHING_EXTERNAL' AND e.status != 'draft') AS external_claims,
         COALESCE(SUM(rc.net_amount) FILTER (WHERE e.claim_form_type = 'TEACHING_EXTERNAL' AND e.status != 'draft'), 0) AS external_amount
