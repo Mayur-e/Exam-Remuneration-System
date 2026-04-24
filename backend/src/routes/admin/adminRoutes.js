@@ -1,10 +1,19 @@
 const express = require("express");
 const router = express.Router();
-const auth = require("../../middleware/authMiddleware");
-const role = require("../../middleware/roleMiddleware");
+const { createAuthMiddleware, authorize } = require("../../middleware/enhancedAuthMiddleware");
+const { sensitiveOperationLimiter } = require("../../middleware/rateLimitingMiddleware");
 const adminController = require("../../controllers/admin.controller");
 const { idParamValidation, rejectClaimValidation, sendBackClaimValidation } = require("../../middleware/validationMiddleware");
 const multer = require("multer");
+
+// Authentication middleware for admin routes
+const authenticate = createAuthMiddleware({
+  allowQueryToken: false,
+  auditLog: true
+});
+
+// All admin routes require ADMIN role
+router.use(authenticate, authorize(["ADMIN"]));
 
 // Multer: memory storage for Excel/CSV bulk import
 const upload = multer({
@@ -26,52 +35,52 @@ const upload = multer({
 });
 
 // Dashboard
-router.get("/dashboard/stats", auth, role(["ADMIN"]), adminController.getDashboardStats);
+router.get("/dashboard/stats", adminController.getDashboardStats);
 
 // Claims Management
-router.get("/claims", auth, role(["ADMIN"]), adminController.getAllClaims);
-router.get("/claims/:id", auth, role(["ADMIN"]), idParamValidation, adminController.getClaimDetails);
-router.post("/claims/:id/reject", auth, role(["ADMIN"]), idParamValidation, rejectClaimValidation, adminController.rejectClaim);
-router.post("/claims/:id/send-back", auth, role(["ADMIN"]), idParamValidation, sendBackClaimValidation, adminController.sendBackClaim);
+router.get("/claims", adminController.getAllClaims);
+router.get("/claims/:id", idParamValidation, adminController.getClaimDetails);
+router.post("/claims/:id/reject", idParamValidation, rejectClaimValidation, adminController.rejectClaim);
+router.post("/claims/:id/send-back", idParamValidation, sendBackClaimValidation, adminController.sendBackClaim);
 
 // External Supervision
-router.get("/external/examiners", auth, role(["ADMIN"]), adminController.getExternalExaminers);
-router.get("/external/links", auth, role(["ADMIN"]), adminController.getExternalLinkStats);
-router.get("/external/documents/:id", auth, role(["ADMIN"]), idParamValidation, adminController.getExternalDocuments);
+router.get("/external/examiners", adminController.getExternalExaminers);
+router.get("/external/links", adminController.getExternalLinkStats);
+router.get("/external/documents/:id", idParamValidation, adminController.getExternalDocuments);
 
 // Faculty Oversight
-router.get("/faculty", auth, role(["ADMIN"]), adminController.listAllFaculty);
-router.get("/faculty/:id", auth, role(["ADMIN"]), idParamValidation, adminController.getFacultyProfile);
+router.get("/faculty", adminController.listAllFaculty);
+router.get("/faculty/:id", idParamValidation, adminController.getFacultyProfile);
 
 // Billing Incharge Audit
-router.get("/billing-incharge/audit", auth, role(["ADMIN"]), adminController.getBillingInchargeAudit);
-router.get("/billing-incharge/:id/actions", auth, role(["ADMIN"]), idParamValidation, adminController.getBillingInchargeActions);
+router.get("/billing-incharge/audit", adminController.getBillingInchargeAudit);
+router.get("/billing-incharge/:id/actions", idParamValidation, adminController.getBillingInchargeActions);
 
 // Audit Logs
-router.get("/audit-logs", auth, role(["ADMIN"]), adminController.getAuditLogs);
+router.get("/audit-logs", adminController.getAuditLogs);
 
 // Rate Management
-router.get("/rates/academic-years", auth, role(["ADMIN"]), adminController.getAcademicYears);
-router.get("/rates", auth, role(["ADMIN"]), adminController.getRates);
-router.put("/rates", auth, role(["ADMIN"]), adminController.updateRates);
-router.post("/rates/clone", auth, role(["ADMIN"]), adminController.cloneRatesToNewYear);
+router.get("/rates/academic-years", adminController.getAcademicYears);
+router.get("/rates", adminController.getRates);
+router.put("/rates", sensitiveOperationLimiter, adminController.updateRates);
+router.post("/rates/clone", sensitiveOperationLimiter, adminController.cloneRatesToNewYear);
 
 // Subject Count Management
 const subjectController = require("../../controllers/subject.controller");
-router.post("/subjects/counts", auth, role(["ADMIN"]), subjectController.setSubjectCount);
-router.get("/subjects/counts", auth, role(["ADMIN"]), subjectController.getSubjectCounts);
-router.get("/subjects/search", auth, role(["ADMIN"]), subjectController.searchSubjects);
+router.post("/subjects/counts", sensitiveOperationLimiter, subjectController.setSubjectCount);
+router.get("/subjects/counts", subjectController.getSubjectCounts);
+router.get("/subjects/search", subjectController.searchSubjects);
 
 // Excel Export
 const exportController = require("../../controllers/export.controller");
-router.get("/export/billing-sheet", auth, role(["ADMIN", "BILLING_INCHARGE"]), exportController.exportBillingSheet);
+router.get("/export/billing-sheet", exportController.exportBillingSheet);
 
 // User Management
-router.post("/users", auth, role(["ADMIN"]), adminController.createUser);
-router.post("/users/bulk-import", auth, role(["ADMIN"]), upload.single("file"), adminController.bulkImportUsers);
-router.get("/users", auth, role(["ADMIN"]), adminController.getUsersByRole);
-router.patch("/users/:userId/status", auth, role(["ADMIN"]), adminController.toggleUserStatus);
-router.patch("/users/:userId/password", auth, role(["ADMIN"]), adminController.resetUserPassword);
+router.post("/users", sensitiveOperationLimiter, adminController.createUser);
+router.post("/users/bulk-import", sensitiveOperationLimiter, upload.single("file"), adminController.bulkImportUsers);
+router.get("/users", adminController.getUsersByRole);
+router.patch("/users/:userId/status", sensitiveOperationLimiter, adminController.toggleUserStatus);
+router.patch("/users/:userId/password", sensitiveOperationLimiter, adminController.resetUserPassword);
 
 module.exports = router;
 

@@ -1,26 +1,31 @@
 const express = require('express');
 const router = express.Router();
+const { createAuthMiddleware, authorize } = require('../middleware/enhancedAuthMiddleware');
 const coordinatorController = require('../controllers/coordinator.controller');
-const auth = require('../middleware/authMiddleware');
-const role = require('../middleware/roleMiddleware');
 
-// All routes require login
-router.use(auth);
+// Authentication middleware for coordinator routes
+const authenticate = createAuthMiddleware({
+  allowQueryToken: false,
+  auditLog: true
+});
+
+// All coordinator routes require authentication
+router.use(authenticate);
 
 // Shared Routes (Faculty can view courses to select)
 // Allow Faculty to access courses
-router.get('/courses', role(['FACULTY']), coordinatorController.getDepartmentCourses);
+router.get('/courses', authorize(['FACULTY']), coordinatorController.getDepartmentCourses);
 
 // Coordinator Assignment
-router.post('/assign', role(['FACULTY']), coordinatorController.assignCoordinator);
-router.get('/assignments', role(['FACULTY']), coordinatorController.getMyAssignments);
-router.delete('/assignments/:assignmentId/revoke', role(['FACULTY']), coordinatorController.revokeSelfCoordinator);
+router.post('/assign', authorize(['FACULTY']), coordinatorController.assignCoordinator);
+router.get('/assignments', authorize(['FACULTY']), coordinatorController.getMyAssignments);
+router.delete('/assignments/:assignmentId/revoke', authorize(['FACULTY']), coordinatorController.revokeSelfCoordinator);
 
 // Coordinator Actions
-router.get('/claims', role(['FACULTY']), coordinatorController.getCoordinatorClaims);
-router.get('/claims/:id', role(['FACULTY']), coordinatorController.getCoordinatorClaimDetails);
-router.post('/verify', role(['FACULTY']), coordinatorController.verifyClaim);
-router.post('/reject', role(['FACULTY']), coordinatorController.rejectClaim);
-router.post('/submit-billing', role(['FACULTY']), coordinatorController.submitToBilling);
+router.get('/claims', authorize(['FACULTY']), coordinatorController.getCoordinatorClaims);
+router.get('/claims/:id', authorize(['FACULTY']), coordinatorController.getCoordinatorClaimDetails);
+router.post('/verify', authorize(['FACULTY']), coordinatorController.verifyClaim);
+router.post('/reject', authorize(['FACULTY']), coordinatorController.rejectClaim);
+router.post('/submit-billing', authorize(['FACULTY']), coordinatorController.submitToBilling);
 
 module.exports = router;

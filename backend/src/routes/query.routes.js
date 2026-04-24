@@ -1,10 +1,16 @@
 const express = require('express');
 const router = express.Router();
+const { createAuthMiddleware } = require('../middleware/enhancedAuthMiddleware');
 const queryController = require('../controllers/query.controller');
-const authenticateToken = require('../middleware/authMiddleware');
+
+// Authentication middleware for query routes
+const authenticate = createAuthMiddleware({
+  allowQueryToken: false,
+  auditLog: true
+});
 
 // All routes require authentication
-router.use(authenticateToken);
+router.use(authenticate);
 
 // Faculty routes
 router.post('/queries', queryController.createQuery);

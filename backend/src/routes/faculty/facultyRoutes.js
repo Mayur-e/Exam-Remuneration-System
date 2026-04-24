@@ -1,11 +1,16 @@
 const router = require("express").Router();
-const auth = require("../../middleware/authMiddleware");
-const role = require("../../middleware/roleMiddleware");
+const { createAuthMiddleware, authorize } = require("../../middleware/enhancedAuthMiddleware");
 const ctrl = require("../../controllers/faculty.controller");
 const { createExamValidation, submitClaimValidation, idParamValidation } = require("../../middleware/validationMiddleware");
 
-// All faculty routes are protected
-router.use(auth, role(["FACULTY"]));
+// Authentication middleware for faculty routes
+const authenticate = createAuthMiddleware({
+  allowQueryToken: false,
+  auditLog: true
+});
+
+// All faculty routes are protected - require FACULTY role
+router.use(authenticate, authorize(["FACULTY"]));
 
 /**
  * Dashboard

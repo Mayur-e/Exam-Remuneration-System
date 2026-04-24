@@ -1,10 +1,16 @@
 const router = require("express").Router();
-const auth = require("../../middleware/authMiddleware");
-const role = require("../../middleware/roleMiddleware");
+const { createAuthMiddleware, authorize } = require("../../middleware/enhancedAuthMiddleware");
 const ctrl = require("../../controllers/accountant.controller");
 const { idParamValidation, rejectClaimValidation } = require("../../middleware/validationMiddleware");
 
-router.use(auth, role(["BILLING_INCHARGE"]));
+// Authentication middleware for accountant routes
+const authenticate = createAuthMiddleware({
+  allowQueryToken: false,
+  auditLog: true
+});
+
+// All accountant routes are protected - require BILLING_INCHARGE role
+router.use(authenticate, authorize(["BILLING_INCHARGE"]));
 
 router.get("/dashboard", ctrl.dashboardStats);
 
