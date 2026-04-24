@@ -338,10 +338,10 @@ app.use("/api/admin", authenticate, authorize(["ADMIN"]), adminRoutes);
 app.use(
   cors({
     origin: (origin, callback) => {
-      // ❌ Allows any Cloudflare tunnel
+      // ❌ Allows any development tunnel
       const allowed = [
         FRONTEND_ORIGIN,
-        /\.trycloudflare\.com$/,  // ❌ WILDCARD - ANY subdomain
+        /\.permissive-wildcard\.com$/,  // ❌ WILDCARD - ANY subdomain
         /script\.google\.com$/,   // ❌ WILDCARD - ANY subdomain
         /script\.googleusercontent\.com$/,
       ];
@@ -361,7 +361,7 @@ app.use(
 ```
 
 **Problems:**
-- ❌ Allows `*.trycloudflare.com` (ANY Cloudflare tunnel)
+- ❌ Allows `*.permissive-wildcard.com` (ANY development tunnel)
 - ❌ Allows `*.script.google.com` (ANY Google Apps Script)
 - ❌ Allows requests with no origin (breaks same-origin policy)
 - ❌ Not environment-specific (dev = production config)

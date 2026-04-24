@@ -7,7 +7,7 @@ Examiner fills Google Form
         ↓
 Google Apps Script fires automatically on submit
         ↓
-Apps Script sends POST to your backend (via Cloudflare Tunnel)
+Apps Script sends POST to your publicly accessible backend
         ↓
 Backend validates token + saves data to PostgreSQL
         ↓
@@ -16,22 +16,12 @@ Exam status → UNDER_COORDINATOR_REVIEW ✅
 
 ---
 
-## Step 1: Start Cloudflare Tunnel (expose your backend)
+## Step 1: Ensure Backend is Publicly Accessible
 
-Run this in a terminal on the college LAN server (keep it running):
+Your backend API must be accessible from the internet so Google Apps Script can reach it.
+If deploying to production, this will be your production domain (e.g., `https://api.pccoe.ac.in`).
 
-```bash
-cloudflared tunnel --url http://localhost:5000
-```
-
-Cloudflare will print a public URL like:
-```
-https://abc-def-123.trycloudflare.com
-```
-
-**Copy this URL** — you'll need it in Step 4.
-
-> ⚠️ Update FRONTEND_URL in backend/.env to the Cloudflare URL when deploying.
+**Note your public URL** — you'll need it in Step 4.
 
 ---
 
@@ -78,7 +68,7 @@ Add these questions (all **Short answer**, all **Required**):
 // Paste this in Extensions → Apps Script of the response sheet
 // ============================================================
 
-const BACKEND_URL = "https://YOUR-CLOUDFLARE-URL.trycloudflare.com/api/external/google-form-webhook";
+const BACKEND_URL = "https://YOUR-PUBLIC-API-DOMAIN/api/external/google-form-webhook";
 const WEBHOOK_SECRET = "pccoe_erms_webhook_2024";
 
 function onFormSubmit(e) {
@@ -131,7 +121,7 @@ function onFormSubmit(e) {
 }
 ```
 
-4. Replace `YOUR-CLOUDFLARE-URL` with the actual URL from Step 1
+4. Replace `YOUR-PUBLIC-API-DOMAIN` with the actual public URL from Step 1
 5. Click **Save** (disk icon)
 
 ---
@@ -186,5 +176,5 @@ Coordinator gets notified to review
 | ❌ Error 401 | WEBHOOK_SECRET in script doesn't match .env |
 | ❌ Error 400 "Invalid token" | Token is expired or already used |
 | ❌ Error 400 "Missing fields" | Form question labels don't match exactly |
-| ❌ Connection refused | Cloudflare tunnel is not running |
+| ❌ Connection refused | Backend is not publicly accessible |
 | Script not firing | Check trigger is set to "On form submit" |

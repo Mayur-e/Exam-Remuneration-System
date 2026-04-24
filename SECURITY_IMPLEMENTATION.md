@@ -224,7 +224,7 @@ openssl rand -base64 32
 ### The Problem
 
 **Current CORS Configuration Issues:**
-1. ✗ Allows `*.trycloudflare.com` (wildcard - any Cloudflare tunnel)
+1. ✗ Allows permissive wildcard domains (e.g., development tunnels)
 2. ✗ Allows `*.script.google.com` (wildcard - any Google Apps Script)
 3. ✗ Allows requests with no origin (breaks same-origin policy)
 4. ✗ Not environment-specific (development != production)
