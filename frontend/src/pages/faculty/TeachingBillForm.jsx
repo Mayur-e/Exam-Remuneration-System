@@ -11,6 +11,153 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 
+// ── Sub-component: renders token + Google Form sharing UI after link is generated ──
+function ExternalSharingPanel({ examId, externalLink, linkExpiration, isExistingLink, showToast }) {
+  const token = externalLink.split("/").pop();
+  const [config, setConfig] = useState({ googleFormUrl: null, googleFormTokenFieldId: null });
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailStatus, setEmailStatus] = useState(null);
+
+  useEffect(() => {
+    api.get("/config").then(r => setConfig(r.data)).catch(() => {});
+  }, []);
+
+  const { googleFormUrl, googleFormTokenFieldId } = config;
+  const formConfigured = googleFormUrl && !googleFormUrl.includes("PASTE_YOUR");
+  const fieldConfigured = googleFormTokenFieldId && !googleFormTokenFieldId.includes("PASTE_FIELD");
+
+  // Build pre-filled URL
+  const shareUrl = formConfigured
+    ? fieldConfigured
+      ? `${googleFormUrl}?${googleFormTokenFieldId}=${encodeURIComponent(token)}`
+      : googleFormUrl
+    : null;
+
+  const isPreFilled = formConfigured && fieldConfigured;
+
+  const handleSendEmail = async () => {
+    setSendingEmail(true);
+    setEmailStatus(null);
+    try {
+      await api.post("/external/send-examiner-invite", {
+        examId,
+        examinerEmail: inviteEmail,
+      });
+      setEmailStatus({ ok: true, message: `Invitation sent to ${inviteEmail}` });
+      showToast("Invitation email sent!", "success");
+    } catch (err) {
+      const msg = err?.response?.data?.message || "Failed to send email";
+      const detail = err?.response?.data?.detail;
+      const fullMsg = detail ? `${msg}: ${detail}` : msg;
+      setEmailStatus({ ok: false, message: fullMsg });
+      showToast(msg, "error");
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
+  const copyShareUrl = async () => {
+    try { await navigator.clipboard.writeText(shareUrl); } catch {}
+    showToast("Link copied!", "success");
+  };
+
+  return (
+    <div className="space-y-4 bg-white p-5 rounded-xl border border-purple-100 shadow-sm mt-2">
+      <div className={`text-sm font-bold flex items-center gap-2 ${isExistingLink ? 'text-blue-700' : 'text-green-700'}`}>
+        <span className="material-symbols-outlined">{isExistingLink ? 'info' : 'check_circle'}</span>
+        {isExistingLink ? 'Existing valid token retrieved' : 'Token generated successfully'}
+      </div>
+
+      {/* Token display — always show for reference */}
+      <div>
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+          🔑 Exam Reference Token
+        </p>
+        <div className="flex gap-2 items-center">
+          <div className="flex-1 bg-purple-50 border border-purple-200 rounded-lg px-4 py-3 font-mono text-base font-bold text-purple-800 tracking-widest break-all">
+            {token}
+          </div>
+          <Button variant="secondary" className="font-bold border-purple-200 text-purple-700 hover:bg-purple-50 shrink-0"
+            onClick={async () => {
+              try { await navigator.clipboard.writeText(token); } catch {}
+              showToast("Token copied!", "success");
+            }}>
+            <span className="material-symbols-outlined text-[16px] mr-1">content_copy</span> Copy
+          </Button>
+        </div>
+      </div>
+
+      {/* Share link */}
+      <div>
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+          {isPreFilled ? "🔗 Google Form Link" : "🔗 Google Form Link"}
+        </p>
+        {shareUrl ? (
+          <div className="flex gap-2 items-center">
+            <a href={shareUrl} target="_blank" rel="noreferrer"
+              className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-blue-600 font-medium truncate hover:underline">
+              {shareUrl}
+            </a>
+            <Button variant="secondary" className="font-bold border-slate-200 shrink-0" onClick={copyShareUrl}>
+              <span className="material-symbols-outlined text-[16px]">content_copy</span>
+            </Button>
+          </div>
+        ) : (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800 font-medium space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-amber-600">warning</span>
+              Google Form not fully configured in <code className="bg-amber-100 px-1 rounded">backend/.env</code>
+            </div>
+            {!formConfigured && <p className="ml-6 text-xs">Missing: <code>GOOGLE_FORM_URL</code></p>}
+            {!fieldConfigured && formConfigured && <p className="ml-6 text-xs">Missing: <code>GOOGLE_FORM_TOKEN_FIELD_ID</code> — get it from "Get pre-filled link" in your form</p>}
+          </div>
+        )}
+      </div>
+
+      {/* Send invitation email */}
+      <div className="pt-1 border-t border-purple-100 space-y-2">
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">✉️ Send Invitation Email to Examiner</p>
+        <div className="flex gap-2">
+          <input
+            type="email"
+            placeholder="examiner@email.com"
+            value={inviteEmail}
+            onChange={e => setInviteEmail(e.target.value)}
+            className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent"
+          />
+          <Button
+            className="bg-purple-600 hover:bg-purple-700 text-white font-bold shrink-0"
+            disabled={sendingEmail || !inviteEmail}
+            onClick={handleSendEmail}
+          >
+            {sendingEmail
+              ? <><span className="material-symbols-outlined text-[16px] mr-1 animate-spin">progress_activity</span>Sending...</>
+              : <><span className="material-symbols-outlined text-[16px] mr-1">send</span>Send Email</>
+            }
+          </Button>
+        </div>
+        {emailStatus && (
+          <p className={`text-xs font-semibold flex items-center gap-1 ${emailStatus.ok ? 'text-green-600' : 'text-red-600'}`}>
+            <span className="material-symbols-outlined text-[14px]">{emailStatus.ok ? 'check_circle' : 'error'}</span>
+            {emailStatus.message}
+          </p>
+        )}
+        <p className="text-xs text-slate-400">The email will contain the pre-filled form link — the examiner just needs to fill their details.</p>
+      </div>
+
+      {linkExpiration && (
+        <p className="text-xs text-slate-400 font-medium">
+          <span className="material-symbols-outlined text-[14px] inline align-text-bottom mr-1">timer</span>
+          Token expires: {new Date(linkExpiration).toLocaleString('en-IN', {
+            day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+          })} (7 days)
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function TeachingBillForm() {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
@@ -394,11 +541,20 @@ export default function TeachingBillForm() {
         <Card className="p-6 border-purple-200 bg-purple-50/50 mt-8 shadow-sm">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-              <span className="material-symbols-outlined text-purple-600">share</span>
+              <span className="material-symbols-outlined text-purple-600">assignment_ind</span>
             </div>
             <div>
-              <h3 className="text-lg font-bold text-slate-800">External Examiner Sharing</h3>
-              <p className="text-sm text-slate-500">Generate a secure link for the external examiner to fill their details</p>
+              <h3 className="text-lg font-bold text-slate-800">External Examiner — Google Form</h3>
+              <p className="text-sm text-slate-500">Generate a token → share the Google Form link with the examiner</p>
+            </div>
+          </div>
+
+          {/* Step indicator */}
+          <div className="flex items-start gap-3 mb-5 bg-purple-100/60 rounded-xl p-4 border border-purple-200">
+            <div className="flex flex-col gap-2 text-xs font-semibold text-purple-800 w-full">
+              <div className="flex items-center gap-2"><span className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">1</span> Click <b>Generate Token</b> below</div>
+              <div className="flex items-center gap-2"><span className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">2</span> Enter the examiner's email and click <b>Send Email</b> — invitation is sent automatically</div>
+              <div className="flex items-center gap-2"><span className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">3</span> Examiner clicks the link in the email — token is <b>already pre-filled ✅</b></div>
             </div>
           </div>
 
@@ -413,59 +569,27 @@ export default function TeachingBillForm() {
                   setLinkExpiration(res.data.expiresAt);
                   setIsExistingLink(res.data.isExisting);
                   if (res.data.isExisting) {
-                    showToast("Existing valid link retrieved!", "success");
+                    showToast("Existing valid token retrieved!", "success");
                   } else {
-                    showToast("New link generated successfully!", "success");
+                    showToast("New token generated successfully!", "success");
                   }
                 } catch {
-                  showToast("Failed to generate external link", "error");
+                  showToast("Failed to generate token", "error");
                 }
               }}
             >
-              <span className="material-symbols-outlined mr-2 text-[18px]">link</span>
-              {status === "submitted" || status === "approved" || status === "paid"
-                ? "External Claim Submitted"
-                : externalLink ? "Regenerate Link" : "Generate Link"}
+              <span className="material-symbols-outlined mr-2 text-[18px]">key</span>
+              {externalLink ? "Regenerate Token" : "Generate Token"}
             </Button>
 
             {externalLink && (
-              <div className="space-y-3 bg-white p-4 rounded-xl border border-purple-100 shadow-sm mt-4">
-                <div className={`text-sm font-bold flex items-center gap-2 ${isExistingLink ? 'text-blue-700' : 'text-green-700'}`}>
-                  <span className="material-symbols-outlined">{isExistingLink ? 'info' : 'check_circle'}</span>
-                  {isExistingLink ? 'Existing valid link retrieved!' : 'New link generated successfully!'}
-                </div>
-                <div className="flex gap-2 items-center">
-                  <Input value={externalLink} readOnly className="flex-1 bg-slate-50 font-mono text-sm" />
-                  <Button
-                    variant="secondary"
-                    className="font-bold border-purple-200 text-purple-700 hover:bg-purple-50"
-                    onClick={async () => {
-                      try {
-                        window.focus();
-                        await navigator.clipboard.writeText(externalLink);
-                        showToast("Link copied to clipboard", "success");
-                      } catch (err) {
-                        const input = document.querySelector('input[readonly]');
-                        if (input) {
-                          input.select();
-                          document.execCommand('copy');
-                          showToast("Link copied to clipboard", "success");
-                        }
-                      }
-                    }}
-                  >
-                    Copy
-                  </Button>
-                </div>
-                {linkExpiration && (
-                  <p className="text-xs text-slate-500 font-medium">
-                    <span className="material-symbols-outlined text-[14px] inline align-text-bottom mr-1">timer</span>
-                    Expires on: {new Date(linkExpiration).toLocaleString('en-IN', {
-                      day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
-                    })} (Valid for 7 days)
-                  </p>
-                )}
-              </div>
+              <ExternalSharingPanel
+                examId={examId}
+                externalLink={externalLink}
+                linkExpiration={linkExpiration}
+                isExistingLink={isExistingLink}
+                showToast={showToast}
+              />
             )}
           </div>
         </Card>
