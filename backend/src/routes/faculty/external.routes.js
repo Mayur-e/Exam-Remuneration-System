@@ -20,7 +20,4 @@ router.get("/claim/:token/info", externalCtrl.getExternalClaimInfo);
 // Google Form webhook — called by Apps Script, secured by WEBHOOK_SECRET
 router.post("/google-form-webhook", externalCtrl.googleFormWebhook);
 
-// Send examiner invitation email — faculty only, JWT protected
-router.post("/send-examiner-invite", authMiddleware, externalCtrl.sendExaminerInvite);
-
 module.exports = router;

@@ -5,7 +5,7 @@ This guide outlines the steps required to transition the system from local devel
 ## 1. Prerequisites
 - **Server**: A Linux/Windows server with Node.js (v18+) and npm installed.
 - **Database**: PostgreSQL (v14+) instance.
-- **Email**: A [Resend.com](https://resend.com) account.
+- **Domain**: A registered domain (e.g., `pccoe.ac.in`).
 - **Form**: A Google Form for external examiners.
 
 ---
@@ -34,9 +34,6 @@ WEBHOOK_SECRET=choose_a_secure_secret_for_google_apps_script
 GOOGLE_FORM_URL=https://docs.google.com/forms/d/e/.../viewform
 GOOGLE_FORM_TOKEN_FIELD_ID=entry.XXXXXX
 
-# Resend (Email API)
-RESEND_API_KEY=re_YourProductionApiKey
-RESEND_FROM="PCCOE Exam Dept" <exams@yourcollege.org>
 ```
 
 ---
@@ -55,19 +52,8 @@ To bridge Google Forms with your database:
 
 ---
 
-## 4. Resend Domain Verification (Crucial)
 
-To prevent emails from going to **Spam**:
-
-1.  Log in to [Resend.com](https://resend.com).
-2.  Go to **Domains** -> **Add Domain**.
-3.  Enter your college domain (e.g., `pccoe.ac.in`).
-4.  Add the provided **DNS Records** (MX, TXT, CNAME) to your domain's DNS manager.
-5.  Once status is **Verified**, you can send emails from `exams@yourcollege.org`.
-
----
-
-## 5. Deployment Commands
+## 4. Deployment Commands
 
 ### A. Frontend
 The frontend must be built into static files:
@@ -89,7 +75,7 @@ pm2 start server.js --name "erms-api"
 
 ---
 
-## 6. Security Checklist
+## 5. Security Checklist
 - [ ] Change `JWT_SECRET` to a unique production key.
 - [ ] Ensure PostgreSQL is not accessible from the public internet (use a firewall).
 - [ ] Enable HTTPS (SSL) for both frontend and backend (use Let's Encrypt/Certbot).
@@ -97,7 +83,7 @@ pm2 start server.js --name "erms-api"
 
 ---
 
-## 7. Database Migration
+## 6. Database Migration
 Ensure the table schemas are created in your production PostgreSQL instance. You can use the `database.sql` script or your initialization scripts to setup the tables.
 
 ---

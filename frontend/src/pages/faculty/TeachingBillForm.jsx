@@ -15,9 +15,6 @@ import { Input } from "../../components/ui/input";
 function ExternalSharingPanel({ examId, externalLink, linkExpiration, isExistingLink, showToast }) {
   const token = externalLink.split("/").pop();
   const [config, setConfig] = useState({ googleFormUrl: null, googleFormTokenFieldId: null });
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [sendingEmail, setSendingEmail] = useState(false);
-  const [emailStatus, setEmailStatus] = useState(null);
 
   useEffect(() => {
     api.get("/config").then(r => setConfig(r.data)).catch(() => {});
@@ -27,35 +24,11 @@ function ExternalSharingPanel({ examId, externalLink, linkExpiration, isExisting
   const formConfigured = googleFormUrl && !googleFormUrl.includes("PASTE_YOUR");
   const fieldConfigured = googleFormTokenFieldId && !googleFormTokenFieldId.includes("PASTE_FIELD");
 
-  // Build pre-filled URL
   const shareUrl = formConfigured
     ? fieldConfigured
       ? `${googleFormUrl}?${googleFormTokenFieldId}=${encodeURIComponent(token)}`
       : googleFormUrl
     : null;
-
-  const isPreFilled = formConfigured && fieldConfigured;
-
-  const handleSendEmail = async () => {
-    setSendingEmail(true);
-    setEmailStatus(null);
-    try {
-      await api.post("/external/send-examiner-invite", {
-        examId,
-        examinerEmail: inviteEmail,
-      });
-      setEmailStatus({ ok: true, message: `Invitation sent to ${inviteEmail}` });
-      showToast("Invitation email sent!", "success");
-    } catch (err) {
-      const msg = err?.response?.data?.message || "Failed to send email";
-      const detail = err?.response?.data?.detail;
-      const fullMsg = detail ? `${msg}: ${detail}` : msg;
-      setEmailStatus({ ok: false, message: fullMsg });
-      showToast(msg, "error");
-    } finally {
-      setSendingEmail(false);
-    }
-  };
 
   const copyShareUrl = async () => {
     try { await navigator.clipboard.writeText(shareUrl); } catch {}
@@ -69,7 +42,7 @@ function ExternalSharingPanel({ examId, externalLink, linkExpiration, isExisting
         {isExistingLink ? 'Existing valid token retrieved' : 'Token generated successfully'}
       </div>
 
-      {/* Token display — always show for reference */}
+      {/* Token display */}
       <div>
         <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">
           🔑 Exam Reference Token
@@ -91,7 +64,7 @@ function ExternalSharingPanel({ examId, externalLink, linkExpiration, isExisting
       {/* Share link */}
       <div>
         <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-          {isPreFilled ? "🔗 Google Form Link" : "🔗 Google Form Link"}
+          🔗 Google Form Link
         </p>
         {shareUrl ? (
           <div className="flex gap-2 items-center">
@@ -110,41 +83,14 @@ function ExternalSharingPanel({ examId, externalLink, linkExpiration, isExisting
               Google Form not fully configured in <code className="bg-amber-100 px-1 rounded">backend/.env</code>
             </div>
             {!formConfigured && <p className="ml-6 text-xs">Missing: <code>GOOGLE_FORM_URL</code></p>}
-            {!fieldConfigured && formConfigured && <p className="ml-6 text-xs">Missing: <code>GOOGLE_FORM_TOKEN_FIELD_ID</code> — get it from "Get pre-filled link" in your form</p>}
+            {!fieldConfigured && formConfigured && <p className="ml-6 text-xs">Missing: <code>GOOGLE_FORM_TOKEN_FIELD_ID</code></p>}
           </div>
         )}
       </div>
 
-      {/* Send invitation email */}
-      <div className="pt-1 border-t border-purple-100 space-y-2">
-        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">✉️ Send Invitation Email to Examiner</p>
-        <div className="flex gap-2">
-          <input
-            type="email"
-            placeholder="examiner@email.com"
-            value={inviteEmail}
-            onChange={e => setInviteEmail(e.target.value)}
-            className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent"
-          />
-          <Button
-            className="bg-purple-600 hover:bg-purple-700 text-white font-bold shrink-0"
-            disabled={sendingEmail || !inviteEmail}
-            onClick={handleSendEmail}
-          >
-            {sendingEmail
-              ? <><span className="material-symbols-outlined text-[16px] mr-1 animate-spin">progress_activity</span>Sending...</>
-              : <><span className="material-symbols-outlined text-[16px] mr-1">send</span>Send Email</>
-            }
-          </Button>
-        </div>
-        {emailStatus && (
-          <p className={`text-xs font-semibold flex items-center gap-1 ${emailStatus.ok ? 'text-green-600' : 'text-red-600'}`}>
-            <span className="material-symbols-outlined text-[14px]">{emailStatus.ok ? 'check_circle' : 'error'}</span>
-            {emailStatus.message}
-          </p>
-        )}
-        <p className="text-xs text-slate-400">The email will contain the pre-filled form link — the examiner just needs to fill their details.</p>
-      </div>
+      <p className="text-xs text-slate-400">
+        Share this link with the external examiner — they can use it to fill in their details directly.
+      </p>
 
       {linkExpiration && (
         <p className="text-xs text-slate-400 font-medium">

@@ -1,5 +1,4 @@
 const pool = require("../config/db");
-const { sendExaminerInvite } = require("../services/email.service");
 
 /**
  * GET external claim (read-only exam details)
@@ -549,85 +548,5 @@ exports.getExternalClaimInfo = async (req, res) => {
   } catch (err) {
     console.error("getExternalClaimInfo error:", err);
     res.status(500).json({ message: "Server error" });
-  }
-};
-
-/**
- * POST /external/send-examiner-invite
- * Sends the pre-filled Google Form link to the examiner's email.
- * JWT protected — faculty only.
- *
- * Body: { examId, examinerEmail, examinerName (optional) }
- */
-exports.sendExaminerInvite = async (req, res) => {
-  const { examId, examinerEmail, examinerName } = req.body;
-
-  if (!examId || !examinerEmail) {
-    return res.status(400).json({ message: "examId and examinerEmail are required" });
-  }
-
-  // Basic email format check
-  const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRx.test(examinerEmail)) {
-    return res.status(400).json({ message: "Invalid email address" });
-  }
-
-  try {
-    // Fetch the active (unused, non-expired) token for this exam
-    const linkRes = await pool.query(
-      `SELECT token, expires_at
-       FROM external_exam_links
-       WHERE exam_id = $1
-         AND used = false
-         AND (expires_at IS NULL OR expires_at > NOW())
-       ORDER BY created_at DESC
-       LIMIT 1`,
-      [examId]
-    );
-
-    if (linkRes.rows.length === 0) {
-      return res.status(400).json({
-        message: "No active token found for this exam. Please generate a token first."
-      });
-    }
-
-    const token = linkRes.rows[0].token;
-
-    // Build pre-filled Google Form URL
-    const formBase = process.env.GOOGLE_FORM_URL;
-    const fieldId  = process.env.GOOGLE_FORM_TOKEN_FIELD_ID;
-
-    if (!formBase) {
-      return res.status(500).json({ message: "GOOGLE_FORM_URL is not configured" });
-    }
-
-    const formUrl = fieldId
-      ? `${formBase}?${fieldId}=${encodeURIComponent(token)}`
-      : formBase;
-
-    // Fetch exam info for the email subject line
-    const examRes = await pool.query(
-      `SELECT subject_name, exam_date FROM exams WHERE id = $1`,
-      [examId]
-    );
-    const examInfo = examRes.rows.length > 0
-      ? `${examRes.rows[0].subject_name || 'Exam'} – ${examRes.rows[0].exam_date ? new Date(examRes.rows[0].exam_date).toLocaleDateString('en-IN') : ''}`
-      : null;
-
-    await sendExaminerInvite({
-      toEmail: examinerEmail,
-      toName:  examinerName || null,
-      formUrl,
-      token,
-      examInfo,
-    });
-
-    res.json({ message: "Invitation email sent successfully", sentTo: examinerEmail });
-  } catch (err) {
-    console.error("sendExaminerInvite error:", err);
-    res.status(500).json({
-      message: "Failed to send email",
-      detail: err.message,
-    });
   }
 };
