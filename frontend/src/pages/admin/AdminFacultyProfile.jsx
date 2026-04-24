@@ -157,7 +157,7 @@ function OverviewTab({ faculty, bank, claims, rejectionHistory, externalLinks })
                     <InfoRow icon="description" label="PAN Card" value={faculty.pan_card || 'N/A'} isMono />
                     <InfoRow icon="domain" label="Department" value={faculty.department || 'N/A'} />
                     <InfoRow icon="work" label="Role" value={faculty.role} />
-                    <InfoRow icon="event" label="Joined" value={new Date(faculty.created_at).toLocaleDateString()} />
+
                 </div>
             </div>
 
@@ -442,7 +442,7 @@ function ExternalLinksTab({ externalLinks }) {
 // Helper Component for InfoRow
 function InfoRow({ icon, label, value, isMono = false }) {
     return (
-        <div className="flex items-center gap-3 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-colors px-2 -mx-2 rounded-lg">
+        <div className="flex items-center gap-3 py-4 border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-colors px-2 -mx-2 rounded-lg">
             <span className="material-symbols-outlined text-[18px] text-slate-400">{icon}</span>
             <div className="flex-grow flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{label}</span>

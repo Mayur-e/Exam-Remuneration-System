@@ -4,6 +4,26 @@ const auth = require("../../middleware/authMiddleware");
 const role = require("../../middleware/roleMiddleware");
 const adminController = require("../../controllers/admin.controller");
 const { idParamValidation, rejectClaimValidation, sendBackClaimValidation } = require("../../middleware/validationMiddleware");
+const multer = require("multer");
+
+// Multer: memory storage for Excel/CSV bulk import
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB max
+  fileFilter: (req, file, cb) => {
+    const allowed = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel',
+      'text/csv',
+      'application/csv'
+    ];
+    if (allowed.includes(file.mimetype) || file.originalname.match(/\.(xlsx|xls|csv)$/i)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only Excel (.xlsx, .xls) and CSV files are allowed'));
+    }
+  }
+});
 
 // Dashboard
 router.get("/dashboard/stats", auth, role(["ADMIN"]), adminController.getDashboardStats);
@@ -48,6 +68,7 @@ router.get("/export/billing-sheet", auth, role(["ADMIN", "BILLING_INCHARGE"]), e
 
 // User Management
 router.post("/users", auth, role(["ADMIN"]), adminController.createUser);
+router.post("/users/bulk-import", auth, role(["ADMIN"]), upload.single("file"), adminController.bulkImportUsers);
 router.get("/users", auth, role(["ADMIN"]), adminController.getUsersByRole);
 router.patch("/users/:userId/status", auth, role(["ADMIN"]), adminController.toggleUserStatus);
 router.patch("/users/:userId/password", auth, role(["ADMIN"]), adminController.resetUserPassword);

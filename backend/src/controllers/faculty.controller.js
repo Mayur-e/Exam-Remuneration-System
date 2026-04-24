@@ -497,21 +497,14 @@ exports.addExamStaff = async (req, res) => {
     });
   }
 
-  // Validate preparation and cleaning days against norms
-  const prepDays = parseInt(preparation_days) || 0;
-  const cleanDays = parseInt(cleaning_days) || 0;
+  // Cap preparation and cleaning days to the norm maximums.
+  // We cap (not reject) so that entering cleaning dates for exam types
+  // that don't allow cleaning remuneration doesn't block saving staff.
+  const prepDaysRaw = parseInt(preparation_days) || 0;
+  const cleanDaysRaw = parseInt(cleaning_days) || 0;
 
-  if (prepDays > norm.max_preparation_days) {
-    return res.status(400).json({
-      message: `Maximum ${norm.max_preparation_days} preparation day(s) allowed for this exam type`
-    });
-  }
-
-  if (cleanDays > norm.max_cleaning_days) {
-    return res.status(400).json({
-      message: `Maximum ${norm.max_cleaning_days} cleaning day(s) allowed for this exam type`
-    });
-  }
+  const prepDays = Math.min(prepDaysRaw, norm.max_preparation_days);
+  const cleanDays = Math.min(cleanDaysRaw, norm.max_cleaning_days);
 
   // Insert staff member
   await pool.query(
@@ -1444,7 +1437,7 @@ exports.getBatchSize = async (req, res) => {
 
   // Verify exam belongs to faculty
   const exam = await pool.query(
-    `SELECT exam_type, program FROM exams WHERE id=$1 AND faculty_id=$2`,
+    `SELECT exam_type, program, students_count, is_backlog FROM exams WHERE id=$1 AND faculty_id=$2`,
     [examId, req.user.id]
   );
 
@@ -1452,7 +1445,8 @@ exports.getBatchSize = async (req, res) => {
     return res.status(404).json({ message: "Exam not found" });
   }
 
-  const { exam_type, program } = exam.rows[0];
+  const { exam_type, program, students_count, is_backlog } = exam.rows[0];
+  const examCategory = is_backlog ? 'BACKLOG' : 'REGULAR';
 
   // Get batch size from database
   const batchQuery = await pool.query(
@@ -1468,12 +1462,28 @@ exports.getBatchSize = async (req, res) => {
     [exam_type, program]
   );
 
-  if (batchQuery.rows.length === 0) {
-    return res.json({ batch_size: 1 }); // Default to 1 if not found
-  }
+  // Get norms for this exam type/category/student count
+  const normsQuery = await pool.query(
+    `SELECT max_preparation_days, max_cleaning_days
+     FROM exam_staff_norms
+     WHERE exam_type = $1
+       AND exam_category = $2
+       AND min_students <= $3
+       AND (max_students IS NULL OR max_students >= $3)
+     ORDER BY min_students DESC
+     LIMIT 1`,
+    [exam_type, examCategory, students_count || 1]
+  );
 
-  return res.json({ batch_size: batchQuery.rows[0].batch_size || 1 });
+  const norm = normsQuery.rows[0] || null;
+
+  return res.json({
+    batch_size: batchQuery.rows[0]?.batch_size || 1,
+    max_prep_days: norm ? norm.max_preparation_days : null,
+    max_cleaning_days: norm ? norm.max_cleaning_days : null,
+  });
 };
+
 
 /**
  * Get Staff Role Rates

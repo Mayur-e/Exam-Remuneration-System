@@ -978,12 +978,25 @@ exports.cloneRatesToNewYear = async (req, res) => {
 /* ==============================
    USER MANAGEMENT (ADMIN)
 ================================ */
+
+/**
+ * Password strategy: lastName (lowercase) + last 4 chars of emp_code
+ * e.g.  SHRADDHA VIJAY OVALE, emp 20TCOMP1944  →  ovale1944
+ * If emp_code is missing, falls back to the provided password or 'pccoepune@1234'
+ */
+function generateAutoPassword(fullName, empCode) {
+    const parts = String(fullName || '').trim().split(/\s+/);
+    const lastName = parts[parts.length - 1].toLowerCase();
+    const codeSuffix = empCode ? String(empCode).replace(/\s/g, '').slice(-4).toLowerCase() : '';
+    return codeSuffix ? `${lastName}${codeSuffix}` : `${lastName}@1234`;
+}
+
 exports.createUser = async (req, res) => {
-    const { name, email, password, role, department, prn } = req.body;
+    const { name, email, role, department, emp_code, mobile, pan_card } = req.body;
 
     // Validation
-    if (!name || !email || !password || !role || !department) {
-        return res.status(400).json({ message: "All fields are required" });
+    if (!name || !email || !role || !department) {
+        return res.status(400).json({ message: "Name, email, role, and department are required" });
     }
 
     if (!['FACULTY', 'BILLING_INCHARGE'].includes(role)) {
@@ -997,7 +1010,7 @@ exports.createUser = async (req, res) => {
     try {
         // Check if user already exists
         const existingUser = await pool.query(
-            'SELECT id FROM users WHERE email = $1',
+            'SELECT id FROM users WHERE LOWER(email) = LOWER($1)',
             [email]
         );
 
@@ -1005,29 +1018,28 @@ exports.createUser = async (req, res) => {
             return res.status(409).json({ message: "User with this email already exists" });
         }
 
-        // Check if PRN is already taken (optional field)
-        if (prn) {
-            const existingPRN = await pool.query(
-                'SELECT id FROM users WHERE prn = $1',
-                [prn]
-            );
-            if (existingPRN.rows.length > 0) {
-                return res.status(409).json({ message: "PRN already registered" });
-            }
-        }
-
-        // Hash password
+        // Auto-generate password: lastName + last4 of emp_code
+        const plainPassword = generateAutoPassword(name, emp_code);
         const bcrypt = require('bcrypt');
-        const hashedPassword = await bcrypt.hash(password, 10);
+        const hashedPassword = await bcrypt.hash(plainPassword, 10);
+
+        // Clean optional fields
+        const cleanMobile = mobile ? String(mobile).replace(/\D/g, '').slice(0, 15) || null : null;
+        const cleanPan = pan_card ? String(pan_card).trim().toUpperCase() || null : null;
+        const cleanEmpCode = emp_code ? String(emp_code).trim() || null : null;
 
         // Create user
         await pool.query(
-            `INSERT INTO users (name, email, password, role, department, prn, is_active, has_set_password)
-             VALUES ($1, $2, $3, $4, $5, $6, true, true)`,
-            [name, email, hashedPassword, role, department, prn || null]
+            `INSERT INTO users (name, email, password, role, department, mobile, pan_card, emp_code, is_active, has_set_password)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, true)`,
+            [name.trim(), email.trim().toLowerCase(), hashedPassword, role, department.trim(),
+             cleanMobile, cleanPan, cleanEmpCode]
         );
 
-        res.status(201).json({ message: `${role} user created successfully` });
+        res.status(201).json({
+            message: `${role} user created successfully`,
+            generated_password: plainPassword   // Return so admin can note it
+        });
     } catch (error) {
         console.error("Create user error:", error);
         res.status(500).json({ message: "Failed to create user" });
@@ -1117,5 +1129,132 @@ exports.resetUserPassword = async (req, res) => {
     } catch (error) {
         console.error("Reset user password error:", error);
         res.status(500).json({ message: "Failed to reset password" });
+    }
+};
+
+/* ==============================
+   BULK IMPORT USERS (ADMIN)
+   Accepts: multipart/form-data with file (xlsx or csv)
+   Excel columns expected (same format as Comp_ALL_Faculty_details.xlsx):
+     Col 0: Sr No  | Col 1: Emp Code | Col 2: Name | Col 4: Email
+     Col 5: Mobile | Col 9: Designation | Col 10: Department | Col 20: PAN
+   OR a generic CSV/XLSX with headers:
+     name, email, emp_code, designation, department, mobile, pan_card
+================================ */
+exports.bulkImportUsers = async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    const FACULTY_DESIGNATIONS = [
+        'assistant professor', 'associate professor', 'professor',
+        'professor & hod', 'professor, dean academics', 'visiting'
+    ];
+
+    function isFacultyDesig(d) {
+        if (!d) return false;
+        const lower = String(d).trim().toLowerCase();
+        return FACULTY_DESIGNATIONS.some(fd => lower.includes(fd) || fd.includes(lower));
+    }
+
+    const bcrypt = require('bcrypt');
+    const XLSX = require('xlsx');
+
+    try {
+        const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+        const ws = workbook.Sheets[workbook.SheetNames[0]];
+
+        // Try to detect format: header row vs raw indexed
+        const jsonRows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+
+        // Check if it has named headers
+        const firstKey = jsonRows.length > 0 ? Object.keys(jsonRows[0])[0] : '';
+        const hasHeaders = isNaN(firstKey);
+
+        const results = { inserted: 0, skipped: 0, errors: [] };
+        const credentials = [];
+
+        const processRow = async (name, email, empCode, designation, department, mobile, panCard) => {
+            if (!email || !String(email).includes('@pccoepune.org')) return;
+            if (!name || String(name).trim() === '' || String(name).startsWith('NA')) return;
+
+            const cleanEmail = String(email).trim().toLowerCase();
+            const cleanName = String(name).trim();
+            const cleanEmpCode = String(empCode || '').trim();
+            const cleanDesig = String(designation || '').trim();
+            const cleanDept = String(department || 'Computer Engineering').trim();
+            const cleanMobile = mobile ? String(mobile).replace(/\D/g, '').slice(0, 15) || null : null;
+            const cleanPan = panCard ? String(panCard).trim().toUpperCase() || null : null;
+
+            // Only create login account for faculty designations
+            if (!isFacultyDesig(cleanDesig)) {
+                results.skipped++;
+                return;
+            }
+
+            const existing = await pool.query(
+                'SELECT id FROM users WHERE LOWER(email) = $1', [cleanEmail]
+            );
+            if (existing.rows.length > 0) {
+                results.skipped++;
+                return;
+            }
+
+            const plainPassword = generateAutoPassword(cleanName, cleanEmpCode);
+            const hashed = await bcrypt.hash(plainPassword, 10);
+
+            try {
+                await pool.query(
+                    `INSERT INTO users (name, email, password, role, department, mobile, pan_card, emp_code, is_active, has_set_password)
+                     VALUES ($1,$2,$3,'FACULTY',$4,$5,$6,$7,true,true)`,
+                    [cleanName, cleanEmail, hashed, cleanDept, cleanMobile, cleanPan, cleanEmpCode || null]
+                );
+                results.inserted++;
+                credentials.push({ name: cleanName, email: cleanEmail, designation: cleanDesig, password: plainPassword });
+            } catch (err) {
+                results.errors.push(`${cleanEmail}: ${err.message}`);
+            }
+        };
+
+        if (hasHeaders) {
+            // Named-header format (generic CSV/XLSX)
+            for (const row of jsonRows) {
+                await processRow(
+                    row.name || row.Name || row.NAME,
+                    row.email || row.Email || row.EMAIL,
+                    row.emp_code || row.EmpCode || row['Emp Code'] || row.empcode || '',
+                    row.designation || row.Designation || row.DESIGNATION || 'Assistant Professor',
+                    row.department || row.Department || row.DEPARTMENT || 'Computer Engineering',
+                    row.mobile || row.Mobile || row.MOBILE || '',
+                    row.pan_card || row.PAN || row.pan || ''
+                );
+            }
+        } else {
+            // Raw indexed format (Comp_ALL_Faculty_details.xlsx style)
+            const dataRows = rawRows.slice(1);
+            for (const row of dataRows) {
+                await processRow(
+                    row[2],   // Name
+                    row[4],   // Email
+                    row[1],   // Emp Code
+                    row[9],   // Designation
+                    row[10],  // Department
+                    row[5],   // Mobile
+                    row[20]   // PAN
+                );
+            }
+        }
+
+        res.json({
+            message: `Bulk import complete: ${results.inserted} inserted, ${results.skipped} skipped`,
+            inserted: results.inserted,
+            skipped: results.skipped,
+            errors: results.errors,
+            credentials  // Admin can download this
+        });
+    } catch (err) {
+        console.error('Bulk import error:', err);
+        res.status(500).json({ message: 'Failed to process file: ' + err.message });
     }
 };

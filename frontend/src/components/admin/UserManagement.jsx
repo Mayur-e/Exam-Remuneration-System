@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useToast } from "../../hooks/useToast";
 import api from "../../services/api";
 import { PROGRAM_DEPARTMENTS } from "../../constants/departments";
@@ -11,15 +11,16 @@ export default function UserManagement() {
     const [selectedUser, setSelectedUser] = useState(null);
     const [newPassword, setNewPassword] = useState("");
     const [filterRole, setFilterRole] = useState("");
+    const [createdCred, setCreatedCred] = useState(null);
+    const [importing, setImporting] = useState(false);
+    const [importResult, setImportResult] = useState(null);
+    const [showImportPanel, setShowImportPanel] = useState(false);
+    const fileRef = useRef(null);
     const { showToast } = useToast();
 
     const [formData, setFormData] = useState({
-        name: "",
-        email: "",
-        prn: "",
-        password: "",
-        role: "FACULTY",
-        department: ""
+        name: "", email: "", emp_code: "",
+        mobile: "", pan_card: "", role: "FACULTY", department: ""
     });
 
     useEffect(() => {
@@ -42,29 +43,48 @@ export default function UserManagement() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
         if (!formData.email.endsWith('@pccoepune.org')) {
             showToast("Email must be from @pccoepune.org domain", "error");
             return;
         }
-
         try {
-            await api.post("/admin/users", formData);
-            showToast(`${formData.role} user created successfully`, "success");
-            setShowModal(false);
-            setFormData({
-                name: "",
-                email: "",
-                prn: "",
-                password: "",
-                role: "FACULTY",
-                department: ""
-            });
+            const res = await api.post("/admin/users", formData);
+            setCreatedCred({ name: formData.name, email: formData.email, password: res.data.generated_password });
+            setFormData({ name: "", email: "", emp_code: "", mobile: "", pan_card: "", role: "FACULTY", department: "" });
             fetchUsers();
         } catch (error) {
-            console.error("Create user error:", error);
             showToast(error.response?.data?.message || "Failed to create user", "error");
         }
+    };
+
+    const handleBulkImport = async (e) => {
+        e.preventDefault();
+        const file = fileRef.current?.files[0];
+        if (!file) return showToast("Please select a file", "error");
+        setImporting(true);
+        setImportResult(null);
+        try {
+            const fd = new FormData();
+            fd.append("file", file);
+            const res = await api.post("/admin/users/bulk-import", fd, { headers: { "Content-Type": "multipart/form-data" } });
+            setImportResult(res.data);
+            if (fileRef.current) fileRef.current.value = "";
+            fetchUsers();
+            showToast(res.data.message, "success");
+        } catch (err) {
+            showToast(err.response?.data?.message || "Import failed", "error");
+        } finally { setImporting(false); }
+    };
+
+    const downloadCredentials = (credentials) => {
+        const csv = ["Name,Email,Designation,Password",
+            ...credentials.map(c => `"${c.name}","${c.email}","${c.designation || ''}","${c.password}"`)
+        ].join("\n");
+        const a = Object.assign(document.createElement("a"), {
+            href: URL.createObjectURL(new Blob([csv], { type: "text/csv" })),
+            download: "imported_credentials.csv"
+        });
+        a.click();
     };
 
     const toggleUserStatus = async (userId, currentStatus) => {
@@ -100,16 +120,72 @@ export default function UserManagement() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 tracking-tight">User Management</h1>
-                    <p className="text-slate-500 text-sm mt-1">Manage system administrators, Billing Incharge, and Faculty accounts.</p>
+                    <p className="text-slate-500 text-sm mt-1">Manage faculty and billing incharge accounts. Passwords are auto-generated.</p>
                 </div>
-                <button
-                    onClick={() => setShowModal(true)}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-colors shadow-sm text-sm shrink-0"
-                >
-                    <span className="material-symbols-outlined text-[20px]">person_add</span>
-                    Add New User
-                </button>
+                <div className="flex gap-2 shrink-0">
+                    <button onClick={() => { setShowImportPanel(p => !p); setImportResult(null); }}
+                        className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-colors shadow-sm text-sm">
+                        <span className="material-symbols-outlined text-[20px]">upload_file</span>
+                        Bulk Import
+                    </button>
+                    <button onClick={() => { setShowModal(true); setCreatedCred(null); }}
+                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-colors shadow-sm text-sm">
+                        <span className="material-symbols-outlined text-[20px]">person_add</span>
+                        Add User
+                    </button>
+                </div>
             </div>
+
+            {/* Bulk Import Panel */}
+            {showImportPanel && (
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+                    <div className="flex items-start justify-between">
+                        <div>
+                            <h3 className="font-bold text-slate-800">Bulk Import Users</h3>
+                            <p className="text-xs text-slate-500 mt-0.5">Accepts <strong>.xlsx / .xls / .csv</strong>. Supports the college faculty Excel format or generic CSV with headers: <span className="font-mono bg-slate-100 px-1 rounded text-[11px]">name, email, emp_code, designation, department, mobile, pan_card</span></p>
+                        </div>
+                        <button onClick={() => setShowImportPanel(false)} className="text-slate-400 hover:text-slate-600">
+                            <span className="material-symbols-outlined text-[20px]">close</span>
+                        </button>
+                    </div>
+                    <form onSubmit={handleBulkImport} className="flex items-center gap-3 flex-wrap">
+                        <label className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-100 text-sm font-semibold text-slate-700 transition-colors">
+                            <span className="material-symbols-outlined text-[18px]">folder_open</span>
+                            <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" />
+                            Choose File
+                        </label>
+                        <button type="submit" disabled={importing}
+                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white font-bold rounded-xl text-sm hover:bg-primary-hover disabled:opacity-50 transition-colors shadow-sm">
+                            <span className="material-symbols-outlined text-[18px]">{importing ? "hourglass_empty" : "cloud_upload"}</span>
+                            {importing ? "Importing..." : "Import"}
+                        </button>
+                    </form>
+                    {importResult && (
+                        <div className="space-y-3">
+                            <div className="flex gap-4">
+                                {[{l:"Inserted",v:importResult.inserted,c:"emerald"},{l:"Skipped",v:importResult.skipped,c:"amber"},{l:"Errors",v:importResult.errors?.length||0,c:"red"}].map(s=>(
+                                    <div key={s.l} className={`flex items-center gap-2 px-3 py-2 bg-${s.c}-50 border border-${s.c}-200 rounded-xl`}>
+                                        <span className={`text-xl font-black text-${s.c}-700`}>{s.v}</span>
+                                        <span className={`text-xs font-bold text-${s.c}-500 uppercase`}>{s.l}</span>
+                                    </div>
+                                ))}
+                            </div>
+                            {importResult.inserted > 0 && (
+                                <button onClick={() => downloadCredentials(importResult.credentials)}
+                                    className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-colors">
+                                    <span className="material-symbols-outlined text-[17px]">download</span>
+                                    Download Credentials CSV ({importResult.inserted} users)
+                                </button>
+                            )}
+                            {importResult.errors?.length > 0 && (
+                                <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+                                    {importResult.errors.map((e,i)=><p key={i} className="text-xs text-red-600 font-mono">{e}</p>)}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Filter Bar */}
             <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
@@ -256,63 +332,42 @@ export default function UserManagement() {
                                 <span className="material-symbols-outlined text-[20px]">close</span>
                             </button>
                         </div>
-                        <form onSubmit={handleSubmit} className="p-6 space-y-5">
-                            <div>
-                                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Full Name</label>
-                                <div className="relative">
-                                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">badge</span>
-                                    <input
-                                        type="text"
-                                        value={formData.name}
-                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                        placeholder="e.g. John Doe"
-                                        className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                                        required
-                                    />
+                        {/* Generated credentials banner */}
+                        {createdCred && (
+                            <div className="mx-6 mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                                <p className="text-xs font-bold text-emerald-700 mb-1">✅ User created — share these credentials:</p>
+                                <p className="text-xs text-slate-700"><span className="text-slate-400">Email:</span> <span className="font-mono">{createdCred.email}</span></p>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                    <span className="text-xs text-slate-400">Password:</span>
+                                    <span className="font-mono text-xs bg-white border border-emerald-200 px-2 py-0.5 rounded text-emerald-700 font-bold">{createdCred.password}</span>
+                                    <button type="button" onClick={() => navigator.clipboard.writeText(createdCred.password)}
+                                        className="text-emerald-500 hover:text-emerald-700">
+                                        <span className="material-symbols-outlined text-[14px]">content_copy</span>
+                                    </button>
                                 </div>
                             </div>
-                            <div>
-                                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">PRN</label>
-                                <div className="relative">
-                                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">tag</span>
-                                    <input
-                                        type="text"
-                                        value={formData.prn}
-                                        onChange={(e) => setFormData({ ...formData, prn: e.target.value })}
-                                        placeholder="e.g. 12345678"
-                                        className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                                    />
+                        )}
+                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                            <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                                🔑 Password auto-generated: <strong>lastName + last 4 of Emp Code</strong> (e.g. <span className="font-mono">ovale1944</span>)
+                            </p>
+                            {[{key:"name",label:"Full Name *",icon:"badge",ph:"e.g. SHRADDHA VIJAY OVALE",type:"text",req:true},
+                              {key:"email",label:"Email *",icon:"mail",ph:"user@pccoepune.org",type:"email",req:true},
+                              {key:"emp_code",label:"Employee Code",icon:"tag",ph:"e.g. 20TCOMP1944",type:"text",req:false},
+                              {key:"mobile",label:"Mobile",icon:"phone",ph:"10-digit number",type:"text",req:false},
+                              {key:"pan_card",label:"PAN Card",icon:"credit_card",ph:"ABCDE1234F",type:"text",req:false},
+                            ].map(f => (
+                                <div key={f.key}>
+                                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">{f.label}</label>
+                                    <div className="relative">
+                                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">{f.icon}</span>
+                                        <input type={f.type} value={formData[f.key]}
+                                            onChange={e => setFormData(p => ({...p,[f.key]:e.target.value}))}
+                                            placeholder={f.ph} required={f.req}
+                                            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" />
+                                    </div>
                                 </div>
-                            </div>
-                            <div>
-                                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Email Address</label>
-                                <div className="relative">
-                                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">mail</span>
-                                    <input
-                                        type="email"
-                                        value={formData.email}
-                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                        placeholder="user@pccoepune.org"
-                                        className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                                        required
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Password</label>
-                                <div className="relative">
-                                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">lock</span>
-                                    <input
-                                        type="password"
-                                        value={formData.password}
-                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                        placeholder="Minimum 6 characters"
-                                        className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                                        required
-                                        minLength={6}
-                                    />
-                                </div>
-                            </div>
+                            ))}
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Role</label>
@@ -352,21 +407,18 @@ export default function UserManagement() {
                                 </div>
                             </div>
 
-                            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowModal(false)}
-                                    className="px-5 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
-                                >
-                                    Cancel
+                            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-2">
+                                <button type="button" onClick={() => { setShowModal(false); setCreatedCred(null); }}
+                                    className="px-5 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
+                                    {createdCred ? "Close" : "Cancel"}
                                 </button>
-                                <button
-                                    type="submit"
-                                    className="px-5 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary-hover transition-colors shadow-sm flex items-center gap-2"
-                                >
-                                    <span className="material-symbols-outlined text-[18px]">add_task</span>
-                                    Create User
-                                </button>
+                                {!createdCred && (
+                                    <button type="submit"
+                                        className="px-5 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary-hover transition-colors shadow-sm flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-[18px]">add_task</span>
+                                        Create User
+                                    </button>
+                                )}
                             </div>
                         </form>
                     </div>
