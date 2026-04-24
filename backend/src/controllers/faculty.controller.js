@@ -1504,4 +1504,119 @@ exports.getStaffRates = async (req, res) => {
 };
 
 
+/**
+ * GET RATE PREVIEW (for draft claims - before submission)
+ * Returns the applicable per-student rate, min_per_day, and a gross amount estimate
+ * based on the current remuneration_rates table.
+ */
+exports.getRatePreview = async (req, res) => {
+  const examId = req.params.id;
+
+  try {
+    // Fetch the exam details
+    const examResult = await pool.query(
+      `SELECT exam_type, program, level, students_count, academic_year
+       FROM exams
+       WHERE id = $1 AND faculty_id = $2`,
+      [examId, req.user.id]
+    );
+
+    if (examResult.rows.length === 0) {
+      return res.status(404).json({ message: "Exam not found" });
+    }
+
+    const { exam_type, program, level, students_count, academic_year } = examResult.rows[0];
+    const students = Number(students_count) || 0;
+
+    // Resolve academic year — fallback to latest available
+    const yearToUse = academic_year || null;
+
+    let rateQuery;
+    if (yearToUse) {
+      rateQuery = await pool.query(
+        `SELECT exam_type, fy_sy_rate, ty_final_rate, mtech_mca_rate, min_per_day
+         FROM remuneration_rates
+         WHERE exam_type = $1 AND academic_year = $2
+         LIMIT 1`,
+        [exam_type, yearToUse]
+      );
+    }
+
+    // If no rate found for specific year, try any year (latest)
+    if (!rateQuery || rateQuery.rows.length === 0) {
+      rateQuery = await pool.query(
+        `SELECT exam_type, fy_sy_rate, ty_final_rate, mtech_mca_rate, min_per_day
+         FROM remuneration_rates
+         WHERE exam_type = $1
+         ORDER BY academic_year DESC
+         LIMIT 1`,
+        [exam_type]
+      );
+    }
+
+    if (rateQuery.rows.length === 0) {
+      return res.status(404).json({
+        message: `No rates configured for exam type "${exam_type}". Please contact the administrator.`,
+        rateNotFound: true,
+      });
+    }
+
+    const rateRow = rateQuery.rows[0];
+    const { fy_sy_rate, ty_final_rate, mtech_mca_rate, min_per_day } = rateRow;
+
+    // Resolve applicable rate based on program + level
+    let applicableRate = null;
+    const upperProgram = (program || "").toUpperCase();
+    const upperLevel = (level || "").toUpperCase();
+
+    if (["BTECH", "BVOC"].includes(upperProgram)) {
+      if (["FY", "SY"].includes(upperLevel)) {
+        applicableRate = parseFloat(fy_sy_rate);
+      } else {
+        // TY, FINAL, etc.
+        applicableRate = parseFloat(ty_final_rate);
+      }
+    } else {
+      // MTECH, MCA, and others
+      applicableRate = parseFloat(mtech_mca_rate);
+    }
+
+    if (applicableRate === null || isNaN(applicableRate)) {
+      return res.status(404).json({
+        message: `Rate tier not found for ${program} - ${level}. Please contact the administrator.`,
+        rateNotFound: true,
+      });
+    }
+
+    const minPerDay = parseFloat(min_per_day) || 0;
+    const grossAmount = applicableRate * students;
+    const finalAmount = Math.max(grossAmount, minPerDay);
+    const tdsAmount = finalAmount * 0.10;
+    const netAmount = finalAmount - tdsAmount;
+    const minApplied = grossAmount < minPerDay;
+
+    return res.json({
+      exam_type,
+      program,
+      level,
+      students_count: students,
+      academic_year: yearToUse,
+      applicable_rate: applicableRate,
+      fy_sy_rate: parseFloat(fy_sy_rate),
+      ty_final_rate: parseFloat(ty_final_rate),
+      mtech_mca_rate: parseFloat(mtech_mca_rate),
+      min_per_day: minPerDay,
+      gross_amount: grossAmount,
+      final_amount: finalAmount,
+      tds_amount: tdsAmount,
+      net_amount: netAmount,
+      min_applied: minApplied,
+    });
+  } catch (err) {
+    console.error("getRatePreview error:", err);
+    return res.status(500).json({ message: "Failed to compute rate preview" });
+  }
+};
+
+
 

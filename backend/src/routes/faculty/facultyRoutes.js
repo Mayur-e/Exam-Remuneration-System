@@ -34,6 +34,7 @@ router.get("/staff-rates", ctrl.getStaffRates);
 router.put("/exams/:examId/staff/:staffId", ctrl.updateExamStaff);
 router.delete("/exams/:examId/staff/:staffId", ctrl.deleteExamStaff);
 router.get("/exams/:id/bill", idParamValidation, ctrl.getBillSummary);
+router.get("/exams/:id/rate-preview", idParamValidation, ctrl.getRatePreview);
 router.get("/drafts", ctrl.listDraftClaims);
 router.delete("/drafts/:id", idParamValidation, ctrl.deleteDraft);
 router.get("/exams/:id/summary", idParamValidation, ctrl.getExamSummary);
