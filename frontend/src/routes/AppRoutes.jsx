@@ -2,7 +2,6 @@ import { Routes, Route, Navigate } from "react-router-dom";
 
 // Auth
 import Login from "../pages/auth/Login";
-import Signup from "../pages/auth/Register";
 
 // Admin
 import AdminLayout from "../pages/admin/AdminLayout";
@@ -51,7 +50,6 @@ export default function AppRoutes() {
     <Routes>
       {/* ================= PUBLIC ================= */}
       <Route path="/" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
 
       {/* ================= ADMIN ================= */}
       <Route

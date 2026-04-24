@@ -136,7 +136,7 @@ export default function DashboardLayout({ role, navItems, branding }) {
                             className="w-full flex items-center justify-center gap-2 p-3.5 rounded-xl border border-red-100 bg-red-50/50 text-red-600 hover:bg-red-100 hover:border-red-200 transition-colors font-bold text-sm shadow-sm"
                         >
                             <LogoutIcon className="w-4 h-4" />
-                            Secure Logout
+                            Logout
                         </button>
                     </div>
                 </aside>

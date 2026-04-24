@@ -6,7 +6,6 @@ import api from "../../services/api";
 import { validateEmail, validatePassword } from "../../utils/validation";
 
 // Enhanced UI components
-import GoogleSignupModal from "../../components/auth/GoogleSignupModal";
 import { useToast } from "../../hooks/useToast";
 
 // Icons
@@ -23,9 +22,6 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
 
   // Google Auth states
-  const [showSignupModal, setShowSignupModal] = useState(false);
-  const [googleToken, setGoogleToken] = useState("");
-  const [googleUserData, setGoogleUserData] = useState(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   // Toast hook
@@ -112,13 +108,8 @@ export default function Login() {
           else navigate("/faculty");
         }, 1500);
       } else {
-        // New user - show signup modal
-        setGoogleToken(token);
-        setGoogleUserData({
-          email: res.data.email,
-          name: res.data.name
-        });
-        setShowSignupModal(true);
+        // New user - registration not allowed
+        setGeneralError("Your account is not registered. Please contact the administrator.");
       }
     } catch (err) {
       console.error("Google auth error:", err);
@@ -136,54 +127,7 @@ export default function Login() {
     setGeneralError("Google Sign-In was cancelled or failed");
   };
 
-  const handleSignupSubmit = async ({ prn, department }) => {
-    setIsGoogleLoading(true);
 
-    try {
-      const res = await api.post("/auth/google/register", {
-        token: googleToken,
-        prn,
-        department
-      });
-
-      const { token: authToken, user, needsBankDetails } = res.data;
-
-      // Trigger unified global toast
-      showToast("Registration successful! Welcome.", "success");
-
-      localStorage.setItem("token", authToken);
-      localStorage.setItem("user", JSON.stringify(user));
-
-      setShowSignupModal(false);
-
-      // Set flag for dashboard to show bank details notification
-      if (needsBankDetails) {
-        localStorage.setItem("showBankDetailsNotification", "true");
-      }
-
-      // Redirect immediately
-      setTimeout(() => {
-        if (user.role === "ADMIN") navigate("/admin");
-        else if (user.role === "BILLING_INCHARGE") navigate("/accountant");
-        else navigate("/faculty");
-      }, 1500);
-
-    } catch (err) {
-      console.error("Google registration error:", err);
-      if (err.response?.status === 409) {
-        setGeneralError(err.response.data.message || "User or PRN already exists");
-      } else {
-        setGeneralError("Registration failed. Please try again.");
-      }
-
-      // Error toast
-      showToast("Registration failed", "error");
-
-      setShowSignupModal(false);
-    } finally {
-      setIsGoogleLoading(false);
-    }
-  };
 
   // Google Login Custom Button using useGoogleLogin hook is preferred, but here we can adapt the standard component
   // to be invisible over a custom button if needed. Given the HTML design has a custom button, we'll implement it.
@@ -353,19 +297,7 @@ export default function Login() {
                 </button>
               </form>
 
-              {/* Optional switch to signup if you want to keep it */}
-              <div className="mt-6 text-center">
-                <p className="text-sm text-slate-500">
-                  Don't have an account?{" "}
-                  <button
-                    type="button"
-                    onClick={() => navigate("/signup")}
-                    className="text-primary hover:text-primary-hover font-semibold transition-colors hover:underline"
-                  >
-                    Sign Up
-                  </button>
-                </p>
-              </div>
+
 
             </div>
           </motion.div>
@@ -375,17 +307,7 @@ export default function Login() {
         </div>
       </div>
 
-      {/* Google Signup Modal */}
-      {showSignupModal && googleUserData && (
-        <GoogleSignupModal
-          isOpen={showSignupModal}
-          onClose={() => setShowSignupModal(false)}
-          email={googleUserData.email}
-          name={googleUserData.name}
-          onSubmit={handleSignupSubmit}
-          isLoading={isGoogleLoading}
-        />
-      )}
+
     </div>
   );
 }

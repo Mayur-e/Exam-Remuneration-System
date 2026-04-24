@@ -90,7 +90,7 @@ export default function AdminSettings() {
     const tabs = [
         { id: "profile", label: "Profile", icon: "person" },
         { id: "system", label: "System Config", icon: "settings" },
-        { id: "counts", label: "Student Counts", icon: "groups" }
+        { id: "counts", label: "Student Counts", icon: "groups" },
     ];
 
     return (

@@ -5,6 +5,7 @@ import api from "../../services/api";
 import { Input } from "../../components/ui/input";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
+import StaffSearch from "../../components/ui/StaffSearch";
 
 // Icons
 import {
@@ -410,14 +411,15 @@ export default function ExamDetails({ examId, disabled, onCreated, claimFormType
             <label className="text-sm font-medium text-foreground">
               Second Examiner Name (if any)
             </label>
-            <Input
+            <StaffSearch
               disabled={disabled}
-              placeholder="Enter name of second examiner (optional)"
+              placeholder="Search faculty by name..."
               value={form.second_examiner}
-              onChange={(e) => update("second_examiner", e.target.value)}
+              onChange={(val) => update("second_examiner", val)}
+              type="faculty"
             />
             <p className="text-xs text-muted-foreground">
-              Leave blank if there is no second examiner
+              Type to search faculty — leave blank if no second examiner
             </p>
           </div>
         )}

@@ -6,14 +6,17 @@ import { Input } from "../../components/ui/input";
 import { Button } from "../../components/ui/button";
 import { CalendarIcon, UsersIcon, PlusIcon, TrashIcon } from "../../components/icons/logo";
 
-const DateInputSection = ({ label, value, onChange, disabled }) => {
+const DateInputSection = ({ label, value, onChange, disabled, maxAllowed }) => {
     const [dateInput, setDateInput] = useState("");
 
     // Parse comma-separated string into array
     const dates = value ? value.split(",").map(d => d.trim()).filter(Boolean) : [];
 
+    // Blocked = this exam type allows 0 days of this type
+    const isBlocked = maxAllowed === 0;
+
     const addDate = () => {
-        if (!dateInput) return;
+        if (!dateInput || isBlocked) return;
 
         // Check if date is already added
         if (!dates.includes(dateInput)) {
@@ -34,7 +37,18 @@ const DateInputSection = ({ label, value, onChange, disabled }) => {
                 {label}
             </label>
 
-            {!disabled && (
+            {/* Notice when this date type is not allowed for this exam */}
+            {isBlocked && (
+                <div className="flex items-start gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+                    <span className="text-amber-500 mt-0.5">⚠️</span>
+                    <p className="text-xs text-amber-700 leading-snug">
+                        This exam type does not include <strong>{label.replace("(s)", "").trim()}</strong> remuneration.
+                        No payment will be added for this.
+                    </p>
+                </div>
+            )}
+
+            {!disabled && !isBlocked && (
                 <div className="flex gap-2">
                     <Input
                         type="date"
@@ -55,29 +69,31 @@ const DateInputSection = ({ label, value, onChange, disabled }) => {
                 </div>
             )}
 
-            <div className="flex flex-wrap gap-2 min-h-[40px] p-3 bg-muted rounded-lg border border-dashed border-border">
-                {dates.length === 0 ? (
-                    <span className="text-sm text-muted-foreground italic">No dates added</span>
-                ) : (
-                    dates.map((date, idx) => (
-                        <div
-                            key={idx}
-                            className="flex items-center gap-2 px-3 py-1 bg-card border border-border rounded-full shadow-sm"
-                        >
-                            <span className="text-sm font-medium text-foreground">{date}</span>
-                            {!disabled && (
-                                <button
-                                    type="button"
-                                    onClick={() => removeDate(date)}
-                                    className="text-muted-foreground hover:text-red-500 transition-colors"
-                                >
-                                    <TrashIcon className="w-3 h-3" />
-                                </button>
-                            )}
-                        </div>
-                    ))
-                )}
-            </div>
+            {!isBlocked && (
+                <div className="flex flex-wrap gap-2 min-h-[40px] p-3 bg-muted rounded-lg border border-dashed border-border">
+                    {dates.length === 0 ? (
+                        <span className="text-sm text-muted-foreground italic">No dates added</span>
+                    ) : (
+                        dates.map((date, idx) => (
+                            <div
+                                key={idx}
+                                className="flex items-center gap-2 px-3 py-1 bg-card border border-border rounded-full shadow-sm"
+                            >
+                                <span className="text-sm font-medium text-foreground">{date}</span>
+                                {!disabled && (
+                                    <button
+                                        type="button"
+                                        onClick={() => removeDate(date)}
+                                        className="text-muted-foreground hover:text-red-500 transition-colors"
+                                    >
+                                        <TrashIcon className="w-3 h-3" />
+                                    </button>
+                                )}
+                            </div>
+                        ))
+                    )}
+                </div>
+            )}
         </div>
     );
 };
@@ -92,6 +108,7 @@ export default function NonTeachingInfo({ examId, disabled, onUpdated, refreshKe
         total_batches: 0
     });
     const [fullExamData, setFullExamData] = useState(null);
+    const [norms, setNorms] = useState({ max_prep_days: null, max_cleaning_days: null });
     const [loading, setLoading] = useState(false);
     const { showToast } = useToast();
 
@@ -109,9 +126,19 @@ export default function NonTeachingInfo({ examId, disabled, onUpdated, refreshKe
                 const totalStudents = data.students_count || 0;
                 const batches = batchSize ? Math.ceil(totalStudents / batchSize) : 0;
 
+                // Store norms for date section gating
+                setNorms({
+                    max_prep_days: batchRes.data.max_prep_days,
+                    max_cleaning_days: batchRes.data.max_cleaning_days,
+                });
+
+                // Pre-fill exam_dates with the main exam_date if no dates saved yet
+                const mainExamDate = data.exam_date ? data.exam_date.split("T")[0] : "";
+                const defaultExamDates = data.exam_dates || (mainExamDate ? mainExamDate : "");
+
                 setForm({
                     prep_dates: data.prep_dates || "",
-                    exam_dates: data.exam_dates || "",
+                    exam_dates: defaultExamDates,
                     cleaning_dates: data.cleaning_dates || "",
                     students_per_batch: batchSize,
                     total_students: totalStudents,
@@ -119,10 +146,12 @@ export default function NonTeachingInfo({ examId, disabled, onUpdated, refreshKe
                 });
             }).catch(err => {
                 console.error("Failed to load batch size:", err);
+                const mainExamDate = data.exam_date ? data.exam_date.split("T")[0] : "";
+                const defaultExamDates = data.exam_dates || (mainExamDate ? mainExamDate : "");
                 // Fallback to default
                 setForm({
                     prep_dates: data.prep_dates || "",
-                    exam_dates: data.exam_dates || "",
+                    exam_dates: defaultExamDates,
                     cleaning_dates: data.cleaning_dates || "",
                     students_per_batch: 1,
                     total_students: data.students_count || 0,
@@ -237,6 +266,7 @@ export default function NonTeachingInfo({ examId, disabled, onUpdated, refreshKe
                         value={form.prep_dates}
                         onChange={(val) => update("prep_dates", val)}
                         disabled={disabled}
+                        maxAllowed={norms.max_prep_days}
                     />
 
                     <DateInputSection
@@ -244,6 +274,7 @@ export default function NonTeachingInfo({ examId, disabled, onUpdated, refreshKe
                         value={form.exam_dates}
                         onChange={(val) => update("exam_dates", val)}
                         disabled={disabled}
+                        maxAllowed={null} /* Exam dates are always allowed */
                     />
 
                     <DateInputSection
@@ -251,6 +282,7 @@ export default function NonTeachingInfo({ examId, disabled, onUpdated, refreshKe
                         value={form.cleaning_dates}
                         onChange={(val) => update("cleaning_dates", val)}
                         disabled={disabled}
+                        maxAllowed={norms.max_cleaning_days}
                     />
                 </div>
 
