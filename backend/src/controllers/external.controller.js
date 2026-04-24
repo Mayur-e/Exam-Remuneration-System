@@ -1,4 +1,5 @@
 const pool = require("../config/db");
+const { sendExaminerInvite } = require("../services/email.service");
 
 /**
  * GET external claim (read-only exam details)
@@ -342,6 +343,165 @@ exports.submitExternalClaim = async (req, res) => {
  * GET external claim info (for resubmission)
  * Includes rejection history and existing examiner data
  */
+/**
+ * POST /external/google-form-webhook
+ * Called by Google Apps Script when a Google Form is submitted.
+ * No JWT auth — secured by a shared WEBHOOK_SECRET header.
+ *
+ * Expected body:
+ * {
+ *   secret: "...",               ← must match WEBHOOK_SECRET in .env
+ *   token: "...",                ← external exam link token
+ *   full_name, email, mobile, parent_institute, pan_number,
+ *   bank_name, branch_name, account_number, ifsc_code,
+ *   pan_document_url: "...",     ← Google Drive URL (optional)
+ *   cancelled_cheque_url: "..." ← Google Drive URL (optional)
+ * }
+ */
+exports.googleFormWebhook = async (req, res) => {
+  const {
+    secret,
+    token,
+    full_name,
+    email,
+    mobile,
+    parent_institute,
+    pan_number,
+    bank_name,
+    branch_name,
+    account_number,
+    ifsc_code,
+    pan_document_url,      // Google Drive URL — optional
+    cancelled_cheque_url,  // Google Drive URL — optional
+  } = req.body;
+
+  // 1. Verify shared secret
+  if (!secret || secret !== process.env.WEBHOOK_SECRET) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  // 2. Validate required fields
+  if (!token || !full_name || !email || !mobile || !parent_institute ||
+      !pan_number || !bank_name || !account_number || !ifsc_code) {
+    return res.status(400).json({
+      message: "Missing required fields. Ensure token, name, email, mobile, institute, PAN, and bank details are all provided."
+    });
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    // 3. Validate token
+    const linkRes = await client.query(
+      `SELECT exam_id
+       FROM external_exam_links
+       WHERE token = $1
+         AND used = false
+         AND (expires_at IS NULL OR expires_at > NOW())
+       FOR UPDATE`,
+      [token]
+    );
+
+    if (linkRes.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "Invalid or expired token" });
+    }
+
+    const examId = linkRes.rows[0].exam_id;
+
+    // 4. Check exam state
+    const examCheck = await client.query(
+      `SELECT external_examiner_id, status FROM exams WHERE id = $1`,
+      [examId]
+    );
+
+    if (examCheck.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Exam not found" });
+    }
+
+    const { external_examiner_id, status } = examCheck.rows[0];
+    const isResubmission = external_examiner_id !== null && status === "rejected";
+    let examinerId;
+
+    // Normalise Drive URLs — store null if empty
+    const panUrl = pan_document_url?.trim() || null;
+    const chequeUrl = cancelled_cheque_url?.trim() || null;
+
+    if (isResubmission) {
+      // UPDATE existing examiner record (keep old doc URLs if new ones not provided)
+      examinerId = external_examiner_id;
+      await client.query(
+        `UPDATE external_examiners SET
+           full_name = $1, email = $2, mobile = $3,
+           parent_institute = $4, pan_number = $5,
+           bank_name = $6, branch_name = $7,
+           account_number = $8, ifsc_code = $9,
+           pan_document_url = COALESCE($10, pan_document_url),
+           cancelled_cheque_url = COALESCE($11, cancelled_cheque_url)
+         WHERE id = $12`,
+        [full_name, email, mobile, parent_institute, pan_number,
+         bank_name, branch_name || null, account_number, ifsc_code,
+         panUrl, chequeUrl, examinerId]
+      );
+    } else {
+      // INSERT new examiner record
+      const examinerRes = await client.query(
+        `INSERT INTO external_examiners
+           (full_name, email, mobile, parent_institute, pan_number,
+            bank_name, branch_name, account_number, ifsc_code,
+            pan_document_url, cancelled_cheque_url,
+            is_local, journey_days, travel_allowance)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,false,0,0)
+         RETURNING id`,
+        [full_name, email, mobile, parent_institute, pan_number,
+         bank_name, branch_name || null, account_number, ifsc_code,
+         panUrl, chequeUrl]
+      );
+      examinerId = examinerRes.rows[0].id;
+    }
+
+    // 5. Attach examiner & advance exam to coordinator review
+    await client.query(
+      `UPDATE exams
+       SET external_examiner_id = $1,
+           status = 'UNDER_COORDINATOR_REVIEW',
+           updated_at = NOW()
+       WHERE id = $2
+         AND (status = 'draft' OR status = 'rejected' OR status = 'COORDINATOR_REJECTED')
+         AND claim_form_type = 'TEACHING_EXTERNAL'`,
+      [examinerId, examId]
+    );
+
+    // 6. Mark link as used
+    await client.query(
+      `UPDATE external_exam_links SET used = true WHERE token = $1`,
+      [token]
+    );
+
+    // 7. Initialise calculation row & trigger
+    await client.query(
+      `INSERT INTO remuneration_calculations (exam_id, conveyance_amount)
+       VALUES ($1, 0)
+       ON CONFLICT (exam_id) DO NOTHING`,
+      [examId]
+    );
+    await client.query(`SELECT calculate_exam($1)`, [examId]);
+
+    await client.query("COMMIT");
+    return res.json({ message: "External examiner data saved successfully" });
+
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("googleFormWebhook error:", err);
+    return res.status(500).json({ message: "Server error" });
+  } finally {
+    client.release();
+  }
+};
+
 exports.getExternalClaimInfo = async (req, res) => {
   const { token } = req.params;
 
@@ -389,5 +549,85 @@ exports.getExternalClaimInfo = async (req, res) => {
   } catch (err) {
     console.error("getExternalClaimInfo error:", err);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+/**
+ * POST /external/send-examiner-invite
+ * Sends the pre-filled Google Form link to the examiner's email.
+ * JWT protected — faculty only.
+ *
+ * Body: { examId, examinerEmail, examinerName (optional) }
+ */
+exports.sendExaminerInvite = async (req, res) => {
+  const { examId, examinerEmail, examinerName } = req.body;
+
+  if (!examId || !examinerEmail) {
+    return res.status(400).json({ message: "examId and examinerEmail are required" });
+  }
+
+  // Basic email format check
+  const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRx.test(examinerEmail)) {
+    return res.status(400).json({ message: "Invalid email address" });
+  }
+
+  try {
+    // Fetch the active (unused, non-expired) token for this exam
+    const linkRes = await pool.query(
+      `SELECT token, expires_at
+       FROM external_exam_links
+       WHERE exam_id = $1
+         AND used = false
+         AND (expires_at IS NULL OR expires_at > NOW())
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [examId]
+    );
+
+    if (linkRes.rows.length === 0) {
+      return res.status(400).json({
+        message: "No active token found for this exam. Please generate a token first."
+      });
+    }
+
+    const token = linkRes.rows[0].token;
+
+    // Build pre-filled Google Form URL
+    const formBase = process.env.GOOGLE_FORM_URL;
+    const fieldId  = process.env.GOOGLE_FORM_TOKEN_FIELD_ID;
+
+    if (!formBase) {
+      return res.status(500).json({ message: "GOOGLE_FORM_URL is not configured" });
+    }
+
+    const formUrl = fieldId
+      ? `${formBase}?${fieldId}=${encodeURIComponent(token)}`
+      : formBase;
+
+    // Fetch exam info for the email subject line
+    const examRes = await pool.query(
+      `SELECT subject_name, exam_date FROM exams WHERE id = $1`,
+      [examId]
+    );
+    const examInfo = examRes.rows.length > 0
+      ? `${examRes.rows[0].subject_name || 'Exam'} – ${examRes.rows[0].exam_date ? new Date(examRes.rows[0].exam_date).toLocaleDateString('en-IN') : ''}`
+      : null;
+
+    await sendExaminerInvite({
+      toEmail: examinerEmail,
+      toName:  examinerName || null,
+      formUrl,
+      token,
+      examInfo,
+    });
+
+    res.json({ message: "Invitation email sent successfully", sentTo: examinerEmail });
+  } catch (err) {
+    console.error("sendExaminerInvite error:", err);
+    res.status(500).json({
+      message: "Failed to send email",
+      detail: err.message,
+    });
   }
 };

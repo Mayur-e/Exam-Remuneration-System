@@ -12,6 +12,7 @@ const adminRoutes = require("./routes/admin/adminRoutes");
 const pdfRoutes = require("./routes/pdf.routes");
 const queryRoutes = require("./routes/query.routes");
 const coordinatorRoutes = require("./routes/coordinator.routes");
+const staffDirectoryRoutes = require("./routes/staff_directory.routes");
 
 const app = express();
 
@@ -19,7 +20,20 @@ const FRONTEND_ORIGIN = process.env.FRONTEND_URL || "http://localhost:5173";
 
 app.use(
   cors({
-    origin: FRONTEND_ORIGIN,
+    origin: (origin, callback) => {
+      // Allow: frontend, Google Apps Script, Cloudflare tunnel, no-origin (curl/postman)
+      const allowed = [
+        FRONTEND_ORIGIN,
+        /\.trycloudflare\.com$/,
+        /script\.google\.com$/,
+        /script\.googleusercontent\.com$/,
+      ];
+      if (!origin) return callback(null, true); // no-origin requests
+      const ok = allowed.some(p =>
+        typeof p === "string" ? p === origin : p.test(origin)
+      );
+      callback(null, ok);
+    },
     allowedHeaders: ["Content-Type", "Authorization"],
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true
@@ -48,6 +62,14 @@ app.use("/api/", limiter);
 
 app.use(express.json());
 
+// Public config — no auth required (must be before other /api routes)
+app.get("/api/config", (req, res) => {
+  res.json({
+    googleFormUrl: process.env.GOOGLE_FORM_URL || null,
+    googleFormTokenFieldId: process.env.GOOGLE_FORM_TOKEN_FIELD_ID || null,
+  });
+});
+
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/faculty", facultyRoutes);
@@ -57,6 +79,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/pdf", pdfRoutes);
 app.use("/api", queryRoutes);
 app.use("/api/coordinator", coordinatorRoutes);
+app.use("/api/staff-directory", staffDirectoryRoutes);
 app.use("/uploads", express.static("uploads"));
 
 // Health check
