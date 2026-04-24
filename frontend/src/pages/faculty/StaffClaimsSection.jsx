@@ -4,6 +4,7 @@ import api from "../../services/api";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
+import StaffSearch from "../../components/ui/StaffSearch";
 
 // Icons
 import {
@@ -307,10 +308,11 @@ export default function StaffClaimsSection({ examId, disabled, refreshKey }) {
                                 <tr key={staff.id} className="border-b border-border hover:bg-muted">
                                     <td className="px-4 py-3">
                                         {isEditing ? (
-                                            <Input
+                                            <StaffSearch
                                                 value={editingStaff.staff_name}
-                                                onChange={(e) => updateEditingStaff("staff_name", e.target.value)}
-                                                className="w-full"
+                                                onChange={(val) => updateEditingStaff("staff_name", val)}
+                                                type="all"
+                                                placeholder="Search staff name..."
                                             />
                                         ) : (
                                             <span className="text-sm text-card-foreground">{staff.staff_name}</span>
@@ -441,10 +443,11 @@ export default function StaffClaimsSection({ examId, disabled, refreshKey }) {
                         {newStaff && (
                             <tr className="border-b-2 border-purple-300 bg-purple-50">
                                 <td className="px-4 py-3">
-                                    <Input
-                                        placeholder="Enter name"
+                                    <StaffSearch
+                                        placeholder="Search staff name..."
                                         value={newStaff.staff_name}
-                                        onChange={(e) => updateNewStaff("staff_name", e.target.value)}
+                                        onChange={(val) => updateNewStaff("staff_name", val)}
+                                        type="all"
                                     />
                                 </td>
                                 <td className="px-4 py-3">
