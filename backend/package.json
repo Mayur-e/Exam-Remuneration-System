@@ -23,10 +23,13 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
+    "nodemailer": "^8.0.5",
     "pg": "^8.16.3",
-    "puppeteer": "^24.36.0"
+    "puppeteer": "^24.36.0",
+    "resend": "^6.12.2"
   },
   "devDependencies": {
-    "nodemon": "^3.1.11"
+    "nodemon": "^3.1.11",
+    "xlsx": "^0.18.5"
   }
 }
