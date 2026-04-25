@@ -36,15 +36,17 @@ This script will automatically install Node.js, PostgreSQL, Nginx, configure the
    cd exam-remuneration-system
    ```
 
-3. **Make the Script Executable**:
+3. **Fix Windows Line Endings & Permissions (Important)**:
+   Because the file was created on Windows, you must fix the line endings before running it on Ubuntu:
    ```bash
+   sed -i 's/\r$//' setup_ubuntu.sh
    chmod +x setup_ubuntu.sh
    ```
 
 4. **Run the Automated Setup**:
    The script requires root privileges to install packages and configure Nginx.
    ```bash
-   sudo ./setup_ubuntu.sh
+   sudo bash setup_ubuntu.sh
    ```
 
 5. **Wait for Completion**:
