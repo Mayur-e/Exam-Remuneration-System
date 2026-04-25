@@ -1,90 +1,120 @@
-# 🚀 PCCOE Exam Remuneration System - Deployment Guide
+# 🚀 PCCOE Exam Remuneration System - LAN Deployment Guide
 
-This guide outlines the steps required to transition the system from local development to a production environment.
+This guide outlines the steps required to deploy the system on your college LAN so that any computer connected to the college network can access it.
 
 ## 1. Prerequisites
-- **Server**: A Linux/Windows server with Node.js (v18+) and npm installed.
-- **Database**: PostgreSQL (v14+) instance.
-- **Domain**: A registered domain (e.g., `pccoe.ac.in`).
-- **Form**: A Google Form for external examiners.
+- **Server**: A Linux/Windows server connected to the college LAN with a static IP address (e.g., `192.168.1.100`).
+- **Software**: Node.js (v18+) and PostgreSQL (v14+) installed.
+- **Service Account**: A Google Service Account `credentials.json` file for Google Sheets polling (see `Google_Form_Setup_Guide.md`).
 
 ---
 
-## 2. Backend Setup (.env)
+## 2. Identify the Server's IP Address
+Before you start, find the IPv4 address of the computer hosting the application:
+- **Windows**: Open Command Prompt and type `ipconfig`. Look for `IPv4 Address` (e.g., `192.168.1.100`).
+- **Linux**: Type `ip a` or `ifconfig`.
 
-Create a `.env` file in the `backend/` directory with the following production values:
+> [!IMPORTANT]
+> Ensure this IP address is **STATIC** (doesn't change when the server restarts), otherwise users will lose access to the site when the router assigns a new IP.
+
+---
+
+## 3. Backend Setup
+
+### Configure `.env`
+Create or edit the `.env` file in the `backend/` directory:
 
 ```bash
 PORT=5000
-DB_USER=your_db_user
+DB_USER=postgres
 DB_PASS=your_secure_password
 DB_HOST=localhost
 DB_NAME=ERMS
-JWT_SECRET=generate_a_long_random_string
+JWT_SECRET=generate_a_long_random_string_here
 JWT_EXPIRES_IN=24h
 
-# URLs
-FRONTEND_URL=https://your-production-app.com
-TUNNEL_URL=https://your-api-endpoint.com
+# The IP of this server + frontend port (e.g., 5173 for Vite or 80 for Nginx)
+FRONTEND_URL=http://192.168.1.100:5173
 
-# Webhook Security
-WEBHOOK_SECRET=choose_a_secure_secret_for_google_apps_script
-
-# Google Form
-GOOGLE_FORM_URL=https://docs.google.com/forms/d/e/.../viewform
-GOOGLE_FORM_TOKEN_FIELD_ID=entry.XXXXXX
-
+# Google Sheets Polling
+GOOGLE_SHEET_ID=your_google_sheet_id
+GOOGLE_SERVICE_ACCOUNT_KEY=./credentials.json
+SHEET_RANGE=Form Responses 1!A:K
 ```
 
----
+### Start the Backend
+Instead of using `npm run dev`, you should use PM2 to keep the backend running permanently even if it crashes or the server restarts.
 
-## 3. Google Form & Webhook Integration
-
-To bridge Google Forms with your database:
-
-1.  **Create the Form**: Ensure you have a short-answer field for the "Exam Reference Token".
-2.  **Get the Field ID**: Right-click the field in the "Preview" mode -> Inspect -> look for the `name="entry.12345"` attribute. Update `GOOGLE_FORM_TOKEN_FIELD_ID` in `.env`.
-3.  **Apps Script**:
-    -   In Google Forms, click 3-dots -> **Script Editor**.
-    -   Paste the script provided in `documents/Google_Form_Setup_Guide.md`.
-    -   Update the `API_URL` to your production API and set the `SECRET`.
-    -   Add a **Trigger**: `onFormSubmit` event type.
-
----
-
-
-## 4. Deployment Commands
-
-### A. Frontend
-The frontend must be built into static files:
-```bash
-cd frontend
-npm install
-npm run build
-```
-Upload the contents of the `dist/` folder to your web server (Nginx, Apache, or Firebase/Vercel).
-
-### B. Backend
 ```bash
 cd backend
 npm install
-# Run using a process manager like PM2 to ensure it restarts on crash
 npm install -g pm2
 pm2 start server.js --name "erms-api"
+pm2 save
+pm2 startup
+```
+
+*(If you just want to run it normally: `npm start`)*
+
+---
+
+## 4. Frontend Setup
+
+For the frontend to work on the LAN, it must know where the backend API is. Since it's no longer running on `localhost`, you must explicitly tell it the server's IP address.
+
+### Configure `.env`
+Create or edit the `.env` file in the `frontend/` directory:
+
+```bash
+VITE_GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
+
+# MUST be the IP address of the server, NOT localhost
+VITE_API_URL=http://192.168.1.100:5000/api
+```
+
+### Build and Serve the Frontend
+You have two options for serving the frontend on the LAN:
+
+**Option A: Simple (Using Vite)**  
+You can use Vite to serve the files directly, but you must pass the `--host` flag so it binds to the LAN IP instead of just `localhost`.
+```bash
+cd frontend
+npm install
+# The --host flag is required for LAN access!
+npm run dev -- --host
+```
+
+**Option B: Production (Using `serve` or Nginx)**  
+For a real deployment, build the optimized static files and serve them:
+```bash
+cd frontend
+npm run build
+npm install -g serve
+# Serve the dist folder on port 80 (default HTTP port)
+serve -s dist -l 80
+```
+> [!NOTE]
+> If you use Option B on port 80, users can access the system by simply typing `http://192.168.1.100` into their browser (no port needed).
+
+---
+
+## 5. Security & Firewall
+If other computers on the LAN cannot access the page, the server's firewall is likely blocking the connections.
+
+**Windows Firewall:**
+1. Open Windows Defender Firewall -> Advanced Settings.
+2. Inbound Rules -> New Rule -> Port.
+3. Allow TCP ports `5000` (Backend) and `5173` or `80` (Frontend).
+
+**Linux (UFW):**
+```bash
+sudo ufw allow 5000/tcp
+sudo ufw allow 80/tcp
 ```
 
 ---
 
-## 5. Security Checklist
-- [ ] Change `JWT_SECRET` to a unique production key.
-- [ ] Ensure PostgreSQL is not accessible from the public internet (use a firewall).
-- [ ] Enable HTTPS (SSL) for both frontend and backend (use Let's Encrypt/Certbot).
-- [ ] Update the `CORS` policy in `backend/src/app.js` to only allow your production domain.
-
----
-
-## 6. Database Migration
-Ensure the table schemas are created in your production PostgreSQL instance. You can use the `database.sql` script or your initialization scripts to setup the tables.
-
----
-**Support**: Contact the Examination Department IT team for domain and DNS access.
+## 6. Accessing the System
+Once everything is running, any computer connected to the college LAN can open a web browser and go to:
+- `http://192.168.1.100:5173` (if using Option A)
+- `http://192.168.1.100` (if using Option B)
