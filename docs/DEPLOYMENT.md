@@ -19,13 +19,54 @@ Before you start, find the IPv4 address of the computer hosting the application:
 
 ---
 
-## 3. Backend Setup
+## 3. Deployment on Ubuntu (Automated)
 
-### Configure `.env`
-Create or edit the `.env` file in the `backend/` directory:
+We have created a fully automated setup script for Ubuntu servers. 
+This script will automatically install Node.js, PostgreSQL, Nginx, configure the database with your seed data, and build the frontend.
 
-```bash
-PORT=5000
+### Step-by-Step Installation:
+
+1. **Transfer the Project**:
+   Zip your entire `exam-remuneration-system` folder and transfer it to the Ubuntu server (e.g., via WinSCP, SFTP, or a USB drive).
+   
+2. **Extract the Project**:
+   Unzip the folder on the server.
+   ```bash
+   unzip exam-remuneration-system.zip
+   cd exam-remuneration-system
+   ```
+
+3. **Make the Script Executable**:
+   ```bash
+   chmod +x setup_ubuntu.sh
+   ```
+
+4. **Run the Automated Setup**:
+   The script requires root privileges to install packages and configure Nginx.
+   ```bash
+   sudo ./setup_ubuntu.sh
+   ```
+
+5. **Wait for Completion**:
+   The script will:
+   - Detect the server's IP automatically.
+   - Install PostgreSQL and set the password to `ERMSPCCOE`.
+   - Restore the database schema and master data (users, subjects, rates).
+   - Update your `.env` files to point to the server's IP address.
+   - Install PM2 and start the backend.
+   - Build the React frontend.
+   - Configure Nginx to serve the site on Port 80.
+   - Open ports 80, 5000, and 22 on the UFW firewall.
+
+### Post-Installation Checklist
+- [ ] Add your `credentials.json` to the `backend/` folder.
+- [ ] Edit `backend/.env` and update the `GOOGLE_SHEET_ID`.
+- [ ] Restart the backend to apply the sheet config: `pm2 restart erms-api`
+- [ ] **Google Cloud Console**: Whitelist the Server's IP address (e.g., `http://192.168.1.100`) under "Authorized JavaScript origins" for your OAuth Client ID so that Google Login works.
+
+---
+
+## 4. Manual Configuration (If script fails)
 DB_USER=postgres
 DB_PASS=your_secure_password
 DB_HOST=localhost
