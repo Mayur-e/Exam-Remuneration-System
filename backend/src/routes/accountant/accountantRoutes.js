@@ -40,5 +40,8 @@ router.get("/coordinators", coordinatorCtrl.getAllCoordinatorAssignments);
 router.post("/coordinators/:assignmentId/revoke", coordinatorCtrl.revokeCoordinator);
 router.post("/coordinators/reassign", coordinatorCtrl.reassignCoordinator);
 
+// Excel Export
+const exportController = require("../../controllers/export.controller");
+router.get("/export/billing-sheet", exportController.exportBillingSheet);
 
 module.exports = router;

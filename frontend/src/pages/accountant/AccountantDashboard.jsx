@@ -48,7 +48,7 @@ export default function AccountantDashboard() {
         });
       }
       const queryString = queryParams.toString();
-      const endpoint = queryString ? `/admin/export/billing-sheet?${queryString}` : '/admin/export/billing-sheet';
+      const endpoint = queryString ? `/accountant/export/billing-sheet?${queryString}` : '/accountant/export/billing-sheet';
 
       const response = await api.get(endpoint, {
         responseType: 'blob',
