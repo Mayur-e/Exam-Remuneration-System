@@ -63,14 +63,24 @@ else
 fi
 
 # ==============================================================================
-# 3. Install Node.js (v18)
+# 3. Install Node.js (v20)
 # ==============================================================================
-echo -e "\n${BLUE}[3/7] Installing Node.js (v18)...${NC}"
-if ! command -v node &> /dev/null; then
-    curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+echo -e "\n${BLUE}[3/7] Checking Node.js version...${NC}"
+NODE_INSTALLED=false
+if command -v node &> /dev/null; then
+    NODE_VERSION=$(node -v | cut -d 'v' -f 2 | cut -d '.' -f 1)
+    if [ "$NODE_VERSION" -ge 18 ]; then
+        echo "Node.js is already installed and meets requirements. Version: $(node -v)"
+        NODE_INSTALLED=true
+    else
+        echo "Node.js is installed but too old (v${NODE_VERSION}). Upgrading..."
+    fi
+fi
+
+if [ "$NODE_INSTALLED" = false ]; then
+    echo "Installing Node.js 20..."
+    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
     apt-get install -y nodejs
-else
-    echo "Node.js is already installed. Version: $(node -v)"
 fi
 
 # Install PM2 globally
